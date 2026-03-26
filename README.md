@@ -136,3 +136,4 @@ Academic papers worth reading:
 - Fama & French (1993) — "Common Risk Factors in the Returns on Stocks and Bonds"
 - Asness et al. (2013) — "Value and Momentum Everywhere"
 # alphalab
+# alphalab
