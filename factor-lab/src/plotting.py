@@ -15,7 +15,7 @@ import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 
-from factor_lab.metrics import compute_underwater_curve
+from src.metrics import compute_underwater_curve
 
 
 def plot_equity_curve(

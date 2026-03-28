@@ -22,14 +22,14 @@ from pathlib import Path
 # Make sure src/ is on the Python path when running as a script
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from factor_lab.backtest import run_backtest
-from factor_lab.metrics import (
+from src.backtest import run_backtest
+from src.metrics import (
     compute_information_coefficient,
     compute_ic_summary,
     full_tear_sheet,
     print_tear_sheet,
 )
-from factor_lab.plotting import generate_full_tear_sheet
+from src.plotting import generate_full_tear_sheet
 
 
 def parse_args():

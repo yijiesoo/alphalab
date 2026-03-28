@@ -26,9 +26,9 @@ This is optimistic for a real fund but reasonable for an academic backtest.
 import numpy as np
 import pandas as pd
 
-from factor_lab.data import compute_returns, download_prices, get_rebalance_dates
-from factor_lab.factors import compute_all_factors
-from factor_lab.portfolio import compute_weights_all_dates, compute_turnover
+from src.data import compute_returns, download_prices, get_rebalance_dates
+from src.factors import compute_all_factors
+from src.portfolio import compute_weights_all_dates, compute_turnover
 
 
 def run_backtest(

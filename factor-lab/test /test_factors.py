@@ -18,13 +18,13 @@ import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from factor_lab.factors import (
+from src.factors import (
     momentum_12_1,
     low_volatility,
     cross_sectional_zscore,
     combine_factors,
 )
-from factor_lab.portfolio import compute_weights, compute_turnover
+from src.portfolio import compute_weights, compute_turnover
 
 
 # ---------------------------------------------------------------------------
