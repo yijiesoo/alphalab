@@ -17,18 +17,19 @@ Educational research project. Not investment advice.
 
 import argparse
 import sys
+import json
+import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env for Supabase credentials
+load_dotenv()
 
 # Make sure src/ is on the Python path when running as a script
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.backtest import run_backtest
-from src.metrics import (
-    compute_information_coefficient,
-    compute_ic_summary,
-    full_tear_sheet,
-    print_tear_sheet,
-)
+from src.backtest import run_backtest, save_backtest_to_supabase, save_images_to_supabase
+from src.metrics import compute_all_metrics, compute_ic, compute_ic_pvalue
 from src.plotting import generate_full_tear_sheet
 
 
@@ -72,36 +73,51 @@ def main():
     )
 
     # -----------------------------------------------------------------------
-    # Compute and print tear sheet metrics
+    # Print metrics
     # -----------------------------------------------------------------------
-    metrics = full_tear_sheet(results)
-    print_tear_sheet(metrics)
-
-    # -----------------------------------------------------------------------
-    # IC analysis
-    # -----------------------------------------------------------------------
-    print("\n  FACTOR DIAGNOSTICS")
-    print("-" * 45)
-
-    returns_for_ic = results["prices"].pct_change()
-    ic_series = compute_information_coefficient(
-        factor_scores=results["factor"],
-        forward_returns=returns_for_ic,
-        horizon=21,
-    )
-    ic_summary = compute_ic_summary(ic_series)
-    print(f"  Mean IC            : {ic_summary['mean_ic']:.4f}")
-    print(f"  IC std dev         : {ic_summary['ic_std']:.4f}")
-    print(f"  IC information ratio: {ic_summary['ic_ir']:.4f}")
-    print(f"  IC t-statistic     : {ic_summary['t_stat']:.4f}")
-    print(f"  % months IC > 0    : {ic_summary['pct_positive']:.1%}")
+    print("\n" + "=" * 60)
+    print("BACKTEST RESULTS")
+    print("=" * 60)
+    
+    metrics = results.get("metrics", {})
+    for key, value in metrics.items():
+        if not isinstance(value, (dict, list)):
+            print(f"{key}: {value}")
+    
+    print("\nStress Test Results:")
+    stress = results.get("stress_test", {})
+    print(f"  {stress.get('message', 'N/A')}")
 
     # -----------------------------------------------------------------------
     # Charts
     # -----------------------------------------------------------------------
     if not args.no_plots:
         print(f"\n  Generating charts → {args.save_dir}/")
-        generate_full_tear_sheet(results, ic_series=ic_series, save_dir=args.save_dir)
+        try:
+            generate_full_tear_sheet(results, save_dir=args.save_dir)
+        except Exception as e:
+            print(f"  ⚠️  Could not generate charts: {e}")
+
+    # -----------------------------------------------------------------------
+    # Save to Supabase (if configured)
+    # -----------------------------------------------------------------------
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_ANON_KEY")
+    
+    if supabase_url and supabase_key:
+        print(f"\n  Saving to Supabase...")
+        try:
+            backtest_record = save_backtest_to_supabase(results)
+            if backtest_record:
+                print(f"  ✅ Backtest saved with ID: {backtest_record['backtest_id']}")
+                
+                # Save images too
+                save_images_to_supabase(backtest_record["backtest_id"], args.save_dir)
+                print(f"  ✅ Images uploaded to Supabase")
+        except Exception as e:
+            print(f"  ⚠️  Error saving to Supabase: {e}")
+    else:
+        print(f"\n  ⚠️  Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY in .env to enable cloud saves.")
 
     print("\n  Done. Educational research project. Not investment advice.")
 

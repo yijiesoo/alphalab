@@ -15,7 +15,13 @@ import matplotlib.dates as mdates
 import numpy as np
 import pandas as pd
 
-from src.metrics import compute_underwater_curve
+
+def compute_underwater_curve(returns: pd.Series) -> pd.Series:
+    """Compute underwater (drawdown) curve from returns."""
+    cumsum = (1 + returns).cumprod()
+    running_max = cumsum.expanding().max()
+    underwater = (cumsum - running_max) / running_max * 100
+    return underwater
 
 
 def plot_equity_curve(

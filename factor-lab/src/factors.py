@@ -121,6 +121,11 @@ def cross_sectional_zscore(factor: pd.DataFrame) -> pd.DataFrame:
     mean = factor.mean(axis=1)   # cross-sectional mean per row
     std = factor.std(axis=1)     # cross-sectional std per row
 
+    # Handle edge case: if all stocks have the same factor score on a day,
+    # std = 0. Replace with 1.0 so that z-score = (score - mean) / 1 = 0
+    # for all stocks (neutral weights). This avoids division by zero NaN.
+    std = std.replace(0.0, 1.0)
+
     # Subtract mean and divide by std — broadcast over columns
     zscores = factor.sub(mean, axis=0).div(std, axis=0)
     return zscores
