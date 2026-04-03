@@ -7,9 +7,20 @@ import sys
 import threading
 import time
 from pathlib import Path
+from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context
+import yfinance as yf
+
+# Supabase
+try:
+    from supabase import create_client, Client
+    SUPABASE_URL = os.getenv("SUPABASE_URL")
+    SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
+    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+except ImportError:
+    supabase = None
 
 # Load environment variables from a .env file if one is present
 load_dotenv()
@@ -245,6 +256,161 @@ def api_all_backtests():
     """GET /api/all-backtests?limit=50 — return list of backtests."""
     limit = request.args.get("limit", 50, type=int)
     return jsonify({"backtests": [], "total": 0, "limit": limit})
+
+
+# ---------------------------------------------------------------------------
+# New endpoints for watchlist, price charts, and history
+# ---------------------------------------------------------------------------
+
+@app.route("/api/price-chart")
+def api_price_chart():
+    """GET /api/price-chart?ticker=AAPL — return 6-month price data."""
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    if not ticker:
+        return jsonify({"error": "ticker parameter is required"}), 400
+    if not _valid_ticker(ticker):
+        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+
+    try:
+        # Fetch 6 months of price data
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=180)
+        
+        data = yf.download(
+            ticker,
+            start=start_date.strftime("%Y-%m-%d"),
+            end=end_date.strftime("%Y-%m-%d"),
+            progress=False,
+            auto_adjust=True
+        )
+        
+        if data.empty:
+            return jsonify({"error": f"No price data found for {ticker}"}), 404
+        
+        # Handle both single ticker (Series) and multiple tickers (DataFrame)
+        if isinstance(data, __import__('pandas').Series):
+            close_prices = data
+        else:
+            close_prices = data["Close"] if "Close" in data.columns else data.iloc[:, 0]
+        
+        # Convert to list of [timestamp, price] pairs
+        prices = [
+            [int(date.timestamp() * 1000), round(float(price), 2)]
+            for date, price in zip(close_prices.index, close_prices.values)
+            if not __import__('pandas').isna(price)
+        ]
+        
+        if not prices:
+            return jsonify({"error": f"No valid price data for {ticker}"}), 404
+        
+        return jsonify({
+            "ticker": ticker,
+            "prices": prices,
+            "current_price": round(float(prices[-1][1]), 2),
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+        })
+    except Exception as e:
+        return jsonify({"error": f"Failed to fetch price data: {str(e)}"}), 500
+
+
+@app.route("/api/watchlist", methods=["GET", "POST", "DELETE"])
+def api_watchlist():
+    """Manage watchlist in Supabase."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 500
+    
+    session_id = request.args.get("session_id", "default")
+    
+    if request.method == "GET":
+        # Get watchlist
+        try:
+            response = supabase.table("watchlist").select("*").eq("session_id", session_id).execute()
+            items = response.data if response.data else []
+            return jsonify({"watchlist": items, "count": len(items)})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    elif request.method == "POST":
+        # Add to watchlist
+        data = request.json
+        ticker = (data.get("ticker") or "").upper().strip()
+        
+        if not ticker or not _valid_ticker(ticker):
+            return jsonify({"error": "Invalid ticker"}), 400
+        
+        try:
+            # Check if already exists
+            existing = supabase.table("watchlist").select("*").eq("session_id", session_id).eq("ticker", ticker).execute()
+            if existing.data:
+                return jsonify({"error": "Already in watchlist"}), 409
+            
+            # Add new entry
+            response = supabase.table("watchlist").insert({
+                "session_id": session_id,
+                "ticker": ticker,
+                "added_at": datetime.now().isoformat(),
+            }).execute()
+            return jsonify({"message": "Added to watchlist", "data": response.data[0] if response.data else {}})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    
+    elif request.method == "DELETE":
+        # Remove from watchlist
+        ticker = (request.args.get("ticker") or "").upper().strip()
+        if not ticker:
+            return jsonify({"error": "ticker parameter required"}), 400
+        
+        try:
+            supabase.table("watchlist").delete().eq("session_id", session_id).eq("ticker", ticker).execute()
+            return jsonify({"message": "Removed from watchlist"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/analysis-history")
+def api_analysis_history():
+    """GET /api/analysis-history?session_id=xxx — get past analyses."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 500
+    
+    session_id = request.args.get("session_id", "default")
+    limit = request.args.get("limit", 50, type=int)
+    
+    try:
+        response = supabase.table("analysis_history").select("*").eq("session_id", session_id).order("analyzed_at", desc=True).limit(limit).execute()
+        items = response.data if response.data else []
+        return jsonify({"history": items, "count": len(items)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/save-analysis", methods=["POST"])
+def api_save_analysis():
+    """POST /api/save-analysis — save analysis to history."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 500
+    
+    data = request.json
+    session_id = data.get("session_id", "default")
+    ticker = (data.get("ticker") or "").upper().strip()
+    
+    if not ticker or not _valid_ticker(ticker):
+        return jsonify({"error": "Invalid ticker"}), 400
+    
+    try:
+        supabase.table("analysis_history").insert({
+            "session_id": session_id,
+            "ticker": ticker,
+            "verdict": data.get("verdict"),
+            "factor_score": data.get("factor_score"),
+            "macro_context": data.get("macro_context"),
+            "sentiment": data.get("sentiment"),
+            "analyzed_at": datetime.now().isoformat(),
+        }).execute()
+        return jsonify({"message": "Analysis saved"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
