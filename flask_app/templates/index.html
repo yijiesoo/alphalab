@@ -1,88 +1,527 @@
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <title>Factor Lab Backtest</title>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Analysis — alphalab</title>
     <style>
-      body { font-family: Arial, sans-serif; margin: 20px; }
-      #log { white-space: pre-wrap; background:#111; color:#eee; padding:10px; height:400px; overflow:auto; }
-      button { padding:10px 16px; }
-      #images-container { margin-top: 30px; }
-      .image-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 15px; }
-      .image-item { border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
-      .image-item img { max-width: 100%; height: auto; }
-      .image-item p { margin: 10px 0 0 0; font-size: 12px; color: #666; }
-    </style>
-  </head>
-  <body>
-    <h2>Factor Lab — Backtest Runner</h2>
-    <p>Click "Run backtest" to execute the project's run_backtest.py.</p>
-    <button id="run">Run backtest</button>
-    <p id="status">Status: idle</p>
-    <h3>Live log</h3>
-    <div id="log">(no log yet)</div>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
 
-    <div id="images-container">
-      <h3>Output Images</h3>
-      <div id="images-grid" class="image-grid"></div>
+        /* Search box */
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+        .search-box button {
+            padding: 12px 24px;
+            background: #2a5298;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .search-box button:hover {
+            background: #1e3c72;
+        }
+        .search-box button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error state */
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        /* Results section */
+        .results {
+            display: none;
+        }
+        .results.show {
+            display: block;
+        }
+
+        /* Verdict card (traffic light) */
+        .verdict-card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .verdict-icon {
+            font-size: 4em;
+            margin-bottom: 16px;
+        }
+        .verdict-label {
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .verdict-label.green { color: #27ae60; }
+        .verdict-label.yellow { color: #f39c12; }
+        .verdict-label.red { color: #e74c3c; }
+        .verdict-text {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: #666;
+        }
+
+        /* Analysis panels grid */
+        .panels-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        @media (max-width: 768px) {
+            .panels-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Panel styling */
+        .panel {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .panel-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #2a5298;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 12px;
+        }
+        .panel-content {
+            line-height: 1.8;
+            font-size: 0.95em;
+        }
+
+        /* Factor score display */
+        .score-display {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 12px;
+        }
+        .score-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: 700;
+            color: white;
+            flex-shrink: 0;
+        }
+        .score-circle.strong { background: #27ae60; }
+        .score-circle.moderate { background: #f39c12; }
+        .score-circle.weak { background: #e67e22; }
+        .score-circle.negative { background: #e74c3c; }
+        .score-info h3 {
+            margin-bottom: 4px;
+            color: #333;
+        }
+        .score-info p {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        /* Macro context */
+        .macro-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .macro-row:last-child {
+            border-bottom: none;
+        }
+        .macro-label {
+            font-weight: 600;
+            color: #555;
+        }
+        .macro-value {
+            color: #2a5298;
+            font-weight: 600;
+        }
+        .macro-summary {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: #555;
+        }
+
+        /* Sentiment display */
+        .sentiment-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        .sentiment-positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        .sentiment-negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .sentiment-neutral {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+        .sentiment-summary {
+            background: #f9f9f9;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: #555;
+        }
+        .headlines {
+            margin-top: 12px;
+            font-size: 0.9em;
+        }
+        .headline {
+            padding: 8px 0;
+            color: #666;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .headline:last-child {
+            border-bottom: none;
+        }
+
+        /* Cache indicator */
+        .cache-indicator {
+            font-size: 0.95em;
+            color: #2a5298;
+            text-align: center;
+            margin-top: 12px;
+            padding: 16px 12px;
+            border-radius: 6px;
+            background: #f0f8ff;
+            border: 1px solid #2a5298;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+        .cache-indicator div {
+            margin: 4px 0;
+        }
+
+        /* Company info */
+        .company-info {
+            background: #f0f4f8;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .company-info h2 {
+            font-size: 1.3em;
+            margin-bottom: 4px;
+            color: #2a5298;
+        }
+        .company-info p {
+            font-size: 0.9em;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📊 Stock Analysis</h1>
+            <p>Data-driven verdict on any stock</p>
+        </div>
+
+        <!-- Search box -->
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="ticker-input" 
+                placeholder="Enter ticker symbol (e.g., NVDA, AAPL, TSLA)" 
+                autocomplete="off"
+            >
+            <button id="analyze-btn">Analyze</button>
+        </div>
+
+        <!-- Error display -->
+        <div id="error-container"></div>
+
+        <!-- Loading state -->
+        <div id="loading" class="loading" style="display:none;">
+            <div class="spinner"></div>
+            <p style="margin-top: 16px;">Analyzing...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results">
+            <!-- Company info -->
+            <div class="company-info">
+                <h2 id="company-name"></h2>
+                <p id="company-ticker"></p>
+            </div>
+
+            <!-- Verdict card -->
+            <div class="verdict-card">
+                <div class="verdict-icon" id="verdict-icon"></div>
+                <div class="verdict-label" id="verdict-label"></div>
+                <div class="verdict-text" id="verdict-text"></div>
+            </div>
+
+            <!-- Analysis panels -->
+            <div class="panels-grid">
+                <!-- Factor Score Panel -->
+                <div class="panel">
+                    <div class="panel-title">📈 Factor Score</div>
+                    <div class="panel-content">
+                        <div class="score-display">
+                            <div class="score-circle" id="score-circle"></div>
+                            <div class="score-info">
+                                <h3 id="score-label"></h3>
+                                <p id="score-momentum"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Macro Context Panel -->
+                <div class="panel">
+                    <div class="panel-title">🌍 Macro Context</div>
+                    <div class="panel-content">
+                        <div class="macro-row">
+                            <span class="macro-label">VIX:</span>
+                            <span class="macro-value" id="vix-value"></span>
+                        </div>
+                        <div class="macro-row">
+                            <span class="macro-label">10Y Yield:</span>
+                            <span class="macro-value" id="yield-value"></span>
+                        </div>
+                        <div class="macro-row">
+                            <span class="macro-label">Sector:</span>
+                            <span class="macro-value" id="sector-value"></span>
+                        </div>
+                        <div class="macro-row">
+                            <span class="macro-label">Sector Momentum:</span>
+                            <span class="macro-value" id="sector-signal"></span>
+                        </div>
+                        <div class="macro-summary" id="macro-summary"></div>
+                    </div>
+                </div>
+
+                <!-- Sentiment Panel -->
+                <div class="panel">
+                    <div class="panel-title">📰 News Sentiment</div>
+                    <div class="panel-content">
+                        <div id="sentiment-badges"></div>
+                        <div class="sentiment-summary" id="sentiment-summary"></div>
+                        <div class="headlines" id="headlines"></div>
+                    </div>
+                </div>
+
+                <!-- Cache info -->
+                <div class="panel">
+                    <div class="panel-title">⚡ Performance</div>
+                    <div class="panel-content">
+                        <div class="cache-indicator" id="cache-info"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-      const runBtn = document.getElementById("run");
-      const statusEl = document.getElementById("status");
-      const logEl = document.getElementById("log");
-      const imagesGrid = document.getElementById("images-grid");
+        const tickerInput = document.getElementById("ticker-input");
+        const analyzeBtn = document.getElementById("analyze-btn");
+        const loadingEl = document.getElementById("loading");
+        const resultsEl = document.getElementById("results");
+        const errorContainer = document.getElementById("error-container");
 
-      async function loadImages() {
-        try {
-          const res = await fetch("/images");
-          const data = await res.json();
-          imagesGrid.innerHTML = "";
-          if (data.images.length === 0) {
-            imagesGrid.innerHTML = "<p>No images yet</p>";
-            return;
-          }
-          data.images.forEach(filename => {
-            const div = document.createElement("div");
-            div.className = "image-item";
-            div.innerHTML = `
-              <img src="/outputs/${filename}" alt="${filename}" />
-              <p>${filename}</p>
-            `;
-            imagesGrid.appendChild(div);
-          });
-        } catch (err) {
-          console.error("Error loading images:", err);
+        // Enter key to search
+        tickerInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") analyzeBtn.click();
+        });
+
+        analyzeBtn.addEventListener("click", async () => {
+            const ticker = tickerInput.value.trim().toUpperCase();
+            if (!ticker) {
+                showError("Please enter a ticker symbol");
+                return;
+            }
+
+            await analyze(ticker);
+        });
+
+        async function analyze(ticker) {
+            errorContainer.innerHTML = "";
+            loadingEl.style.display = "block";
+            resultsEl.classList.remove("show");
+
+            try {
+                const response = await fetch(`/api/analyze?ticker=${ticker}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || "Analysis failed");
+                    return;
+                }
+
+                displayResults(data);
+            } catch (err) {
+                showError("Network error. Check console.");
+                console.error(err);
+            } finally {
+                loadingEl.style.display = "none";
+            }
         }
-      }
 
-      runBtn.onclick = async () => {
-        runBtn.disabled = true;
-        const res = await fetch("/run", { method: "POST" });
-        const j = res.ok ? await res.json() : await res.json();
-        statusEl.textContent = "Status: " + (j.status || (j.running ? "running" : "idle"));
-        poll();
-      };
+        function displayResults(data) {
+            // Company info
+            document.getElementById("company-name").textContent = data.company;
+            document.getElementById("company-ticker").textContent = `${data.ticker}`;
 
-      let pollTimer = null;
-      async function poll() {
-        if (pollTimer) return;
-        pollTimer = setInterval(async () => {
-          const res = await fetch("/status");
-          const j = await res.json();
-          statusEl.textContent = "Status: " + (j.running ? "running" : "idle");
-          logEl.textContent = j.log_tail || "(no log yet)";
-          if (!j.running) {
-            clearInterval(pollTimer);
-            pollTimer = null;
-            runBtn.disabled = false;
-            loadImages(); // Load images when done
-          }
-        }, 1000);
-      }
+            // Verdict
+            const verdictIcon = {"green": "🟢", "yellow": "🟡", "red": "🔴"}[data.verdict];
+            const verdictLabel = {"green": "Buy Signal", "yellow": "Hold", "red": "Sell Signal"}[data.verdict];
+            document.getElementById("verdict-icon").textContent = verdictIcon;
+            document.getElementById("verdict-label").textContent = verdictLabel;
+            document.getElementById("verdict-label").className = `verdict-label ${data.verdict}`;
+            document.getElementById("verdict-text").textContent = 
+                `Based on momentum, macro conditions, and sentiment, this stock is showing a ${verdictLabel.toLowerCase()}.`;
 
-      // Load images on page load
-      loadImages();
+            // Factor Score
+            const factor = data.factor;
+            const scoreClass = factor.score >= 70 ? "strong" : factor.score >= 50 ? "moderate" : factor.score >= 30 ? "weak" : "negative";
+            document.getElementById("score-circle").textContent = factor.score;
+            document.getElementById("score-circle").className = `score-circle ${scoreClass}`;
+            document.getElementById("score-label").textContent = factor.label;
+            document.getElementById("score-momentum").textContent = `Momentum: ${factor.momentum > 0 ? "+" : ""}${factor.momentum}`;
+
+            // Macro
+            document.getElementById("vix-value").textContent = data.macro.vix ? `${data.macro.vix} — ${data.macro.vix_label}` : "N/A";
+            document.getElementById("yield-value").textContent = data.macro.yield_10y ? `${data.macro.yield_10y}% — ${data.macro.yield_label}` : "N/A";
+            document.getElementById("sector-value").textContent = data.macro.sector || "Unknown";
+            document.getElementById("sector-signal").textContent = data.macro.sector_signal || "N/A";
+            document.getElementById("macro-summary").textContent = data.macro.summary;
+
+            // Sentiment
+            const sentimentHtml = `
+                <span class="sentiment-badge sentiment-positive">${data.sentiment.positive} Positive</span>
+                <span class="sentiment-badge sentiment-negative">${data.sentiment.negative} Negative</span>
+                <span class="sentiment-badge sentiment-neutral">${data.sentiment.neutral} Neutral</span>
+            `;
+            document.getElementById("sentiment-badges").innerHTML = sentimentHtml;
+            document.getElementById("sentiment-summary").textContent = data.sentiment.summary;
+
+            const headlinesHtml = data.sentiment.headlines.map(h => 
+                `<div class="headline">• ${h}</div>`
+            ).join("");
+            document.getElementById("headlines").innerHTML = headlinesHtml;
+
+            // Cache info
+            const cache = data._cache;
+            const now = Date.now() / 1000;
+            const ttl = Math.round(Math.max(0, cache.expires_at - now));
+            const cacheText = cache.hit 
+                ? `✓ Cached result\nTTL: ${ttl}s remaining`
+                : `✓ Fresh analysis\nNo cache needed`;
+            document.getElementById("cache-info").innerHTML = cacheText.split('\n').map(line => `<div>${line}</div>`).join('');
+            document.getElementById("cache-info").style.textAlign = 'center';
+
+            resultsEl.classList.add("show");
+        }
+
+        function showError(msg) {
+            errorContainer.innerHTML = `<div class="error">${msg}</div>`;
+        }
     </script>
-  </body>
+</body>
 </html>

@@ -133,11 +133,7 @@ def outputs(filename):
 
 @app.route("/api/analyze")
 def api_analyze():
-    """GET /api/analyze?ticker=NVDA[&refresh=true]
-
-    Returns per-ticker analysis.  Results are cached for 15 minutes.
-    Pass refresh=true to bypass the cache and fetch fresh data.
-    """
+    """GET /api/analyze?ticker=NVDA[&refresh=true]"""
     ticker = (request.args.get("ticker") or "").upper().strip()
     if not ticker:
         return jsonify({"error": "ticker parameter is required"}), 400
@@ -160,7 +156,8 @@ def api_analyze():
     try:
         from src.scorer import analyze_ticker
         data = analyze_ticker(ticker)
-    except Exception:
+    except Exception as e:
+        app.logger.error(f"Analysis failed for {ticker}: {e}")
         return jsonify({"error": "analysis failed; check server logs"}), 500
 
     expires_at = now + _CACHE_TTL_SECONDS
@@ -237,5 +234,18 @@ def api_health():
     return jsonify({"status": "ok", "cached_tickers": cached_count})
 
 
+@app.route("/api/latest-metrics")
+def api_latest_metrics():
+    """GET /api/latest-metrics — return latest backtest metrics."""
+    return jsonify({"metrics": [], "message": "No backtest metrics available"})
+
+
+@app.route("/api/all-backtests")
+def api_all_backtests():
+    """GET /api/all-backtests?limit=50 — return list of backtests."""
+    limit = request.args.get("limit", 50, type=int)
+    return jsonify({"backtests": [], "total": 0, "limit": limit})
+
+
 if __name__ == "__main__":
-    app.run(debug=True, host="127.0.0.1", port=5000)
+    app.run(debug=True, host="127.0.0.1", port=8000)

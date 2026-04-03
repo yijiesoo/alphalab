@@ -25,4 +25,4 @@ flask_app/outputs/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
+*.ipynb.env
