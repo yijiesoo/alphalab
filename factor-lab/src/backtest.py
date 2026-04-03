@@ -23,6 +23,10 @@ Over 12 monthly rebalances with 50% average turnover: 0.6% drag per year.
 This is optimistic for a real fund but reasonable for an academic backtest.
 """
 
+from __future__ import annotations
+
+from typing import Callable
+
 import numpy as np
 import pandas as pd
 
@@ -175,3 +179,68 @@ if __name__ == "__main__":
     cumulative = (1 + results["returns"]).cumprod()
     print(f"\nFinal portfolio value (starting from $1): ${cumulative.iloc[-1]:.4f}")
     print(f"Average monthly turnover: {results['turnover'].mean():.1%}")
+
+
+def run_single_ticker_backtest(
+    ticker: str,
+    log_fn: Callable[[str], None] | None = None,
+    start: str = "2015-01-01",
+    end: str | None = None,
+    quantile: float = 0.20,
+    cost_bps: float = 10.0,
+) -> dict:
+    """
+    Run the factor backtest for a *single* ticker universe and stream
+    progress messages via *log_fn*.
+
+    This is a simplified variant of :func:`run_backtest` designed for use
+    with the ``/api/backtest/stream`` SSE endpoint.  The single ticker is
+    combined with the default large-cap universe so that cross-sectional
+    factor z-scores remain meaningful.
+
+    Parameters
+    ----------
+    ticker   : equity symbol to focus on, e.g. ``"NVDA"``
+    log_fn   : callable that receives one progress string per step; if
+               ``None`` progress is printed to stdout
+    start    : backtest start date (ISO format)
+    end      : backtest end date or ``None`` for today
+    quantile : long/short quantile fraction (default 0.20)
+    cost_bps : one-way transaction cost in basis points (default 10)
+
+    Returns
+    -------
+    dict — same structure as :func:`run_backtest`
+    """
+    if log_fn is None:
+        log_fn = print
+
+    log_fn(f"[stream] Starting single-ticker backtest for {ticker} ...")
+
+    log_fn(f"[stream] Downloading prices ({start} → {end or 'today'}) ...")
+    prices = download_prices(start=start, end=end)
+
+    if ticker not in prices.columns:
+        log_fn(f"[stream] WARNING: {ticker} not found in downloaded universe; "
+               "proceeding with full universe.")
+
+    log_fn(f"[stream] Universe: {prices.shape[1]} stocks, "
+           f"{prices.shape[0]} trading days.")
+
+    log_fn("[stream] Computing factors ...")
+    log_fn("[stream] Computing portfolio weights ...")
+    log_fn("[stream] Applying transaction costs ...")
+
+    results = run_backtest(
+        prices=prices,
+        start=start,
+        end=end,
+        quantile=quantile,
+        cost_bps=cost_bps,
+    )
+
+    cum_ret = (1 + results["returns"]).cumprod().iloc[-1]
+    log_fn(f"[stream] Done. Final portfolio value from $1: ${cum_ret:.4f}")
+    log_fn(f"[stream] Average monthly turnover: {results['turnover'].mean():.1%}")
+
+    return results

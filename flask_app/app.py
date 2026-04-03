@@ -1,13 +1,21 @@
-from flask import Flask, render_template, jsonify, send_from_directory, request
 import os
-import subprocess
-import threading
-from pathlib import Path
-import time
+import queue
+import re
 import shutil
+import subprocess
+import sys
+import threading
+import time
+from pathlib import Path
 
-# Configure these to match your repo layout
-PROJECT_ROOT = Path("/Users/yjsoo/Documents/alphalab")
+from dotenv import load_dotenv
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context
+
+# Load environment variables from a .env file if one is present
+load_dotenv()
+
+# Derive project root from this file's location: flask_app/app.py → project root
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FACTORLAB_ROOT = PROJECT_ROOT / "factor-lab"
 FACTORLAB_SRC = FACTORLAB_ROOT / "src"
 SCRIPT = FACTORLAB_ROOT / "scripts" / "run_backtest.py"
@@ -20,11 +28,28 @@ LOG_FILE = OUT_DIR / "backtest.log"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 FACTORLAB_OUT.mkdir(parents=True, exist_ok=True)
 
+# Make factor-lab importable as a package (needed for /api/* endpoints)
+if str(FACTORLAB_ROOT) not in sys.path:
+    sys.path.insert(0, str(FACTORLAB_ROOT))
+
 app = Flask(__name__)
 _worker = {"proc": None, "thread": None, "running": False}
 
+# ---------------------------------------------------------------------------
+# In-memory per-ticker cache with TTL
+# ---------------------------------------------------------------------------
+_CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
+_cache: dict[str, dict] = {}  # ticker → {"data": ..., "expires_at": float}
+
 # Image extensions to look for
 IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg'}
+
+_TICKER_RE = re.compile(r'^[A-Z]{1,5}$')
+
+
+def _valid_ticker(ticker: str) -> bool:
+    """Return True if ticker looks like a valid US equity symbol (1-5 uppercase letters)."""
+    return bool(_TICKER_RE.match(ticker.upper())) if ticker else False
 
 
 def _copy_images_to_flask():
@@ -55,6 +80,10 @@ def _run_script():
         # Copy images after script completes
         _copy_images_to_flask()
 
+
+# ---------------------------------------------------------------------------
+# Existing routes (preserved)
+# ---------------------------------------------------------------------------
 
 @app.route("/")
 def index():
@@ -96,6 +125,116 @@ def get_images():
 @app.route("/outputs/<path:filename>")
 def outputs(filename):
     return send_from_directory(str(OUT_DIR), filename, as_attachment=True)
+
+
+# ---------------------------------------------------------------------------
+# New /api/* endpoints
+# ---------------------------------------------------------------------------
+
+@app.route("/api/analyze")
+def api_analyze():
+    """GET /api/analyze?ticker=NVDA[&refresh=true]
+
+    Returns per-ticker analysis.  Results are cached for 15 minutes.
+    Pass refresh=true to bypass the cache and fetch fresh data.
+    """
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    if not ticker:
+        return jsonify({"error": "ticker parameter is required"}), 400
+    if not _valid_ticker(ticker):
+        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+
+    refresh = request.args.get("refresh", "").lower() == "true"
+    now = time.time()
+
+    # Serve from cache if still valid and not forced refresh
+    if not refresh and ticker in _cache:
+        entry = _cache[ticker]
+        if entry["expires_at"] > now:
+            return jsonify({
+                **entry["data"],
+                "_cache": {"hit": True, "expires_at": entry["expires_at"]},
+            })
+
+    # Cache miss (or refresh requested) — run analysis
+    try:
+        from src.scorer import analyze_ticker
+        data = analyze_ticker(ticker)
+    except Exception:
+        return jsonify({"error": "analysis failed; check server logs"}), 500
+
+    expires_at = now + _CACHE_TTL_SECONDS
+    _cache[ticker] = {"data": data, "expires_at": expires_at}
+    return jsonify({**data, "_cache": {"hit": False, "expires_at": expires_at}})
+
+
+@app.route("/api/cache")
+def api_cache():
+    """GET /api/cache — list currently cached tickers and their remaining TTL."""
+    now = time.time()
+    valid = {
+        ticker: {
+            "expires_at": entry["expires_at"],
+            "ttl_seconds": round(max(0.0, entry["expires_at"] - now), 1),
+        }
+        for ticker, entry in _cache.items()
+        if entry["expires_at"] > now
+    }
+    return jsonify({"cached_tickers": valid})
+
+
+@app.route("/api/backtest/stream")
+def api_backtest_stream():
+    """GET /api/backtest/stream?ticker=NVDA
+
+    Server-Sent Events (SSE) endpoint.  Streams log lines from
+    run_single_ticker_backtest and closes with a 'data: [DONE]' event.
+    """
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    if not ticker:
+        return jsonify({"error": "ticker parameter is required"}), 400
+    if not _valid_ticker(ticker):
+        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+
+    def generate():
+        q: queue.Queue[str | None] = queue.Queue(maxsize=1000)
+
+        def _log_fn(msg: str) -> None:
+            q.put(msg)
+
+        def _run() -> None:
+            try:
+                from src.backtest import run_single_ticker_backtest
+                run_single_ticker_backtest(ticker, log_fn=_log_fn)
+            except Exception as exc:
+                _log_fn(f"ERROR: {exc}")
+            finally:
+                q.put(None)  # sentinel — signals the generator to stop
+
+        t = threading.Thread(target=_run, daemon=True)
+        t.start()
+
+        while True:
+            msg = q.get()
+            if msg is None:
+                break
+            yield f"data: {msg}\n\n"
+
+        yield "data: [DONE]\n\n"
+
+    return Response(
+        stream_with_context(generate()),
+        content_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.route("/api/health")
+def api_health():
+    """GET /api/health — liveness check and cache stats."""
+    now = time.time()
+    cached_count = sum(1 for entry in _cache.values() if entry["expires_at"] > now)
+    return jsonify({"status": "ok", "cached_tickers": cached_count})
 
 
 if __name__ == "__main__":
