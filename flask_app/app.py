@@ -8,10 +8,24 @@ import threading
 import time
 from pathlib import Path
 from datetime import datetime, timedelta
+from functools import wraps
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session, redirect, url_for
 import yfinance as yf
+import numpy as np
+import requests
+
+# Firebase
+try:
+    import firebase_admin
+    from firebase_admin import credentials, auth
+    cred = credentials.Certificate('credentials/firebase-key.json')
+    firebase_admin.initialize_app(cred)
+    print("✅ Firebase initialized")
+except Exception as e:
+    print(f"⚠️ Firebase init failed (using REST API only): {e}")
+    auth = None
 
 # Supabase
 try:
@@ -45,6 +59,54 @@ if str(FACTORLAB_ROOT) not in sys.path:
 
 app = Flask(__name__)
 _worker = {"proc": None, "thread": None, "running": False}
+
+# Configure session secret key for Flask session management
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
+
+# Configure session settings
+app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP in development
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)# ---------------------------------------------------------------------------
+# Session-based Auth Decorator
+# ---------------------------------------------------------------------------
+def login_required(f):
+    """Decorator to require login (Flask session based)"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            return redirect(url_for("login"))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ---------------------------------------------------------------------------
+# Firebase Auth Verification Decorator
+# ---------------------------------------------------------------------------
+def verify_firebase_token(f):
+    """Decorator to verify Firebase ID token from Authorization header"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not auth:
+            return jsonify({"error": "Firebase not available"}), 503
+        
+        # Get token from Authorization header
+        auth_header = request.headers.get("Authorization", "")
+        if not auth_header.startswith("Bearer "):
+            return jsonify({"error": "Missing or invalid Authorization header"}), 401
+        
+        id_token = auth_header[7:]  # Remove "Bearer " prefix
+        
+        try:
+            # Verify token with Firebase
+            decoded = auth.verify_id_token(id_token)
+            request.user_id = decoded['uid']
+            request.user_email = decoded.get('email', '')
+            request.user_name = decoded.get('name', '')
+            return f(*args, **kwargs)
+        except Exception as e:
+            return jsonify({"error": f"Invalid token: {str(e)}"}), 401
+    
+    return decorated_function
 
 # ---------------------------------------------------------------------------
 # In-memory per-ticker cache with TTL
@@ -97,11 +159,112 @@ def _run_script():
 # ---------------------------------------------------------------------------
 
 @app.route("/")
+@login_required
 def index():
     return render_template("index.html")
 
 
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    """Login page with form"""
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        
+        if not email or not password:
+            return render_template("login.html", error="Email and password are required")
+        
+        try:
+            # Use Firebase REST API to sign in
+            api_key = os.getenv("FIREBASE_WEB_API_KEY")
+            if not api_key:
+                return render_template("login.html", error="Firebase not configured")
+            
+            response = requests.post(
+                f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}",
+                json={"email": email, "password": password, "returnSecureToken": True}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Store user info in Flask session
+                session["user_id"] = data.get("localId")
+                session["user_email"] = data.get("email")
+                session["id_token"] = data.get("idToken")
+                session.permanent = True
+                return redirect(url_for("index"))
+            else:
+                error_data = response.json()
+                error_msg = error_data.get("error", {}).get("message", "Invalid credentials")
+                return render_template("login.html", error=error_msg)
+        except Exception as e:
+            return render_template("login.html", error=f"Login error: {str(e)}")
+    
+    # If already logged in, redirect to home
+    if "user_id" in session:
+        return redirect(url_for("index"))
+    
+    return render_template("login.html")
+
+
+@app.route("/signup", methods=["GET", "POST"])
+def signup():
+    """Signup page with form"""
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        password_confirm = request.form.get("password_confirm", "")
+        
+        # Validation
+        if not email or not password or not password_confirm:
+            return render_template("signup.html", error="All fields are required")
+        
+        if password != password_confirm:
+            return render_template("signup.html", error="Passwords do not match")
+        
+        if len(password) < 6:
+            return render_template("signup.html", error="Password must be at least 6 characters")
+        
+        try:
+            # Create user with Firebase REST API
+            api_key = os.getenv("FIREBASE_WEB_API_KEY")
+            if not api_key:
+                return render_template("signup.html", error="Firebase not configured")
+            
+            response = requests.post(
+                f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={api_key}",
+                json={"email": email, "password": password, "returnSecureToken": True}
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                # Auto-login after signup
+                session["user_id"] = data.get("localId")
+                session["user_email"] = data.get("email")
+                session["id_token"] = data.get("idToken")
+                session.permanent = True
+                return redirect(url_for("index"))
+            else:
+                error_data = response.json()
+                error_msg = error_data.get("error", {}).get("message", "Signup failed")
+                return render_template("signup.html", error=error_msg)
+        except Exception as e:
+            return render_template("signup.html", error=f"Signup error: {str(e)}")
+    
+    # If already logged in, redirect to home
+    if "user_id" in session:
+        return redirect(url_for("index"))
+    
+    return render_template("signup.html")
+
+
+@app.route("/logout")
+def logout():
+    """Logout user"""
+    session.clear()
+    return redirect(url_for("login"))
 @app.route("/run", methods=["POST"])
+@login_required
 def run_backtest():
     if _worker["running"]:
         return jsonify({"status": "already_running"}), 409
@@ -143,6 +306,7 @@ def outputs(filename):
 # ---------------------------------------------------------------------------
 
 @app.route("/api/analyze")
+@login_required
 def api_analyze():
     """GET /api/analyze?ticker=NVDA[&refresh=true]"""
     ticker = (request.args.get("ticker") or "").upper().strip()
@@ -263,6 +427,7 @@ def api_all_backtests():
 # ---------------------------------------------------------------------------
 
 @app.route("/api/price-chart")
+@login_required
 def api_price_chart():
     """GET /api/price-chart?ticker=AAPL — return 6-month price data."""
     ticker = (request.args.get("ticker") or "").upper().strip()
@@ -294,11 +459,19 @@ def api_price_chart():
             close_prices = data["Close"] if "Close" in data.columns else data.iloc[:, 0]
         
         # Convert to list of [timestamp, price] pairs
-        prices = [
-            [int(date.timestamp() * 1000), round(float(price), 2)]
-            for date, price in zip(close_prices.index, close_prices.values)
-            if not __import__('pandas').isna(price)
-        ]
+        prices = []
+        close_array = close_prices.values.flatten() if close_prices.ndim > 1 else close_prices.values
+        
+        for date, price in zip(close_prices.index, close_array):
+            if not np.isnan(price):
+                # Explicitly convert numpy scalars to Python native types
+                timestamp = int(date.timestamp() * 1000)
+                # Use item() method to safely convert numpy scalar
+                if hasattr(price, 'item'):
+                    price_val = round(float(price.item()), 2)
+                else:
+                    price_val = round(float(price), 2)
+                prices.append([timestamp, price_val])
         
         if not prices:
             return jsonify({"error": f"No valid price data for {ticker}"}), 404
@@ -314,58 +487,85 @@ def api_price_chart():
         return jsonify({"error": f"Failed to fetch price data: {str(e)}"}), 500
 
 
+@app.route("/api/auth/sync-user", methods=["POST"])
+def sync_user():
+    """Sync Firebase user to Supabase on first login."""
+    if not auth or not supabase:
+        return jsonify({"error": "Firebase or Supabase not configured"}), 503
+    
+    try:
+        id_token = request.json.get("idToken")
+        if not id_token:
+            return jsonify({"error": "idToken required"}), 400
+        
+        # Verify Firebase token
+        decoded = auth.verify_id_token(id_token)
+        firebase_uid = decoded['uid']
+        email = decoded.get('email', '')
+        name = decoded.get('name', '')
+        
+        # Check if user exists in Supabase
+        response = supabase.table("users").select("id").eq("firebase_uid", firebase_uid).execute()
+        
+        if not response.data:
+            # Create new user in Supabase
+            supabase.table("users").insert({
+                "id": firebase_uid,
+                "firebase_uid": firebase_uid,
+                "email": email,
+                "name": name,
+            }).execute()
+        
+        return jsonify({"success": True, "user_id": firebase_uid}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/api/watchlist", methods=["GET", "POST", "DELETE"])
+@login_required
 def api_watchlist():
-    """Manage watchlist in Supabase."""
+    """Manage watchlist in Supabase with session authentication."""
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 500
     
-    session_id = request.args.get("session_id", "default")
+    user_id = session.get("user_id")
     
-    if request.method == "GET":
-        # Get watchlist
-        try:
-            response = supabase.table("watchlist").select("*").eq("session_id", session_id).execute()
+    try:
+        if request.method == "GET":
+            # Get user's watchlist
+            response = supabase.table("watchlist").select("*").eq("user_id", user_id).execute()
             items = response.data if response.data else []
-            return jsonify({"watchlist": items, "count": len(items)})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-    
-    elif request.method == "POST":
-        # Add to watchlist
-        data = request.json
-        ticker = (data.get("ticker") or "").upper().strip()
+            return jsonify({"watchlist": items, "count": len(items)}), 200
         
-        if not ticker or not _valid_ticker(ticker):
-            return jsonify({"error": "Invalid ticker"}), 400
-        
-        try:
-            # Check if already exists
-            existing = supabase.table("watchlist").select("*").eq("session_id", session_id).eq("ticker", ticker).execute()
-            if existing.data:
-                return jsonify({"error": "Already in watchlist"}), 409
+        elif request.method == "POST":
+            # Add to watchlist
+            data = request.json or {}
+            ticker = (data.get("ticker") or "").upper().strip()
             
-            # Add new entry
-            response = supabase.table("watchlist").insert({
-                "session_id": session_id,
+            if not ticker or not _valid_ticker(ticker):
+                return jsonify({"error": "Invalid ticker"}), 400
+            
+            # Upsert to avoid duplicates
+            response = supabase.table("watchlist").upsert({
+                "user_id": user_id,
                 "ticker": ticker,
                 "added_at": datetime.now().isoformat(),
             }).execute()
-            return jsonify({"message": "Added to watchlist", "data": response.data[0] if response.data else {}})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
-    
-    elif request.method == "DELETE":
-        # Remove from watchlist
-        ticker = (request.args.get("ticker") or "").upper().strip()
-        if not ticker:
-            return jsonify({"error": "ticker parameter required"}), 400
+            
+            return jsonify({"success": True, "message": f"{ticker} added to watchlist"}), 200
         
-        try:
-            supabase.table("watchlist").delete().eq("session_id", session_id).eq("ticker", ticker).execute()
-            return jsonify({"message": "Removed from watchlist"})
-        except Exception as e:
-            return jsonify({"error": str(e)}), 500
+        elif request.method == "DELETE":
+            # Remove from watchlist
+            ticker = (request.args.get("ticker") or "").upper().strip()
+            if not ticker:
+                return jsonify({"error": "ticker parameter required"}), 400
+            
+            supabase.table("watchlist").delete().eq("user_id", user_id).eq("ticker", ticker).execute()
+            return jsonify({"success": True, "message": f"{ticker} removed from watchlist"}), 200
+    
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/analysis-history")
@@ -386,6 +586,7 @@ def api_analysis_history():
 
 
 @app.route("/api/save-analysis", methods=["POST"])
+@login_required
 def api_save_analysis():
     """POST /api/save-analysis — save analysis to history."""
     if not supabase:
