@@ -137,11 +137,12 @@ def _compute_verdict(factor: dict, macro: dict, sentiment: dict) -> str:
         score -= 10
 
     # Macro context contribution (0-30 points)
-    vix = macro.get("vix")
-    if vix and vix < 20:
-        score += 8
-    elif vix and vix > 30:
-        score -= 8
+    # COMMENTED OUT: VIX calculations disabled
+    # vix = macro.get("vix")
+    # if vix and vix < 20:
+    #     score += 8
+    # elif vix and vix > 30:
+    #     score -= 8
 
     # Sector signal
     sector_signal = macro.get("sector_signal", "neutral").lower()

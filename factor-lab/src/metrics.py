@@ -23,6 +23,7 @@ from scipy import stats
 
 def compute_cagr(returns: pd.Series, periods_per_year: int = 252) -> float:
     """
+    COMMENTED OUT: CAGR calculation disabled.
     Compound Annual Growth Rate.
 
     Formula:
@@ -40,10 +41,14 @@ def compute_cagr(returns: pd.Series, periods_per_year: int = 252) -> float:
     -------
     CAGR as a decimal (e.g. 0.12 = 12% per year)
     """
-    total_return = (1 + returns).prod()
-    n_years = len(returns) / periods_per_year
-    cagr = total_return ** (1.0 / n_years) - 1.0
-    return float(cagr)
+    # CAGR calculation disabled - returns 0.0
+    return 0.0
+    
+    # Original implementation (commented out):
+    # total_return = (1 + returns).prod()
+    # n_years = len(returns) / periods_per_year
+    # cagr = total_return ** (1.0 / n_years) - 1.0
+    # return float(cagr)
 
 
 def compute_sharpe(
@@ -246,10 +251,14 @@ def full_tear_sheet(results: dict) -> dict:
     """
     returns = results["returns"]
     gross_returns = results["gross_returns"]
+    market_returns = results.get("market_returns")  # For beta calculation
 
     metrics = {
-        "cagr_net":         compute_cagr(returns),
-        "cagr_gross":       compute_cagr(gross_returns),
+        # COMMENTED OUT: CAGR disabled
+        # "cagr_net":         compute_cagr(returns),
+        # "cagr_gross":       compute_cagr(gross_returns),
+        "cagr_net":         0.0,  # CAGR disabled
+        "cagr_gross":       0.0,  # CAGR disabled
         "sharpe_net":       compute_sharpe(returns),
         "sharpe_gross":     compute_sharpe(gross_returns),
         "max_drawdown":     compute_max_drawdown(returns),
@@ -257,6 +266,13 @@ def full_tear_sheet(results: dict) -> dict:
         "avg_turnover":     float(results["turnover"].mean()),
         "n_rebalances":     len(results["turnover"]),
     }
+    
+    # Add beta if market returns are available
+    if market_returns is not None and len(market_returns) > 0:
+        beta = compute_beta(returns, market_returns)
+        metrics["beta"] = beta
+    else:
+        metrics["beta"] = float("nan")
 
     # Round for display
     metrics = {k: round(v, 4) if isinstance(v, float) else v
@@ -270,13 +286,23 @@ def print_tear_sheet(metrics: dict) -> None:
     print("\n" + "=" * 45)
     print("  FACTOR LAB — PERFORMANCE TEAR SHEET")
     print("=" * 45)
-    print(f"  CAGR (net of costs)   : {metrics['cagr_net']:>8.2%}")
-    print(f"  CAGR (gross)          : {metrics['cagr_gross']:>8.2%}")
+    # COMMENTED OUT: CAGR disabled
+    # print(f"  CAGR (net of costs)   : {metrics['cagr_net']:>8.2%}")
+    # print(f"  CAGR (gross)          : {metrics['cagr_gross']:>8.2%}")
     print(f"  Sharpe (net)          : {metrics['sharpe_net']:>8.3f}")
     print(f"  Sharpe (gross)        : {metrics['sharpe_gross']:>8.3f}")
     print(f"  Max drawdown          : {metrics['max_drawdown']:>8.2%}")
     print(f"  Monthly hit rate      : {metrics['monthly_hit_rate']:>8.1%}")
     print(f"  Avg monthly turnover  : {metrics['avg_turnover']:>8.1%}")
     print(f"  Number of rebalances  : {metrics['n_rebalances']:>8d}")
+    
+    # Beta — market sensitivity
+    beta = metrics.get('beta')
+    if beta is not None and not np.isnan(beta):
+        beta_label = "market neutral" if abs(beta) < 0.1 else "low beta" if abs(beta) < 0.3 else "moderate beta" if abs(beta) < 0.7 else "high beta"
+        print(f"  Beta (vs SPY)         : {beta:>8.3f} ({beta_label})")
+    else:
+        print(f"  Beta (vs SPY)         :      N/A (market data unavailable)")
+    
     print("=" * 45)
     print("\nNote: educational research project. Not investment advice.")

@@ -13,16 +13,20 @@ SECTOR_ETFS = {
 def get_macro_context(ticker: str) -> dict:
     """
     Returns a plain-English macro snapshot relevant to the given ticker.
-    Pulls VIX, 10Y yield, and sector ETF momentum from yfinance.
+    Pulls 10Y yield and sector ETF momentum from yfinance.
+    Note: VIX calculation is commented out for now.
     """
-    vix = _get_latest_price("^VIX")
+    # vix = _get_latest_price("^VIX")  # COMMENTED OUT: VIX disabled
+    vix = None  # VIX disabled
     yield_10y = _get_latest_price("^TNX")  # CBOE 10Y yield index
     sector = _guess_sector(ticker)
     sector_signal = _sector_momentum(sector)
 
     return {
-        "vix": vix,
-        "vix_label": _vix_label(vix),
+        # "vix": vix,  # COMMENTED OUT: VIX disabled
+        "vix": None,  # VIX disabled
+        # "vix_label": _vix_label(vix),  # COMMENTED OUT: VIX disabled
+        "vix_label": "N/A",  # VIX disabled
         "yield_10y": yield_10y,
         "yield_label": _yield_label(yield_10y),
         "sector": sector,

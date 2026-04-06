@@ -102,7 +102,7 @@ factor-lab/
     factors.py     ← momentum + low vol + z-scoring
     portfolio.py   ← quantile selection + weight construction
     backtest.py    ← rebalance loop + cost simulation
-    metrics.py     ← CAGR, Sharpe, MDD, IC
+    metrics.py     ← Sharpe, MDD, IC (CAGR disabled)
     plotting.py    ← equity curve + drawdown + IC charts
   scripts/
     run_backtest.py ← one-command entry point

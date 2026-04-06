@@ -81,6 +81,14 @@ def run_backtest(
           f"{prices.shape[0]} trading days, "
           f"{len(rebalance_dates)} rebalance dates")
 
+    # Get market (SPY) returns for beta calculation
+    try:
+        spy_prices = download_prices(start=start, end=end, tickers=["SPY"])
+        market_returns = compute_returns(spy_prices)["SPY"] if "SPY" in spy_prices.columns else None
+    except Exception:
+        market_returns = None
+        print("[backtest] Warning: Could not fetch SPY for beta calculation")
+
     # -----------------------------------------------------------------------
     # Step 2: Factors
     # IMPORTANT: We shift the composite factor by 1 day here.
@@ -165,6 +173,7 @@ def run_backtest(
     return {
         "returns": net_returns,
         "gross_returns": gross_returns,
+        "market_returns": market_returns,  # Added for beta calculation
         "weights": weights_on_rebalance,
         "turnover": turnover_series,
         "prices": prices,
