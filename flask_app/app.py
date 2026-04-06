@@ -16,25 +16,16 @@ import yfinance as yf
 import numpy as np
 import requests
 
-# Firebase
-try:
-    import firebase_admin
-    from firebase_admin import credentials, auth
-    cred = credentials.Certificate('credentials/firebase-key.json')
-    firebase_admin.initialize_app(cred)
-    print("✅ Firebase initialized")
-except Exception as e:
-    print(f"⚠️ Firebase init failed (using REST API only): {e}")
-    auth = None
-
 # Supabase
 try:
     from supabase import create_client, Client
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
     supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
+    print("✅ Supabase initialized")
 except ImportError:
     supabase = None
+    print("⚠️ Supabase not available")
 
 # Load environment variables from a .env file if one is present
 load_dotenv()
@@ -77,35 +68,6 @@ def login_required(f):
         if "user_id" not in session:
             return redirect(url_for("login"))
         return f(*args, **kwargs)
-    return decorated_function
-
-# ---------------------------------------------------------------------------
-# Firebase Auth Verification Decorator
-# ---------------------------------------------------------------------------
-def verify_firebase_token(f):
-    """Decorator to verify Firebase ID token from Authorization header"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if not auth:
-            return jsonify({"error": "Firebase not available"}), 503
-        
-        # Get token from Authorization header
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            return jsonify({"error": "Missing or invalid Authorization header"}), 401
-        
-        id_token = auth_header[7:]  # Remove "Bearer " prefix
-        
-        try:
-            # Verify token with Firebase
-            decoded = auth.verify_id_token(id_token)
-            request.user_id = decoded['uid']
-            request.user_email = decoded.get('email', '')
-            request.user_name = decoded.get('name', '')
-            return f(*args, **kwargs)
-        except Exception as e:
-            return jsonify({"error": f"Invalid token: {str(e)}"}), 401
-    
     return decorated_function
 
 # ---------------------------------------------------------------------------
@@ -489,34 +451,28 @@ def api_price_chart():
 
 @app.route("/api/auth/sync-user", methods=["POST"])
 def sync_user():
-    """Sync Firebase user to Supabase on first login."""
-    if not auth or not supabase:
-        return jsonify({"error": "Firebase or Supabase not configured"}), 503
+    """Sync user to Supabase on first login."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
     
     try:
-        id_token = request.json.get("idToken")
-        if not id_token:
-            return jsonify({"error": "idToken required"}), 400
+        user_id = session.get("user_id")
+        email = session.get("user_email")
         
-        # Verify Firebase token
-        decoded = auth.verify_id_token(id_token)
-        firebase_uid = decoded['uid']
-        email = decoded.get('email', '')
-        name = decoded.get('name', '')
+        if not user_id:
+            return jsonify({"error": "User not authenticated"}), 401
         
         # Check if user exists in Supabase
-        response = supabase.table("users").select("id").eq("firebase_uid", firebase_uid).execute()
+        response = supabase.table("users").select("id").eq("user_id", user_id).execute()
         
         if not response.data:
             # Create new user in Supabase
             supabase.table("users").insert({
-                "id": firebase_uid,
-                "firebase_uid": firebase_uid,
+                "user_id": user_id,
                 "email": email,
-                "name": name,
             }).execute()
         
-        return jsonify({"success": True, "user_id": firebase_uid}), 200
+        return jsonify({"success": True, "user_id": user_id}), 200
     
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -530,6 +486,8 @@ def api_watchlist():
         return jsonify({"error": "Supabase not configured"}), 500
     
     user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "User not authenticated"}), 401
     
     try:
         if request.method == "GET":
@@ -565,6 +523,7 @@ def api_watchlist():
             return jsonify({"success": True, "message": f"{ticker} removed from watchlist"}), 200
     
     except Exception as e:
+        app.logger.error(f"Watchlist error: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 

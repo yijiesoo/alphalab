@@ -29,6 +29,7 @@
             text-align: center;
             margin-bottom: 40px;
             color: white;
+            position: relative;
         }
         .header h1 {
             font-size: 2.5em;
@@ -38,6 +39,45 @@
         .header p {
             font-size: 1.1em;
             opacity: 0.9;
+        }
+        .header-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 16px;
+        }
+        .logout-btn-header {
+            padding: 10px 20px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 0.95em;
+        }
+        .logout-btn-header:hover {
+            background: #c0392b;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .watchlist-btn-header {
+            padding: 10px 20px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 0.95em;
+        }
+        .watchlist-btn-header:hover {
+            background: #229954;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
         /* Search box */
@@ -683,7 +723,10 @@
         <div class="header">
             <h1>📊 Stock Analysis</h1>
             <p>Data-driven verdict on any stock</p>
-            <button id="view-watchlist-btn" style="margin-top: 16px; padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">⭐ View Watchlist</button>
+            <div class="header-buttons">
+                <button id="view-watchlist-btn" class="watchlist-btn-header">⭐ View Watchlist</button>
+                <button id="logout-btn-header" class="logout-btn-header">🚪 Logout</button>
+            </div>
         </div>
 
         <!-- Search box -->
@@ -839,6 +882,28 @@
 
             await analyze(ticker);
         });
+
+        // Logout button on header
+        const logoutBtnHeader = document.getElementById("logout-btn-header");
+        if (logoutBtnHeader) {
+            logoutBtnHeader.addEventListener("click", async () => {
+                try {
+                    const response = await fetch("/logout", {
+                        method: "GET",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    
+                    if (response.ok) {
+                        window.location.href = "/login";
+                    } else {
+                        alert("❌ Logout failed");
+                    }
+                } catch (error) {
+                    console.error("Logout error:", error);
+                    alert("❌ Logout error: " + error.message);
+                }
+            });
+        }
 
         async function analyze(ticker) {
             errorContainer.innerHTML = "";
@@ -1271,10 +1336,21 @@
         // Logout Button
         logoutBtn.addEventListener("click", async () => {
             try {
-                await auth.signOut();
-                alert("✅ Logged out successfully!");
+                // Call Flask logout endpoint
+                const response = await fetch("/logout", {
+                    method: "GET",
+                    headers: { "Content-Type": "application/json" }
+                });
+                
+                if (response.ok) {
+                    // Redirect to login page
+                    window.location.href = "/login";
+                } else {
+                    alert("❌ Logout failed");
+                }
             } catch (error) {
                 console.error("Logout error:", error);
+                alert("❌ Logout error: " + error.message);
             }
         });
 
