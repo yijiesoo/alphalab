@@ -2,27 +2,60 @@
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
 *.egg-info/
 dist/
 build/
+.eggs/
 
 # Virtual environment
 venv/
 env/
+.env
 .venv
+ENV/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
 # Project-specific
 factor-lab/outputs/
 flask_app/outputs/
 *.log
 .DS_Store
+.DS_Store?
+
+# Node
+node_modules/
+package-lock.json
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb.env
+*.ipynb
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Setup files (use requirements.txt instead)
+setup_*.py
+supabase_*.sql
+
+# Firebase
+alphalab-*-firebase-adminsdk-*.json
+
+# CI/CD artifacts
+coverage.xml
+.coverage
+htmlcov/
+bandit-report.json
+DEPLOYMENT.md
+
+# GitHub Actions
+.github/workflows/*.log
