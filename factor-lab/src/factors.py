@@ -210,7 +210,7 @@ def compute_all_factors(
 
 if __name__ == "__main__":
     # Quick smoke test
-    from factor_lab.data import download_prices, compute_returns
+    from src.data import download_prices, compute_returns
 
     prices = download_prices(start="2019-01-01")
     returns = compute_returns(prices)
