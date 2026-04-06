@@ -1,0 +1,10 @@
+{
+  "pythonVersion": "3.9",
+  "pythonPath": "./factor-lab",
+  "typeCheckingMode": "off",
+  "include": [
+    "flask_app",
+    "factor-lab/src",
+    "tests"
+  ]
+}

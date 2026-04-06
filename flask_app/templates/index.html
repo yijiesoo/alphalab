@@ -736,6 +736,7 @@
                 id="ticker-input" 
                 placeholder="Enter ticker symbol (e.g., NVDA, AAPL, TSLA)" 
                 autocomplete="off"
+                style="text-transform: uppercase;"
             >
             <button id="analyze-btn">Analyze</button>
         </div>
@@ -871,6 +872,11 @@
         // Enter key to search
         tickerInput.addEventListener("keypress", (e) => {
             if (e.key === "Enter") analyzeBtn.click();
+        });
+
+        // Auto-capitalize ticker input
+        tickerInput.addEventListener("input", (e) => {
+            e.target.value = e.target.value.toUpperCase();
         });
 
         analyzeBtn.addEventListener("click", async () => {
