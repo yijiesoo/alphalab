@@ -805,10 +805,12 @@
                 <div class="panel">
                     <div class="panel-title">🌍 Macro Context</div>
                     <div class="panel-content">
+                        <!-- COMMENTED OUT: VIX disabled
                         <div class="macro-row">
                             <span class="macro-label">VIX:</span>
                             <span class="macro-value" id="vix-value"></span>
                         </div>
+                        -->
                         <div class="macro-row">
                             <span class="macro-label">10Y Yield:</span>
                             <span class="macro-value" id="yield-value"></span>
@@ -957,7 +959,8 @@
             document.getElementById("score-momentum").textContent = `Momentum: ${factor.momentum > 0 ? "+" : ""}${factor.momentum}`;
 
             // Macro
-            document.getElementById("vix-value").textContent = data.macro.vix ? `${data.macro.vix} — ${data.macro.vix_label}` : "N/A";
+            // COMMENTED OUT: VIX disabled
+            // document.getElementById("vix-value").textContent = data.macro.vix ? `${data.macro.vix} — ${data.macro.vix_label}` : "N/A";
             document.getElementById("yield-value").textContent = data.macro.yield_10y ? `${data.macro.yield_10y}% — ${data.macro.yield_label}` : "N/A";
             document.getElementById("sector-value").textContent = data.macro.sector || "Unknown";
             document.getElementById("sector-signal").textContent = data.macro.sector_signal || "N/A";
