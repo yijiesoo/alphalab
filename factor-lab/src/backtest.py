@@ -77,9 +77,11 @@ def run_backtest(
     returns = compute_returns(prices)  # simple daily returns
     rebalance_dates = get_rebalance_dates(prices, frequency=rebalance_freq)
 
-    print(f"[backtest] Universe: {prices.shape[1]} stocks, "
-          f"{prices.shape[0]} trading days, "
-          f"{len(rebalance_dates)} rebalance dates")
+    print(
+        f"[backtest] Universe: {prices.shape[1]} stocks, "
+        f"{prices.shape[0]} trading days, "
+        f"{len(rebalance_dates)} rebalance dates"
+    )
 
     # Get market (SPY) returns for beta calculation
     try:
@@ -230,11 +232,12 @@ def run_single_ticker_backtest(
     prices = download_prices(start=start, end=end)
 
     if ticker not in prices.columns:
-        log_fn(f"[stream] WARNING: {ticker} not found in downloaded universe; "
-               "proceeding with full universe.")
+        log_fn(
+            f"[stream] WARNING: {ticker} not found in downloaded universe; "
+            "proceeding with full universe."
+        )
 
-    log_fn(f"[stream] Universe: {prices.shape[1]} stocks, "
-           f"{prices.shape[0]} trading days.")
+    log_fn(f"[stream] Universe: {prices.shape[1]} stocks, " f"{prices.shape[0]} trading days.")
 
     log_fn("[stream] Computing factors ...")
     log_fn("[stream] Computing portfolio weights ...")

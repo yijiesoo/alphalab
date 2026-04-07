@@ -19,10 +19,10 @@ mistake in quant backtesting.
 import numpy as np
 import pandas as pd
 
-
 # ---------------------------------------------------------------------------
 # Momentum 12-1
 # ---------------------------------------------------------------------------
+
 
 def momentum_12_1(prices: pd.DataFrame) -> pd.DataFrame:
     """
@@ -63,6 +63,7 @@ def momentum_12_1(prices: pd.DataFrame) -> pd.DataFrame:
 # Low Volatility
 # ---------------------------------------------------------------------------
 
+
 def low_volatility(returns: pd.DataFrame, window: int = 63) -> pd.DataFrame:
     """
     Compute trailing volatility over a rolling window.
@@ -96,6 +97,7 @@ def low_volatility(returns: pd.DataFrame, window: int = 63) -> pd.DataFrame:
 # Cross-sectional z-scoring
 # ---------------------------------------------------------------------------
 
+
 def cross_sectional_zscore(factor: pd.DataFrame) -> pd.DataFrame:
     """
     Normalise factor scores across the universe on each date.
@@ -118,8 +120,8 @@ def cross_sectional_zscore(factor: pd.DataFrame) -> pd.DataFrame:
     -------
     DataFrame of z-scores, same shape as input.
     """
-    mean = factor.mean(axis=1)   # cross-sectional mean per row
-    std = factor.std(axis=1)     # cross-sectional std per row
+    mean = factor.mean(axis=1)  # cross-sectional mean per row
+    std = factor.std(axis=1)  # cross-sectional std per row
 
     # Subtract mean and divide by std — broadcast over columns
     zscores = factor.sub(mean, axis=0).div(std, axis=0)
@@ -129,6 +131,7 @@ def cross_sectional_zscore(factor: pd.DataFrame) -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # Factor combination
 # ---------------------------------------------------------------------------
+
 
 def combine_factors(
     factor_dict: dict[str, pd.DataFrame],
@@ -162,8 +165,11 @@ def combine_factors(
         raise ValueError(f"Factor weights must sum to 1. Got: {sum(weights.values()):.4f}")
 
     # Start with zeros, then accumulate weighted factors
-    composite = pd.DataFrame(0.0, index=list(factor_dict.values())[0].index,
-                             columns=list(factor_dict.values())[0].columns)
+    composite = pd.DataFrame(
+        0.0,
+        index=list(factor_dict.values())[0].index,
+        columns=list(factor_dict.values())[0].columns,
+    )
     for name, df in factor_dict.items():
         composite += df * weights[name]
 
@@ -173,6 +179,7 @@ def combine_factors(
 # ---------------------------------------------------------------------------
 # Convenience wrapper: compute all factors in one call
 # ---------------------------------------------------------------------------
+
 
 def compute_all_factors(
     prices: pd.DataFrame,
@@ -219,5 +226,7 @@ if __name__ == "__main__":
 
     print("Composite factor (last 3 rows):")
     print(composite.tail(3).round(3))
-    print(f"\nMomentum NaN count (should decrease after first 252 rows): "
-          f"{individual['momentum'].isna().sum(axis=1).iloc[-1]} stocks with NaN")
+    print(
+        f"\nMomentum NaN count (should decrease after first 252 rows): "
+        f"{individual['momentum'].isna().sum(axis=1).iloc[-1]} stocks with NaN"
+    )

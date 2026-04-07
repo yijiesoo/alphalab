@@ -73,8 +73,8 @@ def compute_weights(
     weights = pd.Series(0.0, index=valid.index)
 
     # Equal weight within each book, scaled so each book sums to ±1
-    weights[long_tickers] = 1.0 / n_per_book      # +0.1 each if 10 stocks
-    weights[short_tickers] = -1.0 / n_per_book     # -0.1 each if 10 stocks
+    weights[long_tickers] = 1.0 / n_per_book  # +0.1 each if 10 stocks
+    weights[short_tickers] = -1.0 / n_per_book  # -0.1 each if 10 stocks
 
     return weights
 

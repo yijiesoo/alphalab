@@ -108,7 +108,7 @@ def analyze_ticker(ticker: str) -> dict:
 def _compute_factor_score(ticker: str, prices) -> dict:
     """
     Compute momentum factor score for the ticker.
-    
+
     Momentum Factor (12-month):
     - Measures 12-month price return excluding the most recent month
     - Range: -1.0 (worst performer) to +1.0 (best performer)
@@ -118,11 +118,11 @@ def _compute_factor_score(ticker: str, prices) -> dict:
     try:
         momentum = momentum_12_1(prices)
         score_value = momentum[ticker].dropna().iloc[-1]
-        
+
         # Normalize to 0-100 scale but cap at 90 to avoid "100" misleading perception
         # Formula: (raw_momentum + 1) * 45 → ranges from 0 to 90
         score = max(0, min(90, (score_value + 1) * 45))
-        
+
         if score >= 75:
             label = "Very Strong Momentum"
         elif score >= 60:
@@ -135,7 +135,7 @@ def _compute_factor_score(ticker: str, prices) -> dict:
             label = "Negative Momentum"
         else:
             label = "Very Weak Momentum"
-        
+
         return {
             "score": int(score),
             "label": label,

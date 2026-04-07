@@ -28,12 +28,12 @@ def calculate_factor_delay_returns(
 ) -> dict:
     """
     Calculate what would have happened if user acted N days ago.
-    
+
     For each delay period (1M, 2M, 3M), shows:
     - Price N days ago
     - Current price
     - Return % if bought N days ago
-    
+
     Parameters
     ----------
     ticker : str
@@ -42,7 +42,7 @@ def calculate_factor_delay_returns(
         List of days to look back (default [30, 60, 90] for 1M, 2M, 3M)
     lookback_days : int
         How far back to fetch data (default 150 calendar days = ~100 trading days)
-    
+
     Returns
     -------
     dict with keys:
@@ -60,51 +60,53 @@ def calculate_factor_delay_returns(
         # Fetch price data
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days)
-        
-        data = yf.download(
-            ticker,
-            start=start_date,
-            end=end_date,
-            progress=False,
-            interval="1d"
-        )
-        
+
+        data = yf.download(ticker, start=start_date, end=end_date, progress=False, interval="1d")
+
         if data.empty or len(data) < max(delays) + 1:
             return {
                 "error": f"Not enough data for {ticker} (need {max(delays) + 1} days, got {len(data)})",
-                "ticker": ticker
+                "ticker": ticker,
             }
-        
+
         # Get prices
-        close_prices = data['Close']
-        current_price = float(close_prices.iloc[-1].item()) if hasattr(close_prices.iloc[-1], 'item') else float(close_prices.iloc[-1])
-        
+        close_prices = data["Close"]
+        current_price = (
+            float(close_prices.iloc[-1].item())
+            if hasattr(close_prices.iloc[-1], "item")
+            else float(close_prices.iloc[-1])
+        )
+
         result = {
             "ticker": ticker,
             "current_price": round(current_price, 2),
             "timestamp": close_prices.index[-1].strftime("%Y-%m-%d %H:%M:%S"),
-            "delays": {}
+            "delays": {},
         }
-        
+
         best_return = None
         best_delay_key = None
-        
+
         # Calculate returns for each delay
         for delay_days in sorted(delays):
             if delay_days >= len(close_prices):
                 continue
-            
+
             # Get price N days ago
-            price_n_days_ago = float(close_prices.iloc[-delay_days - 1].item()) if hasattr(close_prices.iloc[-delay_days - 1], 'item') else float(close_prices.iloc[-delay_days - 1])
-            
+            price_n_days_ago = (
+                float(close_prices.iloc[-delay_days - 1].item())
+                if hasattr(close_prices.iloc[-delay_days - 1], "item")
+                else float(close_prices.iloc[-delay_days - 1])
+            )
+
             # Calculate return %
             return_pct = ((current_price - price_n_days_ago) / price_n_days_ago) * 100
-            
+
             # Create human-readable label (1M, 2M, 3M)
             months = delay_days // 30
             delay_label = f"{months}M" if months >= 1 else f"{delay_days}d"
             delay_key = f"delay_{delay_label}"
-            
+
             result["delays"][delay_key] = {
                 "days_ago": delay_days,
                 "label": delay_label,
@@ -113,35 +115,35 @@ def calculate_factor_delay_returns(
                 "return_pct": round(return_pct, 2),
                 "interpretation": get_return_interpretation(return_pct, delay_days),
             }
-            
+
             # Track best return
             if best_return is None or return_pct > best_return:
                 best_return = return_pct
                 best_delay_key = delay_key
-        
+
         result["best_delay"] = best_delay_key
         result["best_return_pct"] = round(best_return, 2) if best_return is not None else None
-        
+
         return result
-        
+
     except Exception as e:
         return {
             "error": f"Failed to calculate factor delay for {ticker}: {str(e)}",
-            "ticker": ticker
+            "ticker": ticker,
         }
 
 
 def get_return_interpretation(return_pct: float, days: int) -> str:
     """
     Generate a human-readable interpretation of the return.
-    
+
     Parameters
     ----------
     return_pct : float
         Return percentage (e.g., 2.5 for 2.5%)
     days : int
         Number of days
-    
+
     Returns
     -------
     str : interpretation text
@@ -161,30 +163,30 @@ def get_return_interpretation(return_pct: float, days: int) -> str:
 def add_factor_delay_context(analysis_data: dict) -> dict:
     """
     Add factor delay information to an analysis result.
-    
+
     This enriches the existing /api/analyze response with delay metrics.
     Shows what would have happened if user acted 1M, 2M, 3M ago.
-    
+
     Parameters
     ----------
     analysis_data : dict
         Existing analysis result from scorer.py
-    
+
     Returns
     -------
     dict : enriched analysis data with "factor_delay" key
     """
     ticker = analysis_data.get("ticker")
-    
+
     if not ticker:
         return analysis_data
-    
+
     delay_info = calculate_factor_delay_returns(
         ticker,
         delays=[30, 60, 90],  # 1M, 2M, 3M
-        lookback_days=150  # ~150 calendar days = ~100 trading days
+        lookback_days=150,  # ~150 calendar days = ~100 trading days
     )
-    
+
     analysis_data["factor_delay"] = delay_info
-    
+
     return analysis_data

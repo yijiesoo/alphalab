@@ -43,7 +43,7 @@ def compute_cagr(returns: pd.Series, periods_per_year: int = 252) -> float:
     """
     # CAGR calculation disabled - returns 0.0
     return 0.0
-    
+
     # Original implementation (commented out):
     # total_return = (1 + returns).prod()
     # n_years = len(returns) / periods_per_year
@@ -106,7 +106,7 @@ def compute_max_drawdown(returns: pd.Series) -> float:
     MDD as a negative decimal (e.g. -0.25 = -25% drawdown).
     """
     equity = (1 + returns).cumprod()
-    rolling_max = equity.cummax()                   # high water mark
+    rolling_max = equity.cummax()  # high water mark
     drawdown = (equity - rolling_max) / rolling_max  # negative numbers
     max_drawdown = float(drawdown.min())
     return max_drawdown
@@ -257,16 +257,16 @@ def full_tear_sheet(results: dict) -> dict:
         # COMMENTED OUT: CAGR disabled
         # "cagr_net":         compute_cagr(returns),
         # "cagr_gross":       compute_cagr(gross_returns),
-        "cagr_net":         0.0,  # CAGR disabled
-        "cagr_gross":       0.0,  # CAGR disabled
-        "sharpe_net":       compute_sharpe(returns),
-        "sharpe_gross":     compute_sharpe(gross_returns),
-        "max_drawdown":     compute_max_drawdown(returns),
+        "cagr_net": 0.0,  # CAGR disabled
+        "cagr_gross": 0.0,  # CAGR disabled
+        "sharpe_net": compute_sharpe(returns),
+        "sharpe_gross": compute_sharpe(gross_returns),
+        "max_drawdown": compute_max_drawdown(returns),
         "monthly_hit_rate": compute_monthly_hit_rate(returns),
-        "avg_turnover":     float(results["turnover"].mean()),
-        "n_rebalances":     len(results["turnover"]),
+        "avg_turnover": float(results["turnover"].mean()),
+        "n_rebalances": len(results["turnover"]),
     }
-    
+
     # Add beta if market returns are available
     if market_returns is not None and len(market_returns) > 0:
         beta = compute_beta(returns, market_returns)
@@ -275,8 +275,7 @@ def full_tear_sheet(results: dict) -> dict:
         metrics["beta"] = float("nan")
 
     # Round for display
-    metrics = {k: round(v, 4) if isinstance(v, float) else v
-               for k, v in metrics.items()}
+    metrics = {k: round(v, 4) if isinstance(v, float) else v for k, v in metrics.items()}
 
     return metrics
 
@@ -295,14 +294,22 @@ def print_tear_sheet(metrics: dict) -> None:
     print(f"  Monthly hit rate      : {metrics['monthly_hit_rate']:>8.1%}")
     print(f"  Avg monthly turnover  : {metrics['avg_turnover']:>8.1%}")
     print(f"  Number of rebalances  : {metrics['n_rebalances']:>8d}")
-    
+
     # Beta — market sensitivity
-    beta = metrics.get('beta')
+    beta = metrics.get("beta")
     if beta is not None and not np.isnan(beta):
-        beta_label = "market neutral" if abs(beta) < 0.1 else "low beta" if abs(beta) < 0.3 else "moderate beta" if abs(beta) < 0.7 else "high beta"
+        beta_label = (
+            "market neutral"
+            if abs(beta) < 0.1
+            else (
+                "low beta"
+                if abs(beta) < 0.3
+                else "moderate beta" if abs(beta) < 0.7 else "high beta"
+            )
+        )
         print(f"  Beta (vs SPY)         : {beta:>8.3f} ({beta_label})")
     else:
         print(f"  Beta (vs SPY)         :      N/A (market data unavailable)")
-    
+
     print("=" * 45)
     print("\nNote: educational research project. Not investment advice.")

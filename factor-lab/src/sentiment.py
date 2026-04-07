@@ -16,10 +16,10 @@ SENTIMENT ANALYSIS OPTIONS:
    - Understands context and nuance
    - LOCAL model (no rate limits, privacy)
    - Requires: transformers + torch (~1.5GB disk on first use)
-   
+
    Install FinBERT:
    $ pip install transformers torch
-   
+
    Cost-Benefit:
    ✅ 80%+ accuracy on financial news
    ✅ No API rate limits
@@ -53,6 +53,7 @@ NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 try:
     from transformers import AutoTokenizer, AutoModelForSequenceClassification
     import torch
+
     FINBERT_AVAILABLE = True
     print("[sentiment] ✅ FinBERT dependencies available (transformers + torch)")
 except ImportError as e:
@@ -61,20 +62,50 @@ except ImportError as e:
 
 # Fallback: Simple keyword-based scorer — no ML dependency, fast, good enough
 POSITIVE_WORDS = {
-    "beat", "surge", "soar", "record", "growth", "profit", "upgrade",
-    "buyback", "dividend", "strong", "outperform", "rally", "gain",
-    "raised", "raise", "positive", "exceed", "bullish",
+    "beat",
+    "surge",
+    "soar",
+    "record",
+    "growth",
+    "profit",
+    "upgrade",
+    "buyback",
+    "dividend",
+    "strong",
+    "outperform",
+    "rally",
+    "gain",
+    "raised",
+    "raise",
+    "positive",
+    "exceed",
+    "bullish",
 }
 NEGATIVE_WORDS = {
-    "miss", "fall", "drop", "loss", "layoff", "downgrade", "cut",
-    "concern", "risk", "warn", "decline", "weak", "lawsuit", "fine",
-    "probe", "bearish", "crash", "plunge", "disappointing",
+    "miss",
+    "fall",
+    "drop",
+    "loss",
+    "layoff",
+    "downgrade",
+    "cut",
+    "concern",
+    "risk",
+    "warn",
+    "decline",
+    "weak",
+    "lawsuit",
+    "fine",
+    "probe",
+    "bearish",
+    "crash",
+    "plunge",
+    "disappointing",
 }
 
 # Global FinBERT model (lazy-loaded on first use)
 _finbert_model = None
 _finbert_tokenizer = None
-
 
 
 def _load_finbert():
@@ -96,23 +127,23 @@ def _load_finbert():
 def _score_headline_finbert(headline: str) -> str:
     """Score headline using FinBERT model."""
     model, tokenizer = _load_finbert()
-    
+
     if model is None:
         # Fallback to keyword matching
         return _score_headline_keyword(headline)
-    
+
     try:
         inputs = tokenizer(headline, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             outputs = model(**inputs)
-        
+
         logits = outputs.logits
         probabilities = torch.softmax(logits, dim=1)[0]
-        
+
         # FinBERT labels: 0=negative, 1=neutral, 2=positive
         sentiment_idx = torch.argmax(probabilities).item()
         sentiment_map = {0: "negative", 1: "neutral", 2: "positive"}
-        
+
         return sentiment_map.get(sentiment_idx, "neutral")
     except Exception as e:
         print(f"[sentiment] FinBERT error: {e}. Falling back to keyword matching.")
@@ -136,7 +167,7 @@ def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool 
     """
     Fetches recent headlines for a ticker and scores sentiment.
     Returns a summary dict with counts and a plain-English line.
-    
+
     Parameters
     ----------
     ticker : str
@@ -189,18 +220,18 @@ def _fetch_headlines(query: str) -> list:
         return []
     try:
         url = "https://newsapi.org/v2/everything"
-        
+
         # Try multiple search queries for better results
         search_queries = [
             f'"{query}" stock',  # Exact phrase with "stock"
             f"{query} earnings",  # Earnings-related news
-            f"{query} trading",   # Trading news
-            query,                # Just the ticker/company name
+            f"{query} trading",  # Trading news
+            query,  # Just the ticker/company name
         ]
-        
+
         all_articles = []
         seen_titles = set()
-        
+
         for search_query in search_queries:
             print(f"[sentiment] Querying News API: {search_query}")
             params = {
@@ -213,7 +244,7 @@ def _fetch_headlines(query: str) -> list:
             r = requests.get(url, params=params, timeout=5)
             articles = r.json().get("articles", [])
             print(f"[sentiment] Found {len(articles)} articles for query '{search_query}'")
-            
+
             for a in articles:
                 title = a.get("title", "")
                 if title and title not in seen_titles:
@@ -221,7 +252,7 @@ def _fetch_headlines(query: str) -> list:
                     seen_titles.add(title)
                     if len(all_articles) >= 10:
                         return all_articles
-        
+
         print(f"[sentiment] Total {len(all_articles)} unique headlines fetched")
         return all_articles[:10]
     except Exception as e:

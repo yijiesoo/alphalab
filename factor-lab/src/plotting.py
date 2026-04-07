@@ -48,13 +48,27 @@ def plot_equity_curve(
 
     if gross_returns is not None:
         equity_gross = (1 + gross_returns).cumprod()
-        ax.plot(equity_gross.index, equity_gross.values,
-                color="#1a6ea8", lw=1.0, ls="--", alpha=0.5, label="Gross returns")
+        ax.plot(
+            equity_gross.index,
+            equity_gross.values,
+            color="#1a6ea8",
+            lw=1.0,
+            ls="--",
+            alpha=0.5,
+            label="Gross returns",
+        )
 
     if benchmark_returns is not None:
         equity_bm = (1 + benchmark_returns).cumprod()
-        ax.plot(equity_bm.index, equity_bm.values,
-                color="#888888", lw=1.2, ls=":", alpha=0.7, label="Benchmark")
+        ax.plot(
+            equity_bm.index,
+            equity_bm.values,
+            color="#888888",
+            lw=1.2,
+            ls=":",
+            alpha=0.7,
+            label="Benchmark",
+        )
 
     # Reference line at 1.0 (starting value)
     ax.axhline(1.0, color="#cccccc", lw=0.8, ls="--")
@@ -89,8 +103,9 @@ def plot_drawdown(
 
     fig, ax = plt.subplots(figsize=(12, 3))
 
-    ax.fill_between(underwater.index, underwater.values, 0,
-                    color="#c0392b", alpha=0.35, label="Drawdown")
+    ax.fill_between(
+        underwater.index, underwater.values, 0, color="#c0392b", alpha=0.35, label="Drawdown"
+    )
     ax.plot(underwater.index, underwater.values, color="#c0392b", lw=0.8, alpha=0.7)
     ax.axhline(0, color="#888888", lw=0.8)
 
@@ -133,8 +148,13 @@ def plot_ic_series(
     ax.bar(ic_series.index, ic_series.values, color=colors, alpha=0.5, width=20)
 
     # Rolling mean overlay
-    ax.plot(rolling_mean.index, rolling_mean.values,
-            color="#2c3e50", lw=1.5, label="12-period rolling mean")
+    ax.plot(
+        rolling_mean.index,
+        rolling_mean.values,
+        color="#2c3e50",
+        lw=1.5,
+        label="12-period rolling mean",
+    )
 
     ax.axhline(0, color="#888888", lw=0.8)
 
@@ -142,7 +162,9 @@ def plot_ic_series(
     ic_std = ic_series.std()
     t_stat = mean_ic / (ic_std / np.sqrt(len(ic_series))) if len(ic_series) > 1 else 0
 
-    subtitle = f"Mean IC = {mean_ic:.3f} | t-stat = {t_stat:.2f} | {(ic_series > 0).mean():.0%} positive"
+    subtitle = (
+        f"Mean IC = {mean_ic:.3f} | t-stat = {t_stat:.2f} | {(ic_series > 0).mean():.0%} positive"
+    )
     ax.set_title(title, fontsize=12, fontweight="bold", pad=4)
     ax.set_xlabel(subtitle, fontsize=9, color="#555555")
     ax.legend(fontsize=9)
@@ -200,10 +222,7 @@ def plot_factor_quantile_returns(
                 quantile_returns[quantile_key].append(fwd_c[mask].mean())
 
     # Average return per quantile, annualised
-    avg_returns = {
-        q: np.mean(v) * (252 / horizon) if v else 0
-        for q, v in quantile_returns.items()
-    }
+    avg_returns = {q: np.mean(v) * (252 / horizon) if v else 0 for q, v in quantile_returns.items()}
 
     fig, ax = plt.subplots(figsize=(8, 4))
 
@@ -214,7 +233,9 @@ def plot_factor_quantile_returns(
     ax.bar(qs, vals, color=colors, alpha=0.75, edgecolor="white", lw=0.5)
     ax.axhline(0, color="#888888", lw=0.8)
     ax.set_xticks(qs)
-    ax.set_xticklabels([f"Q{q}\n({'High' if q == 1 else 'Low' if q == n_quantiles else ''})" for q in qs])
+    ax.set_xticklabels(
+        [f"Q{q}\n({'High' if q == 1 else 'Low' if q == n_quantiles else ''})" for q in qs]
+    )
     ax.set_ylabel("Avg annualised return (%)", fontsize=10)
     ax.set_title(title, fontsize=12, fontweight="bold", pad=10)
     ax.grid(True, axis="y", alpha=0.2)
@@ -242,6 +263,7 @@ def generate_full_tear_sheet(
     save_dir : directory to save PNG files
     """
     import os
+
     os.makedirs(save_dir, exist_ok=True)
 
     plot_equity_curve(
