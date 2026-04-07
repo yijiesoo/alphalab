@@ -22,18 +22,9 @@ load_dotenv()
 import numpy as np
 import requests
 import yfinance as yf
-from flask import (
-    Flask,
-    Response,
-    jsonify,
-    redirect,
-    render_template,
-    request,
-    send_from_directory,
-    session,
-    stream_with_context,
-    url_for,
-)
+from flask import (Flask, Response, jsonify, redirect, render_template,
+                   request, send_from_directory, session, stream_with_context,
+                   url_for)
 
 # FinBERT SENTIMENT ANALYSIS INTEGRATION
 # =======================================
