@@ -47,8 +47,11 @@ package-lock.json
 setup_*.py
 supabase_*.sql
 
-# Firebase
+# Firebase & Credentials
 alphalab-*-firebase-adminsdk-*.json
+credentials/
+*.key
+*.pem
 
 # CI/CD artifacts
 coverage.xml

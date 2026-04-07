@@ -332,7 +332,13 @@ def api_analyze():
     # Cache miss (or refresh requested) — run analysis
     try:
         from src.scorer import analyze_ticker
+        from src.factor_delay import add_factor_delay_context
+        
         data = analyze_ticker(ticker)
+        
+        # Add factor delay information
+        data = add_factor_delay_context(data)
+        
         app.logger.info(f"Analysis complete for {ticker}")
     except Exception as e:
         app.logger.error(f"Analysis failed for {ticker}: {e}", exc_info=True)
@@ -439,17 +445,33 @@ def api_all_backtests():
 @app.route("/api/price-chart")
 @login_required
 def api_price_chart():
-    """GET /api/price-chart?ticker=AAPL — return 6-month price data."""
+    """GET /api/price-chart?ticker=AAPL&timeframe=6M
+    
+    Return price data for chart visualization.
+    Timeframe: 1M, 3M, 6M, 1Y, ALL (default: 6M)
+    """
     ticker = (request.args.get("ticker") or "").upper().strip()
+    timeframe = (request.args.get("timeframe") or "6M").upper()
+    
     if not ticker:
         return jsonify({"error": "ticker parameter is required"}), 400
     if not _valid_ticker(ticker):
         return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+    
+    # Map timeframe to days
+    timeframe_map = {
+        "1M": 30,
+        "3M": 90,
+        "6M": 180,
+        "1Y": 365,
+        "ALL": 1000  # effectively all available
+    }
+    lookback_days = timeframe_map.get(timeframe, 180)
 
     try:
-        # Fetch 6 months of price data
+        # Fetch price data
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=180)
+        start_date = end_date - timedelta(days=lookback_days)
         
         data = yf.download(
             ticker,
@@ -495,6 +517,35 @@ def api_price_chart():
         })
     except Exception as e:
         return jsonify({"error": f"Failed to fetch price data: {str(e)}"}), 500
+
+
+@app.route("/api/signal-history")
+@login_required
+def api_signal_history():
+    """GET /api/signal-history?ticker=AAPL&timeframe=6M
+    
+    Returns momentum signal history for visualization on chart.
+    Timeframe: 1M, 3M, 6M, 1Y, ALL (default: 6M)
+    """
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    timeframe = (request.args.get("timeframe") or "6M").upper()
+    
+    if not ticker:
+        return jsonify({"error": "ticker parameter required"}), 400
+    if not _valid_ticker(ticker):
+        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+    if timeframe not in ["1M", "3M", "6M", "1Y", "ALL"]:
+        return jsonify({"error": f"invalid timeframe: {timeframe}"}), 400
+    
+    try:
+        from src.signal_history import calculate_momentum_history
+        
+        data = calculate_momentum_history(ticker, timeframe=timeframe)
+        app.logger.info(f"Signal history for {ticker} ({timeframe}): {data.get('data_points', 0)} points")
+        return jsonify(data)
+    except Exception as e:
+        app.logger.error(f"Signal history error for {ticker}: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/auth/sync-user", methods=["POST"])

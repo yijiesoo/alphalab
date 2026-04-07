@@ -13,14 +13,21 @@ SECTOR_ETFS = {
 def get_macro_context(ticker: str) -> dict:
     """
     Returns a plain-English macro snapshot relevant to the given ticker.
-    Pulls 10Y yield and sector ETF momentum from yfinance.
+    Includes:
+    - 10Y yield (interest rate environment)
+    - S&P 500 momentum (broad market trend)
+    - Sector momentum (relative to sector ETF)
+    - Bond/equity yield spread (valuation pressure)
+    
     Note: VIX calculation is commented out for now.
     """
     # vix = _get_latest_price("^VIX")  # COMMENTED OUT: VIX disabled
     vix = None  # VIX disabled
     yield_10y = _get_latest_price("^TNX")  # CBOE 10Y yield index
+    sp500_momentum = _get_sp500_momentum()  # Broad market trend
     sector = _guess_sector(ticker)
     sector_signal = _sector_momentum(sector)
+    yield_risk_free = _get_latest_price("^TNX")  # 10Y as risk-free rate
 
     return {
         # "vix": vix,  # COMMENTED OUT: VIX disabled
@@ -29,9 +36,11 @@ def get_macro_context(ticker: str) -> dict:
         "vix_label": "N/A",  # VIX disabled
         "yield_10y": yield_10y,
         "yield_label": _yield_label(yield_10y),
+        "sp500_momentum": sp500_momentum,
+        "sp500_label": _sp500_momentum_label(sp500_momentum),
         "sector": sector,
         "sector_signal": sector_signal,
-        "summary": _build_summary(vix, yield_10y, sector, sector_signal),
+        "summary": _build_summary(vix, yield_10y, sector, sector_signal, sp500_momentum),
     }
 
 
@@ -41,6 +50,55 @@ def _get_latest_price(symbol: str) -> float:
         return round(float(data["Close"].dropna().iloc[-1]), 2)
     except Exception:
         return None
+
+
+def _get_sp500_momentum() -> str:
+    """Get S&P 500 3-month momentum to assess broad market trend."""
+    try:
+        data = yf.download("^GSPC", period="3mo", progress=False, auto_adjust=True)
+        closes = data["Close"].dropna()
+        ret = (closes.iloc[-1] - closes.iloc[0]) / closes.iloc[0]
+        if ret > 0.08:
+            return "strong"
+        elif ret > 0.03:
+            return "positive"
+        elif ret > -0.03:
+            return "neutral"
+        elif ret > -0.08:
+            return "slightly negative"
+        else:
+            return "weak"
+    except Exception:
+        # Try alternative S&P 500 ticker
+        try:
+            data = yf.download("SPY", period="3mo", progress=False, auto_adjust=True)
+            closes = data["Close"].dropna()
+            ret = (closes.iloc[-1] - closes.iloc[0]) / closes.iloc[0]
+            if ret > 0.08:
+                return "strong"
+            elif ret > 0.03:
+                return "positive"
+            elif ret > -0.03:
+                return "neutral"
+            elif ret > -0.08:
+                return "slightly negative"
+            else:
+                return "weak"
+        except Exception:
+            return "unavailable"
+
+
+def _sp500_momentum_label(momentum: str) -> str:
+    """Explain S&P 500 momentum impact."""
+    labels = {
+        "strong": "Bull market — favorable for equities",
+        "positive": "Uptrend — generally positive sentiment",
+        "neutral": "Sideways — no clear trend",
+        "slightly negative": "Weakness — caution warranted",
+        "weak": "Downtrend — risk-off environment",
+        "unavailable": "Data unavailable",
+    }
+    return labels.get(momentum, "Unknown")
 
 
 def _sector_momentum(sector: str) -> str:
@@ -111,14 +169,23 @@ def _yield_label(y) -> str:
         return "high — pressure on valuations"
 
 
-def _build_summary(vix, yield_10y, sector, sector_signal) -> str:
+def _build_summary(vix, yield_10y, sector, sector_signal, sp500_momentum) -> str:
     parts = []
-    if vix is not None:
-        parts.append(f"Market volatility (VIX {vix}) is {_vix_label(vix)}.")
+    
+    # Market regime (S&P 500)
+    if sp500_momentum != "unavailable":
+        parts.append(f"Broad market is {sp500_momentum}.")
+    
+    # Interest rate environment
     if yield_10y is not None:
         parts.append(f"10Y yield at {yield_10y}% — {_yield_label(yield_10y)}.")
+    
+    # Sector trend
     if sector != "unknown":
-        parts.append(
-            f"{sector.capitalize()} sector momentum is {sector_signal} over the past 3 months."
-        )
+        parts.append(f"{sector.capitalize()} sector is {sector_signal} (3-mo trend).")
+    
+    # Decision context
+    if parts:
+        parts.append("Use this with momentum & sentiment for decisions.")
+    
     return " ".join(parts) if parts else "Macro data unavailable."

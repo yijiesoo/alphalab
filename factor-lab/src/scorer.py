@@ -4,9 +4,22 @@ scorer.py — per-ticker analysis for the /api/analyze endpoint.
 Returns comprehensive analysis for a single equity ticker including:
 - Basic price/availability info
 - Factor score and momentum
-- Macro context (VIX, yield, sector)
-- News sentiment
+- Macro context (10Y yield, sector)
+- News sentiment (using FinBERT if available, keyword matching fallback)
 - Final verdict (buy/hold/sell)
+
+SENTIMENT ANALYSIS:
+===================
+The sentiment analysis uses FinBERT (Financial BERT) if available:
+- FinBERT: Deep learning model fine-tuned for financial sentiment (~80%+ accuracy)
+- Fallback: Keyword matching (lightweight, always available)
+
+To enable FinBERT:
+$ pip install transformers torch
+
+FinBERT will be automatically loaded on first sentiment analysis request.
+First load takes ~10 seconds (model download + initialization).
+Subsequent requests are faster (~500ms per headline on CPU).
 """
 
 import yfinance as yf
@@ -74,8 +87,8 @@ def analyze_ticker(ticker: str) -> dict:
     # 4. Get macro context
     macro = get_macro_context(ticker)
 
-    # 5. Get sentiment
-    sentiment = get_news_sentiment(ticker, company_name)
+    # 5. Get sentiment (using FinBERT if available, fallback to keyword matching)
+    sentiment = get_news_sentiment(ticker, company_name, use_finbert=True)
 
     # 6. Compute verdict
     verdict = _compute_verdict(factor, macro, sentiment)
@@ -93,27 +106,41 @@ def analyze_ticker(ticker: str) -> dict:
 
 
 def _compute_factor_score(ticker: str, prices) -> dict:
-    """Compute momentum factor score for the ticker."""
+    """
+    Compute momentum factor score for the ticker.
+    
+    Momentum Factor (12-month):
+    - Measures 12-month price return excluding the most recent month
+    - Range: -1.0 (worst performer) to +1.0 (best performer)
+    - Used to identify trend persistence
+    - Score of 50 = neutral, <50 = downtrend, >50 = uptrend
+    """
     try:
         momentum = momentum_12_1(prices)
         score_value = momentum[ticker].dropna().iloc[-1]
         
-        # Normalize to 0-100 scale
-        score = max(0, min(100, (score_value + 1) * 50))
+        # Normalize to 0-100 scale but cap at 90 to avoid "100" misleading perception
+        # Formula: (raw_momentum + 1) * 45 → ranges from 0 to 90
+        score = max(0, min(90, (score_value + 1) * 45))
         
-        if score >= 70:
+        if score >= 75:
+            label = "Very Strong Momentum"
+        elif score >= 60:
             label = "Strong Momentum"
         elif score >= 50:
             label = "Moderate Momentum"
-        elif score >= 30:
+        elif score >= 40:
             label = "Weak Momentum"
-        else:
+        elif score >= 25:
             label = "Negative Momentum"
+        else:
+            label = "Very Weak Momentum"
         
         return {
             "score": int(score),
             "label": label,
             "momentum": round(float(score_value), 2),
+            "explanation": "12-month price momentum (excluding recent month). Higher scores indicate strong uptrends.",
         }
     except Exception:
         return {
