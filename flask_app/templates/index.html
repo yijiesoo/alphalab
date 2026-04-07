@@ -796,6 +796,7 @@
                             <div class="score-info">
                                 <h3 id="score-label"></h3>
                                 <p id="score-momentum"></p>
+                                <p id="score-explanation" style="font-size: 0.85rem; color: #666; margin-top: 8px; font-style: italic;"></p>
                             </div>
                         </div>
                     </div>
@@ -814,6 +815,10 @@
                         <div class="macro-row">
                             <span class="macro-label">10Y Yield:</span>
                             <span class="macro-value" id="yield-value"></span>
+                        </div>
+                        <div class="macro-row">
+                            <span class="macro-label">Market Trend (S&P 500):</span>
+                            <span class="macro-value" id="sp500-value"></span>
                         </div>
                         <div class="macro-row">
                             <span class="macro-label">Sector:</span>
@@ -920,7 +925,9 @@
 
             try {
                 const response = await fetch(`/api/analyze?ticker=${ticker}`);
-                const data = await response.json();
+                
+                const text = await response.text();
+                const data = JSON.parse(text);
 
                 if (!response.ok) {
                     showError(data.error || "Analysis failed");
@@ -930,13 +937,19 @@
                 displayResults(data);
             } catch (err) {
                 showError("Network error. Check console.");
-                console.error(err);
+                console.error("[analyze] Error:", err);
             } finally {
                 loadingEl.style.display = "none";
             }
         }
 
         function displayResults(data) {
+            // Safety check: ensure we have the required data
+            if (!data || !data.verdict || !data.factor || !data.macro) {
+                showError("Incomplete analysis data received. Please try again.");
+                return;
+            }
+            
             // Company info
             document.getElementById("company-name").textContent = data.company;
             document.getElementById("company-ticker").textContent = `${data.ticker}`;
@@ -952,19 +965,49 @@
 
             // Factor Score
             const factor = data.factor;
-            const scoreClass = factor.score >= 70 ? "strong" : factor.score >= 50 ? "moderate" : factor.score >= 30 ? "weak" : "negative";
+            const scoreClass = factor.score >= 75 ? "strong" : factor.score >= 60 ? "moderate" : factor.score >= 40 ? "weak" : "negative";
             document.getElementById("score-circle").textContent = factor.score;
             document.getElementById("score-circle").className = `score-circle ${scoreClass}`;
             document.getElementById("score-label").textContent = factor.label;
             document.getElementById("score-momentum").textContent = `Momentum: ${factor.momentum > 0 ? "+" : ""}${factor.momentum}`;
+            if (factor.explanation) {
+                document.getElementById("score-explanation").textContent = factor.explanation;
+            }
 
             // Macro
             // COMMENTED OUT: VIX disabled
             // document.getElementById("vix-value").textContent = data.macro.vix ? `${data.macro.vix} — ${data.macro.vix_label}` : "N/A";
-            document.getElementById("yield-value").textContent = data.macro.yield_10y ? `${data.macro.yield_10y}% — ${data.macro.yield_label}` : "N/A";
-            document.getElementById("sector-value").textContent = data.macro.sector || "Unknown";
-            document.getElementById("sector-signal").textContent = data.macro.sector_signal || "N/A";
-            document.getElementById("macro-summary").textContent = data.macro.summary;
+            
+            // 10Y Yield - handle null/undefined/0 values
+            const yield10y = data.macro && data.macro.yield_10y;
+            if (yield10y !== null && yield10y !== undefined && yield10y !== false) {
+                document.getElementById("yield-value").textContent = `${yield10y}% — ${data.macro.yield_label || 'N/A'}`;
+            } else {
+                document.getElementById("yield-value").textContent = "N/A";
+            }
+            
+            // S&P 500 Momentum
+            const sp500Mom = data.macro && data.macro.sp500_momentum;
+            if (sp500Mom && sp500Mom !== "unavailable") {
+                const sp500Label = data.macro.sp500_label || "N/A";
+                document.getElementById("sp500-value").textContent = `${sp500Mom.charAt(0).toUpperCase() + sp500Mom.slice(1)} — ${sp500Label}`;
+            } else {
+                document.getElementById("sp500-value").textContent = "N/A";
+            }
+            
+            // Sector
+            document.getElementById("sector-value").textContent = (data.macro && data.macro.sector) || "Unknown";
+            
+            // Sector Signal
+            const sectorSignal = data.macro && data.macro.sector_signal;
+            if (sectorSignal && sectorSignal !== "unavailable") {
+                document.getElementById("sector-signal").textContent = sectorSignal;
+            } else {
+                document.getElementById("sector-signal").textContent = "N/A";
+            }
+            
+            // Macro Summary
+            document.getElementById("macro-summary").textContent = (data.macro && data.macro.summary) || "Data unavailable";
 
             // Sentiment
             const sentimentHtml = `
