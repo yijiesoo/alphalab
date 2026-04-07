@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - develop
+      - CI/CD-pipeline
   pull_request:
     branches:
       - main
       - develop
+      - CI/CD-pipeline
   schedule:
     # Run daily at 2 AM UTC
     - cron: '0 2 * * *'

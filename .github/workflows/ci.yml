@@ -5,11 +5,13 @@ on:
     branches:
       - main
       - develop
+      - CI/CD-pipeline
       - feature/*
   pull_request:
     branches:
       - main
       - develop
+      - CI/CD-pipeline
 
 jobs:
   # Python linting and code quality checks
