@@ -6,10 +6,6 @@
     <title>Stock Analysis — alphalab</title>
     <!-- Chart.js for price charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-firestore.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -1058,6 +1054,13 @@
         let priceChart = null;
         const sessionId = `session_${Date.now()}`;
         
+        // DEVELOPMENT: Clear old localStorage data on page load
+        // This ensures we're testing with Supabase, not stale localStorage
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            localStorage.removeItem('watchlist');
+            console.log("✅ Cleared old localStorage watchlist data (development mode)");
+        }
+        
         // Local watchlist storage (fallback when Supabase not available)
         const getLocalWatchlist = () => JSON.parse(localStorage.getItem('watchlist') || '[]');
         const setLocalWatchlist = (items) => localStorage.setItem('watchlist', JSON.stringify(items));
@@ -1164,13 +1167,13 @@
                         return;
                     }
 
-                    container.innerHTML = data.watchlist.map(item => `
+                    // API returns flat array of tickers: ["AAPL", "NVDA"]
+                    container.innerHTML = data.watchlist.map(ticker => `
                         <div class="watchlist-item">
                             <div>
-                                <span class="watchlist-ticker" onclick="analyzeFromWatchlist('${item.ticker}')">${item.ticker}</span>
-                                <span style="font-size: 0.85em; color: #999; margin-left: 8px;">Added ${new Date(item.added_at).toLocaleDateString()}</span>
+                                <span class="watchlist-ticker" onclick="analyzeFromWatchlist('${ticker}')">${ticker}</span>
                             </div>
-                            <button class="watchlist-btn" onclick="removeFromWatchlist('${item.ticker}')">Remove</button>
+                            <button class="watchlist-btn" onclick="removeFromWatchlist('${ticker}')">Remove</button>
                         </div>
                     `).join("");
                     return;
@@ -1272,13 +1275,13 @@
                         return;
                     }
 
-                    container.innerHTML = data.watchlist.map(item => `
+                    // API returns flat array of tickers: ["AAPL", "NVDA"]
+                    container.innerHTML = data.watchlist.map(ticker => `
                         <div class="watchlist-item">
                             <div>
-                                <span class="watchlist-ticker" onclick="analyzeFromWatchlistModal('${item.ticker}')">${item.ticker}</span>
-                                <span style="font-size: 0.85em; color: #999; margin-left: 8px;">Added ${new Date(item.added_at).toLocaleDateString()}</span>
+                                <span class="watchlist-ticker" onclick="analyzeFromWatchlistModal('${ticker}')">${ticker}</span>
                             </div>
-                            <button class="watchlist-btn" onclick="removeFromWatchlist('${item.ticker}')">Remove</button>
+                            <button class="watchlist-btn" onclick="removeFromWatchlist('${ticker}')">Remove</button>
                         </div>
                     `).join("");
                     modal.classList.add("show");
@@ -1327,199 +1330,9 @@
             }
         });
 
-        // ===== FIREBASE AUTHENTICATION =====
-        // Initialize Firebase
-        const firebaseConfig = {
-            apiKey: "YOUR_FIREBASE_API_KEY",
-            authDomain: "YOUR_FIREBASE_AUTH_DOMAIN",
-            projectId: "YOUR_FIREBASE_PROJECT_ID",
-            storageBucket: "YOUR_FIREBASE_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_FIREBASE_MESSAGING_SENDER_ID",
-            appId: "YOUR_FIREBASE_APP_ID"
-        };
-
-        // Initialize Firebase App
-        const app = firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth(app);
-        const db = firebase.firestore(app);
-
-        // DOM Elements
-        const authContainer = document.getElementById("auth-container");
-        const userContainer = document.getElementById("user-container");
-        const loginBtn = document.getElementById("login-btn");
-        const signupBtn = document.getElementById("signup-btn");
-        const logoutBtn = document.getElementById("logout-btn");
-        const loginModal = document.getElementById("login-modal");
-        const signupModal = document.getElementById("signup-modal");
-
-        // Auth State Listener
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                // User is signed in
-                showUserProfile(user);
-                authContainer.style.display = "none";
-                userContainer.style.display = "flex";
-            } else {
-                // User is signed out
-                authContainer.style.display = "flex";
-                userContainer.style.display = "none";
-                loginBtn.style.display = "inline-block";
-                signupBtn.style.display = "inline-block";
-            }
-        });
-
-        // Show User Profile
-        function showUserProfile(user) {
-            const initial = user.email.charAt(0).toUpperCase();
-            document.getElementById("user-avatar").textContent = initial;
-            document.getElementById("user-email").textContent = user.email;
-        }
-
-        // Login Button
-        loginBtn.addEventListener("click", () => {
-            showLoginModal();
-        });
-
-        // Signup Button
-        signupBtn.addEventListener("click", () => {
-            showSignupModal();
-        });
-
-        // Logout Button
-        logoutBtn.addEventListener("click", async () => {
-            try {
-                // Call Flask logout endpoint
-                const response = await fetch("/logout", {
-                    method: "GET",
-                    headers: { "Content-Type": "application/json" }
-                });
-                
-                if (response.ok) {
-                    // Redirect to login page
-                    window.location.href = "/login";
-                } else {
-                    alert("❌ Logout failed");
-                }
-            } catch (error) {
-                console.error("Logout error:", error);
-                alert("❌ Logout error: " + error.message);
-            }
-        });
-
-        // Show Login Modal
-        function showLoginModal() {
-            loginModal.classList.add("show");
-            document.getElementById("login-error").style.display = "none";
-            document.getElementById("login-email").value = "";
-            document.getElementById("login-password").value = "";
-        }
-
-        // Show Signup Modal
-        function showSignupModal() {
-            signupModal.classList.add("show");
-            document.getElementById("signup-error").style.display = "none";
-            document.getElementById("signup-email").value = "";
-            document.getElementById("signup-password").value = "";
-            document.getElementById("signup-password-confirm").value = "";
-        }
-
-        // Close Auth Modal
-        function closeAuthModal(modalId) {
-            document.getElementById(modalId).classList.remove("show");
-        }
-
-        // Login Submit
-        document.getElementById("login-submit").addEventListener("click", async () => {
-            const email = document.getElementById("login-email").value.trim();
-            const password = document.getElementById("login-password").value;
-            const errorDiv = document.getElementById("login-error");
-
-            if (!email || !password) {
-                errorDiv.textContent = "Please fill in all fields";
-                errorDiv.style.display = "block";
-                return;
-            }
-
-            try {
-                await auth.signInWithEmailAndPassword(email, password);
-                closeAuthModal("login-modal");
-                alert("✅ Signed in successfully!");
-            } catch (error) {
-                errorDiv.textContent = error.message;
-                errorDiv.style.display = "block";
-            }
-        });
-
-        // Signup Submit
-        document.getElementById("signup-submit").addEventListener("click", async () => {
-            const email = document.getElementById("signup-email").value.trim();
-            const password = document.getElementById("signup-password").value;
-            const passwordConfirm = document.getElementById("signup-password-confirm").value;
-            const errorDiv = document.getElementById("signup-error");
-
-            if (!email || !password || !passwordConfirm) {
-                errorDiv.textContent = "Please fill in all fields";
-                errorDiv.style.display = "block";
-                return;
-            }
-
-            if (password !== passwordConfirm) {
-                errorDiv.textContent = "Passwords do not match";
-                errorDiv.style.display = "block";
-                return;
-            }
-
-            if (password.length < 6) {
-                errorDiv.textContent = "Password must be at least 6 characters";
-                errorDiv.style.display = "block";
-                return;
-            }
-
-            try {
-                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-                const user = userCredential.user;
-
-                // Save user profile to Firestore
-                await db.collection("users").doc(user.uid).set({
-                    email: user.email,
-                    created_at: new Date(),
-                    watchlist: []
-                });
-
-                closeAuthModal("signup-modal");
-                alert("✅ Account created successfully!");
-            } catch (error) {
-                errorDiv.textContent = error.message;
-                errorDiv.style.display = "block";
-            }
-        });
-
-        // Enter key to submit in modals
-        document.getElementById("login-email").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") document.getElementById("login-submit").click();
-        });
-        document.getElementById("login-password").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") document.getElementById("login-submit").click();
-        });
-        document.getElementById("signup-email").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") document.getElementById("signup-submit").click();
-        });
-        document.getElementById("signup-password").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") document.getElementById("signup-submit").click();
-        });
-        document.getElementById("signup-password-confirm").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") document.getElementById("signup-submit").click();
-        });
-
-        // Close modals when clicking outside
-        window.addEventListener("click", (event) => {
-            if (event.target === loginModal) {
-                closeAuthModal("login-modal");
-            }
-            if (event.target === signupModal) {
-                closeAuthModal("signup-modal");
-            }
-        });
+        // ===== AUTHENTICATION HANDLED BY FLASK =====
+        // Auth is managed server-side via Flask sessions + Firebase REST API
+        // No client-side Firebase code needed here
     </script>
 </body>
 </html>

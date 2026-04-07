@@ -82,7 +82,7 @@ def login_required(f):
     """Decorator to require login (Flask session based)"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if "user_id" not in session:
+        if "user_email" not in session:
             return redirect(url_for("login"))
         return f(*args, **kwargs)
     return decorated_function
@@ -167,11 +167,20 @@ def login():
             if response.status_code == 200:
                 data = response.json()
                 firebase_uid = data.get("localId")
-                # Store user info in Flask session
-                session["user_id"] = firebase_uid  # Store original Firebase UID
-                session["user_email"] = data.get("email")
+                email = data.get("email")
+                # Store user info in Flask session - use email as primary key
+                session["user_email"] = email
+                session["firebase_uid"] = firebase_uid
                 session["id_token"] = data.get("idToken")
                 session.permanent = True
+                # Add user to Supabase users table if not exists
+                try:
+                    supabase.table("users").upsert({
+                        "email": email,
+                        "firebase_uid": firebase_uid,
+                    }).execute()
+                except Exception as e:
+                    app.logger.warning(f"Could not sync user to Supabase on login: {e}")
                 return redirect(url_for("index"))
             else:
                 error_data = response.json()
@@ -219,11 +228,24 @@ def signup():
             if response.status_code == 200:
                 data = response.json()
                 firebase_uid = data.get("localId")
+                email = data.get("email")
                 # Auto-login after signup
-                session["user_id"] = firebase_uid  # Store original Firebase UID
-                session["user_email"] = data.get("email")
+                session["user_email"] = email
+                session["firebase_uid"] = firebase_uid
                 session["id_token"] = data.get("idToken")
                 session.permanent = True
+                
+                # Add user to Supabase users table immediately on signup
+                try:
+                    supabase.table("users").insert({
+                        "email": email,
+                        "firebase_uid": firebase_uid,
+                    }).execute()
+                    app.logger.info(f"New user created in Supabase: {email}")
+                except Exception as e:
+                    app.logger.error(f"Could not create user in Supabase: {e}")
+                    # Don't fail signup if Supabase insert fails, just log it
+                
                 return redirect(url_for("index"))
             else:
                 error_data = response.json()
@@ -482,92 +504,156 @@ def sync_user():
         return jsonify({"error": "Supabase not configured"}), 503
     
     try:
-        user_id = session.get("user_id")
         email = session.get("user_email")
+        firebase_uid = session.get("firebase_uid")
         
-        if not user_id:
+        if not email:
             return jsonify({"error": "User not authenticated"}), 401
         
         # Check if user exists in Supabase
-        response = supabase.table("users").select("id").eq("user_id", user_id).execute()
+        response = supabase.table("users").select("email").eq("email", email).execute()
         
         if not response.data:
-            # Create new user in Supabase
+            # Create new user in Supabase (shouldn't happen if signup worked, but just in case)
             supabase.table("users").insert({
-                "user_id": user_id,
                 "email": email,
+                "firebase_uid": firebase_uid,
             }).execute()
+            app.logger.info(f"User synced to Supabase: {email}")
         
-        return jsonify({"success": True, "user_id": user_id}), 200
+        return jsonify({"success": True, "email": email}), 200
     
     except Exception as e:
+        app.logger.error(f"Error syncing user: {e}")
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/watchlist", methods=["GET", "POST", "DELETE"])
 @login_required
 def api_watchlist():
-    """Manage watchlist in Supabase with session authentication."""
+    """Manage watchlist in Supabase with email as unique identifier.
+    
+    Watchlist is stored as a JSON array of tickers: ["NVDA", "AAPL", "TSLA"]
+    Each user has one row in the watchlist table with their email and ticker array.
+    """
     if not supabase:
+        app.logger.error("❌ Supabase not configured")
         return jsonify({"error": "Supabase not configured"}), 500
     
-    user_id = session.get("user_id")
-    if not user_id:
+    user_email = session.get("user_email")
+    if not user_email:
+        app.logger.error("❌ User email not in session")
         return jsonify({"error": "User not authenticated"}), 401
+    
+    app.logger.info(f"📌 Watchlist {request.method} request for user: {user_email}")
     
     try:
         if request.method == "GET":
-            # Get user's watchlist
+            # Get user's watchlist by email
             try:
-                response = supabase.table("watchlist").select("*").eq("user_id", user_id).execute()
-                items = response.data if response.data else []
-                return jsonify({"watchlist": items, "count": len(items)}), 200
+                app.logger.info(f"🔍 Querying watchlist for email: {user_email}")
+                response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
+                tickers = response.data.get("tickers", []) if response.data else []
+                app.logger.info(f"✅ Found watchlist with {len(tickers)} tickers: {tickers}")
+                return jsonify({"watchlist": tickers, "count": len(tickers)}), 200
             except Exception as e:
-                app.logger.error(f"Watchlist GET error for user {user_id}: {e}")
-                # If UUID error, return empty watchlist for now
-                if "invalid input syntax for type uuid" in str(e).lower():
-                    return jsonify({"watchlist": [], "count": 0, "note": "watchlist table schema mismatch"}), 200
-                raise
+                # If no record found, return empty watchlist
+                error_str = str(e)
+                if "No rows found" in error_str or "single()" in error_str or "PGRST116" in error_str or "0 rows" in error_str:
+                    app.logger.info(f"⚠️  No watchlist found for {user_email}, creating new one")
+                    # Create a new watchlist entry for this user
+                    try:
+                        supabase.table("watchlist").insert({
+                            "email": user_email,
+                            "tickers": [],
+                        }).execute()
+                        app.logger.info(f"✅ Created new watchlist for {user_email}")
+                    except Exception as insert_err:
+                        app.logger.error(f"❌ Error creating watchlist for {user_email}: {insert_err}")
+                    return jsonify({"watchlist": [], "count": 0}), 200
+                else:
+                    app.logger.error(f"❌ Watchlist GET error for {user_email}: {type(e).__name__}: {error_str}")
+                    raise
         
         elif request.method == "POST":
-            # Add to watchlist
+            # Add ticker to watchlist
             data = request.json or {}
             ticker = (data.get("ticker") or "").upper().strip()
             
             if not ticker or not _valid_ticker(ticker):
+                app.logger.warning(f"⚠️  Invalid ticker: {ticker}")
                 return jsonify({"error": "Invalid ticker"}), 400
             
+            app.logger.info(f"➕ Adding {ticker} to watchlist for {user_email}")
             try:
-                # Upsert to avoid duplicates
-                response = supabase.table("watchlist").upsert({
-                    "user_id": user_id,
-                    "ticker": ticker,
-                    "added_at": datetime.now().isoformat(),
-                }).execute()
-                return jsonify({"success": True, "message": f"{ticker} added to watchlist"}), 200
+                # Get current watchlist
+                response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
+                tickers = response.data.get("tickers", []) if response.data else []
+                
+                # Add ticker if not already present
+                if ticker not in tickers:
+                    tickers.append(ticker)
+                    # Update watchlist
+                    supabase.table("watchlist").update({
+                        "tickers": tickers,
+                        "updated_at": datetime.now().isoformat(),
+                    }).eq("email", user_email).execute()
+                    return jsonify({"success": True, "message": f"{ticker} added to watchlist", "watchlist": tickers}), 200
+                else:
+                    return jsonify({"success": True, "message": f"{ticker} already in watchlist", "watchlist": tickers}), 200
             except Exception as e:
-                app.logger.error(f"Watchlist POST error for user {user_id}: {e}")
-                if "invalid input syntax for type uuid" in str(e).lower():
-                    return jsonify({"success": True, "message": f"{ticker} added to watchlist (local)"}), 200
-                raise
-            
+                # If no record found, create one
+                error_str = str(e)
+                if "No rows found" in error_str or "single()" in error_str or "PGRST116" in error_str or "0 rows" in error_str:
+                    try:
+                        supabase.table("watchlist").insert({
+                            "email": user_email,
+                            "tickers": [ticker],
+                        }).execute()
+                        app.logger.info(f"✅ Created watchlist with {ticker} for {user_email}")
+                        return jsonify({"success": True, "message": f"{ticker} added to watchlist", "watchlist": [ticker]}), 200
+                    except Exception as insert_err:
+                        app.logger.error(f"❌ Error creating watchlist for {user_email}: {insert_err}")
+                        raise
+                else:
+                    app.logger.error(f"❌ Watchlist POST error for {user_email}: {type(e).__name__}: {error_str}")
+                    raise
+        
         elif request.method == "DELETE":
-            # Remove from watchlist
+            # Remove ticker from watchlist
             ticker = (request.args.get("ticker") or "").upper().strip()
             if not ticker:
                 return jsonify({"error": "ticker parameter required"}), 400
             
             try:
-                supabase.table("watchlist").delete().eq("user_id", user_id).eq("ticker", ticker).execute()
-                return jsonify({"success": True, "message": f"{ticker} removed from watchlist"}), 200
+                # Get current watchlist
+                response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
+                tickers = response.data.get("tickers", []) if response.data else []
+                
+                # Remove ticker if present
+                if ticker in tickers:
+                    tickers.remove(ticker)
+                    # Update watchlist
+                    supabase.table("watchlist").update({
+                        "tickers": tickers,
+                        "updated_at": datetime.now().isoformat(),
+                    }).eq("email", user_email).execute()
+                    return jsonify({"success": True, "message": f"{ticker} removed from watchlist", "watchlist": tickers}), 200
+                else:
+                    return jsonify({"success": True, "message": f"{ticker} not in watchlist", "watchlist": tickers}), 200
             except Exception as e:
-                app.logger.error(f"Watchlist DELETE error for user {user_id}: {e}")
-                if "invalid input syntax for type uuid" in str(e).lower():
-                    return jsonify({"success": True, "message": f"{ticker} removed from watchlist (local)"}), 200
-                raise
+                # If no record found, nothing to delete
+                error_str = str(e)
+                if "No rows found" in error_str or "single()" in error_str or "PGRST116" in error_str or "0 rows" in error_str:
+                    return jsonify({"success": True, "message": f"Watchlist not found", "watchlist": []}), 200
+                else:
+                    app.logger.error(f"❌ Watchlist DELETE error for {user_email}: {type(e).__name__}: {error_str}")
+                    raise
     
     except Exception as e:
-        app.logger.error(f"Watchlist error: {str(e)}")
+        app.logger.error(f"❌ WATCHLIST ERROR for {user_email}: {type(e).__name__}: {str(e)}")
+        import traceback
+        app.logger.error(f"📋 Traceback: {traceback.format_exc()}")
         return jsonify({"error": str(e)}), 500
 
 
