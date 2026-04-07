@@ -1,0 +1,46 @@
+# Development and Testing Dependencies
+
+# Type checking
+mypy==1.8.0
+types-requests==2.31.0.10
+types-flask==1.1.21
+types-python-dateutil==2.9.0.20240106
+
+# Testing and coverage
+pytest==9.0.2
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+pytest-benchmark==4.0.0
+coverage==7.4.1
+
+# Security scanning
+bandit==1.7.5
+safety==2.3.5
+semgrep==1.45.0
+
+# Linting and formatting
+pylint==3.0.3
+ruff==0.15.7
+black==24.1.1
+isort==5.13.2
+flake8==6.1.0
+
+# Code quality
+radon==6.0.1
+pydocstyle==6.3.0
+memory-profiler==0.61.0
+
+# Documentation
+mdutils==1.6.0
+markdownlint==0.8.1
+
+# Dependency management
+pip-audit==2.6.1
+pip-check-updates==0.5.0
+
+# Database tools (if needed for migrations)
+alembic==1.13.1
+sqlalchemy==2.0.25
+
+# Debugging
+ipdb==0.13.13

@@ -47,7 +47,8 @@ def get_macro_context(ticker: str) -> dict:
 def _get_latest_price(symbol: str) -> float:
     try:
         data = yf.download(symbol, period="5d", progress=False, auto_adjust=True)
-        return round(float(data["Close"].dropna().iloc[-1]), 2)
+        close_price = data["Close"].dropna().iloc[-1]
+        return round(float(close_price.item()) if hasattr(close_price, 'item') else float(close_price), 2)
     except Exception:
         return None
 

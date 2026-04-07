@@ -7,9 +7,50 @@ on:
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
+  # Pre-deployment validation
+  pre-deployment-checks:
+    name: Pre-Deployment Validation
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install mypy bandit safety
+      
+      - name: Type checking with Mypy
+        run: mypy flask_app/ factor-lab/src/ --ignore-missing-imports --pretty
+        continue-on-error: true
+      
+      - name: Security scan with Bandit
+        run: bandit -r flask_app/ factor-lab/src/ -ll
+        continue-on-error: true
+      
+      - name: Dependency vulnerability check
+        run: safety check --json
+        continue-on-error: true
+      
+      - name: Verify Flask app syntax
+        run: python -m py_compile flask_app/app.py
+      
+      - name: Run unit tests
+        run: pytest tests/ -v --tb=short
+        continue-on-error: true
+
+  # Deploy the application
   deploy:
     name: Deploy Application
     runs-on: ubuntu-latest
+    needs: pre-deployment-checks
     
     steps:
       - uses: actions/checkout@v4
@@ -27,11 +68,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
       
-      - name: Run pre-deployment checks
+      - name: Final pre-deployment validation
         run: |
-          echo "Running pre-deployment checks..."
+          echo "Running final pre-deployment validation..."
           python -m pytest tests/ -v --tb=short || true
-          echo "Pre-deployment checks completed"
+          echo "Pre-deployment validation completed"
       
       - name: Create deployment tag
         run: |
