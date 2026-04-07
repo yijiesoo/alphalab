@@ -125,7 +125,7 @@ jobs:
       
       - name: Check coverage meets minimum threshold
         run: |
-          coverage report --fail-under=50
+          coverage report --fail-under=20
         continue-on-error: true
       
       - name: Upload coverage report

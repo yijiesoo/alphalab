@@ -29,10 +29,9 @@ from typing import Callable
 
 import numpy as np
 import pandas as pd
-
 from src.data import compute_returns, download_prices, get_rebalance_dates
 from src.factors import compute_all_factors
-from src.portfolio import compute_weights_all_dates, compute_turnover
+from src.portfolio import compute_turnover, compute_weights_all_dates
 
 
 def run_backtest(

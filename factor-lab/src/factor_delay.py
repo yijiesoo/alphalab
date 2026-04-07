@@ -15,10 +15,11 @@ This teaches users about:
 - Realistic returns (after accounting for delay)
 """
 
-import pandas as pd
-import numpy as np
-import yfinance as yf
 from datetime import datetime, timedelta
+
+import numpy as np
+import pandas as pd
+import yfinance as yf
 
 
 def calculate_factor_delay_returns(

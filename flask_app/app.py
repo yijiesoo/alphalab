@@ -1,3 +1,4 @@
+import hashlib
 import os
 import queue
 import re
@@ -7,10 +8,9 @@ import sys
 import threading
 import time
 import uuid
-import hashlib
-from pathlib import Path
 from datetime import datetime, timedelta
 from functools import wraps
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -19,21 +19,12 @@ from dotenv import load_dotenv
 # when factor-lab modules are imported
 load_dotenv()
 
-from flask import (
-    Flask,
-    Response,
-    jsonify,
-    render_template,
-    request,
-    send_from_directory,
-    stream_with_context,
-    session,
-    redirect,
-    url_for,
-)
-import yfinance as yf
 import numpy as np
 import requests
+import yfinance as yf
+from flask import (Flask, Response, jsonify, redirect, render_template,
+                   request, send_from_directory, session, stream_with_context,
+                   url_for)
 
 # FinBERT SENTIMENT ANALYSIS INTEGRATION
 # =======================================
@@ -48,7 +39,7 @@ import requests
 
 # Supabase
 try:
-    from supabase import create_client, Client
+    from supabase import Client, create_client
 
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
@@ -364,8 +355,8 @@ def api_analyze():
 
     # Cache miss (or refresh requested) — run analysis
     try:
-        from src.scorer import analyze_ticker
         from src.factor_delay import add_factor_delay_context
+        from src.scorer import analyze_ticker
 
         app.logger.info(f"Starting analysis for {ticker}")
         data = analyze_ticker(ticker)

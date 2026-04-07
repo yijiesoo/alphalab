@@ -44,15 +44,16 @@ This gives you the best of both worlds: relevance + accuracy
 """
 
 import os
-import requests
 from typing import Optional
+
+import requests
 
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 
 # Try to import FinBERT (optional dependency)
 try:
-    from transformers import AutoTokenizer, AutoModelForSequenceClassification
     import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
     FINBERT_AVAILABLE = True
     print("[sentiment] ✅ FinBERT dependencies available (transformers + torch)")
