@@ -61,6 +61,7 @@ OUT_DIR.mkdir(parents=True, exist_ok=True)
 FACTORLAB_OUT.mkdir(parents=True, exist_ok=True)
 
 # Make factor-lab importable as a package (needed for /api/* endpoints)
+# factor-lab modules import from "src.*", so we add factor-lab to path
 if str(FACTORLAB_ROOT) not in sys.path:
     sys.path.insert(0, str(FACTORLAB_ROOT))
 
@@ -334,10 +335,13 @@ def api_analyze():
         from src.scorer import analyze_ticker
         from src.factor_delay import add_factor_delay_context
         
+        app.logger.info(f"Starting analysis for {ticker}")
         data = analyze_ticker(ticker)
         
         # Add factor delay information
+        app.logger.info(f"Adding factor_delay context for {ticker}")
         data = add_factor_delay_context(data)
+        app.logger.info(f"Factor delay context added: {data.get('factor_delay', {}).get('error') if 'factor_delay' in data else 'N/A'}")
         
         app.logger.info(f"Analysis complete for {ticker}")
     except Exception as e:

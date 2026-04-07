@@ -1114,10 +1114,11 @@
                 
                 for (const [key, delayData] of Object.entries(delays)) {
                     const returnClass = delayData.return_pct > 0 ? 'positive' : delayData.return_pct < 0 ? 'negative' : 'neutral';
+                    const label = delayData.label || `${delayData.days_ago} days ago`;  // Use label if available
                     delayHtml += `
                         <div class="factor-delay-row">
                             <div>
-                                <div class="factor-delay-label">${delayData.days_ago} day${delayData.days_ago > 1 ? 's' : ''} ago</div>
+                                <div class="factor-delay-label">${label} ago</div>
                                 <div class="factor-delay-interpretation">$${delayData.price_then} → $${delayData.price_now}</div>
                             </div>
                             <div class="factor-delay-return ${returnClass}">
@@ -1133,7 +1134,13 @@
                     document.getElementById("factor-delay-content").innerHTML = '<p style="color: #999;">Insufficient data for delay analysis</p>';
                 }
             } else {
-                document.getElementById("factor-delay-content").innerHTML = '<p style="color: #999;">Signal timing data unavailable</p>';
+                if (data.factor_delay && data.factor_delay.error) {
+                    console.warn("⚠️ Factor delay error:", data.factor_delay.error);
+                    document.getElementById("factor-delay-content").innerHTML = `<p style="color: #999;"><small>${data.factor_delay.error}</small></p>`;
+                } else {
+                    console.warn("⚠️ No factor_delay data in response:", data);
+                    document.getElementById("factor-delay-content").innerHTML = '<p style="color: #999;">Signal timing data unavailable</p>';
+                }
             }
 
             // Cache info
