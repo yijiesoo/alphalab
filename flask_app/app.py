@@ -758,5 +758,112 @@ def api_save_analysis():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/beginner-guide/<ticker>", methods=["GET"])
+def beginner_guide(ticker):
+    """Get beginner-friendly explanation for a stock analysis."""
+    ticker = (ticker or "").upper().strip()
+    if not ticker or not _valid_ticker(ticker):
+        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+    
+    try:
+        from src.scorer import analyze_ticker
+        from src.beginner_guide import explain_signal
+        
+        # Get analysis
+        analysis = analyze_ticker(ticker)
+        
+        # Get beginner-friendly explanation
+        explanation = explain_signal(analysis)
+        
+        return jsonify({
+            "ticker": ticker,
+            "company": analysis.get("company", "Unknown"),
+            "verdict": analysis.get("verdict"),
+            "score": analysis.get("factor_score", 50),
+            "explanation": explanation,
+            "latest_price": analysis.get("latest_price")
+        }), 200
+    
+    except Exception as e:
+        app.logger.error(f"Beginner guide error for {ticker}: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/portfolio-recommendation", methods=["GET", "POST"])
+@login_required
+def portfolio_recommendation():
+    """Get portfolio recommendations and diversification suggestions."""
+    user_email = session.get("user_email")
+    
+    try:
+        from src.beginner_guide import get_portfolio_recommendation
+        
+        # Get user's current watchlist as their portfolio
+        if not supabase:
+            return jsonify({"error": "Supabase not configured"}), 503
+        
+        response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
+        current_portfolio = response.data.get("tickers", []) if response.data else []
+        
+        # Get new stock to add (if provided)
+        new_stock = request.args.get("ticker", "").upper().strip() or None
+        
+        # Get recommendation
+        recommendation = get_portfolio_recommendation(current_portfolio, new_stock)
+        
+        return jsonify({
+            "current_portfolio": current_portfolio,
+            "new_stock": new_stock,
+            "recommendation": recommendation
+        }), 200
+    
+    except Exception as e:
+        app.logger.error(f"Portfolio recommendation error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/compare-stocks", methods=["POST"])
+def compare_stocks_endpoint():
+    """Compare multiple stocks side-by-side for beginners."""
+    try:
+        from src.scorer import analyze_ticker
+        from src.beginner_guide import compare_stocks
+        
+        data = request.json or {}
+        tickers = data.get("tickers", [])
+        
+        if not tickers or len(tickers) < 2:
+            return jsonify({"error": "Provide at least 2 tickers to compare"}), 400
+        
+        # Analyze each stock
+        analyses = {}
+        for ticker in tickers:
+            ticker = ticker.upper().strip()
+            if not _valid_ticker(ticker):
+                app.logger.warning(f"⚠️  Invalid ticker: {ticker}")
+                continue
+            
+            try:
+                analyses[ticker] = analyze_ticker(ticker)
+            except Exception as e:
+                app.logger.error(f"Error analyzing {ticker}: {e}")
+                analyses[ticker] = {"error": str(e)}
+        
+        if not analyses:
+            return jsonify({"error": "No valid tickers to analyze"}), 400
+        
+        # Compare stocks
+        comparison = compare_stocks(analyses)
+        
+        return jsonify({
+            "comparison": comparison,
+            "analyses": analyses
+        }), 200
+    
+    except Exception as e:
+        app.logger.error(f"Stock comparison error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=8000)

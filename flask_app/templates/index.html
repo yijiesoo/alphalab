@@ -183,6 +183,29 @@
             color: #666;
         }
 
+        /* Beginner explanation styling */
+        #beginner-explanation {
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+        #beginner-explanation h3 {
+            margin: 0 0 12px 0;
+            color: #2a5298;
+        }
+        .beginner-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .beginner-emoji {
+            font-size: 1.2em;
+            margin-right: 8px;
+            min-width: 24px;
+        }
+        .beginner-text {
+            color: #555;
+        }
+
         /* Analysis panels grid */
         .panels-grid {
             display: grid;
@@ -823,6 +846,18 @@
                 <div class="verdict-icon" id="verdict-icon"></div>
                 <div class="verdict-label" id="verdict-label"></div>
                 <div class="verdict-text" id="verdict-text"></div>
+                <div id="verdict-score" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 0.9em; color: #666;"></div>
+            </div>
+
+            <!-- Beginner Explanation Panel -->
+            <div id="beginner-explanation" style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-left: 4px solid #2a5298; border-radius: 6px; display: none;">
+                <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                    <span style="font-size: 1.2em; margin-right: 8px;">💡</span>
+                    <h3 style="margin: 0; color: #2a5298; font-size: 1em;">Why This Signal?</h3>
+                </div>
+                <div id="beginner-momentum" style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;"></div>
+                <div id="beginner-sentiment" style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;"></div>
+                <div id="beginner-macro" style="padding: 8px; background: white; border-radius: 4px;"></div>
             </div>
 
             <!-- Tabs for different views -->
@@ -918,13 +953,6 @@
                     </div>
                 </div>
 
-                <!-- Cache info -->
-                <div class="panel">
-                    <div class="panel-title">⚡ Performance</div>
-                    <div class="panel-content">
-                        <div class="cache-indicator" id="cache-info"></div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -994,6 +1022,69 @@
             });
         }
 
+        async function fetchAndDisplayBeginnerGuide(ticker) {
+            try {
+                const response = await fetch(`/api/beginner-guide/${ticker}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.warn("Beginner guide error:", data.error);
+                    document.getElementById("beginner-explanation").style.display = "none";
+                    return;
+                }
+
+                // Display beginner explanation panel
+                document.getElementById("beginner-explanation").style.display = "block";
+
+                // Momentum explanation
+                const momentumEmoji = {
+                    'VERY WEAK': '📉',
+                    'WEAK': '➡️',
+                    'GOOD': '📈',
+                    'STRONG': '🔥'
+                }[data.explanation.momentum.strength] || '📊';
+                
+                document.getElementById("beginner-momentum").innerHTML = `
+                    <div class="beginner-item">
+                        <span class="beginner-emoji">${momentumEmoji}</span>
+                        <div class="beginner-text">
+                            <strong>Buying Pressure:</strong> ${data.explanation.momentum.text}
+                        </div>
+                    </div>
+                `;
+
+                // Sentiment explanation
+                const sentimentEmoji = {
+                    'positive': '👍',
+                    'neutral': '😐',
+                    'negative': '😞'
+                }[data.explanation.sentiment.sentiment_type] || '📰';
+                
+                document.getElementById("beginner-sentiment").innerHTML = `
+                    <div class="beginner-item">
+                        <span class="beginner-emoji">${sentimentEmoji}</span>
+                        <div class="beginner-text">
+                            <strong>News Sentiment:</strong> ${data.explanation.sentiment.text}
+                        </div>
+                    </div>
+                `;
+
+                // Macro explanation
+                document.getElementById("beginner-macro").innerHTML = `
+                    <div class="beginner-item">
+                        <span class="beginner-emoji">🌍</span>
+                        <div class="beginner-text">
+                            <strong>Market Conditions:</strong> ${data.explanation.macro.text}
+                        </div>
+                    </div>
+                `;
+
+            } catch (err) {
+                console.warn("Could not fetch beginner guide:", err);
+                document.getElementById("beginner-explanation").style.display = "none";
+            }
+        }
+
         async function analyze(ticker) {
             errorContainer.innerHTML = "";
             loadingEl.style.display = "block";
@@ -1038,6 +1129,15 @@
             document.getElementById("verdict-label").className = `verdict-label ${data.verdict}`;
             document.getElementById("verdict-text").textContent = 
                 `Based on momentum, macro conditions, and sentiment, this stock is showing a ${verdictLabel.toLowerCase()}.`;
+            
+            // Add score to verdict card
+            if (data.factor && data.factor.score !== undefined) {
+                document.getElementById("verdict-score").innerHTML = 
+                    `<strong>Signal Strength:</strong> ${data.factor.score}/100 — Use this score to compare stocks`;
+            }
+
+            // Fetch and display beginner guide
+            fetchAndDisplayBeginnerGuide(data.ticker);
 
             // Factor Score
             const factor = data.factor;
@@ -1145,16 +1245,6 @@
                     document.getElementById("factor-delay-content").innerHTML = '<p style="color: #999;">Signal timing data unavailable</p>';
                 }
             }
-
-            // Cache info
-            const cache = data._cache;
-            const now = Date.now() / 1000;
-            const ttl = Math.round(Math.max(0, cache.expires_at - now));
-            const cacheText = cache.hit 
-                ? `✓ Cached result\nTTL: ${ttl}s remaining`
-                : `✓ Fresh analysis\nNo cache needed`;
-            document.getElementById("cache-info").innerHTML = cacheText.split('\n').map(line => `<div>${line}</div>`).join('');
-            document.getElementById("cache-info").style.textAlign = 'center';
 
             // Save to history and load watchlist
             saveAnalysisToHistory(data);
