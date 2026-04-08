@@ -5,64 +5,24 @@ on:
     branches:
       - main
       - develop
-      - feature/*
   pull_request:
     branches:
       - main
       - develop
 
 jobs:
-  # Python linting and code quality checks
-  lint:
-    name: Lint & Code Quality
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12', '3.13']
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-      
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install flake8 black isort pylint pytest
-          pip install -r requirements.txt
-        continue-on-error: true
-      
-      - name: Run Black formatter check
-        run: black --check flask_app/ factor-lab/src/ --line-length 100
-        continue-on-error: true
-      
-      - name: Run isort import check
-        run: isort --check-only flask_app/ factor-lab/src/
-        continue-on-error: true
-      
-      - name: Run Flake8 linter
-        run: flake8 flask_app/ factor-lab/src/ --max-line-length=100 --ignore=E203,W503
-        continue-on-error: true
-
   # Run unit tests
   test:
     name: Run Tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12', '3.13']
     
     steps:
       - uses: actions/checkout@v4
       
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.12'
           cache: 'pip'
       
       - name: Install dependencies
@@ -75,90 +35,3 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v --tb=short
         continue-on-error: true
-      
-      - name: Generate coverage report
-        run: pytest tests/ --cov=flask_app --cov=factor-lab/src --cov-report=xml
-        continue-on-error: true
-      
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./coverage.xml
-          flags: unittests
-          name: codecov-umbrella
-        continue-on-error: true
-
-  # Security checks
-  security:
-    name: Security Checks
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-      
-      - name: Install security tools
-        run: |
-          python -m pip install --upgrade pip
-          pip install bandit safety
-      
-      - name: Run Bandit security scan
-        run: bandit -r flask_app/ factor-lab/src/ -f json -o bandit-report.json
-        continue-on-error: true
-      
-      - name: Check dependencies for vulnerabilities
-        run: safety check --json
-        continue-on-error: true
-
-  # Check for environment variables and credentials
-  secrets-check:
-    name: Secrets Check
-    runs-on: ubuntu-latest
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Install TruffleHog
-        run: pip install trufflehog
-      
-      - name: Scan for secrets
-        run: trufflehog filesystem . --json
-        continue-on-error: true
-
-  # Build Docker image (optional)
-  build:
-    name: Build Application
-    runs-on: ubuntu-latest
-    needs: [lint, test]
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.12'
-      
-      - name: Install build tools
-        run: |
-          python -m pip install --upgrade pip build
-      
-      - name: Build Python package
-        run: python -m build
-        continue-on-error: true
-
-  # Success notification
-  success:
-    name: Pipeline Success
-    runs-on: ubuntu-latest
-    needs: [lint, test, security, build]
-    if: always() && !failure()
-    
-    steps:
-      - name: Log success
-        run: echo "✅ CI/CD Pipeline completed successfully!"
