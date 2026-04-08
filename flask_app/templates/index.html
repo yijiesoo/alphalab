@@ -875,12 +875,10 @@
                 <div class="panel">
                     <div class="panel-title">🌍 Macro Context</div>
                     <div class="panel-content">
-                        <!-- COMMENTED OUT: VIX disabled
                         <div class="macro-row">
-                            <span class="macro-label">VIX:</span>
+                            <span class="macro-label">VIX (Fear Index):</span>
                             <span class="macro-value" id="vix-value"></span>
                         </div>
-                        -->
                         <div class="macro-row">
                             <span class="macro-label">10Y Yield:</span>
                             <span class="macro-value" id="yield-value"></span>
@@ -1053,8 +1051,13 @@
             }
 
             // Macro
-            // COMMENTED OUT: VIX disabled
-            // document.getElementById("vix-value").textContent = data.macro.vix ? `${data.macro.vix} — ${data.macro.vix_label}` : "N/A";
+            // VIX (Fear Index)
+            const vixValue = data.macro && data.macro.vix;
+            if (vixValue !== null && vixValue !== undefined && vixValue !== false) {
+                document.getElementById("vix-value").textContent = `${vixValue} — ${data.macro.vix_label || 'N/A'}`;
+            } else {
+                document.getElementById("vix-value").textContent = "N/A";
+            }
             
             // 10Y Yield - handle null/undefined/0 values
             const yield10y = data.macro && data.macro.yield_10y;

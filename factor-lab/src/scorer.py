@@ -164,12 +164,15 @@ def _compute_verdict(factor: dict, macro: dict, sentiment: dict) -> str:
         score -= 10
 
     # Macro context contribution (0-30 points)
-    # COMMENTED OUT: VIX calculations disabled
-    # vix = macro.get("vix")
-    # if vix and vix < 20:
-    #     score += 8
-    # elif vix and vix > 30:
-    #     score -= 8
+    # VIX: Lower VIX = calm markets = good time to buy
+    # Higher VIX = scared markets = be cautious
+    vix = macro.get("vix")
+    if vix and vix < 15:
+        score += 10  # Market calm, good buying opportunity
+    elif vix and vix < 25:
+        score += 5  # Normal conditions
+    elif vix and vix > 30:
+        score -= 8  # Market nervous, be careful
 
     # Sector signal
     sector_signal = macro.get("sector_signal", "neutral").lower()

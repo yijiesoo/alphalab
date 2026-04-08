@@ -19,10 +19,10 @@ def get_macro_context(ticker: str) -> dict:
     - Sector momentum (relative to sector ETF)
     - Bond/equity yield spread (valuation pressure)
     
-    Note: VIX calculation is commented out for now.
+    Note: VIX is the fear index - shows market volatility and investor fear.
+    Low VIX = calm markets, High VIX = nervous/scared markets.
     """
-    # vix = _get_latest_price("^VIX")  # COMMENTED OUT: VIX disabled
-    vix = None  # VIX disabled
+    vix = _get_latest_price("^VIX")  # Market fear/volatility index
     yield_10y = _get_latest_price("^TNX")  # CBOE 10Y yield index
     sp500_momentum = _get_sp500_momentum()  # Broad market trend
     sector = _guess_sector(ticker)
@@ -30,10 +30,8 @@ def get_macro_context(ticker: str) -> dict:
     yield_risk_free = _get_latest_price("^TNX")  # 10Y as risk-free rate
 
     return {
-        # "vix": vix,  # COMMENTED OUT: VIX disabled
-        "vix": None,  # VIX disabled
-        # "vix_label": _vix_label(vix),  # COMMENTED OUT: VIX disabled
-        "vix_label": "N/A",  # VIX disabled
+        "vix": vix,
+        "vix_label": _vix_label(vix),
         "yield_10y": yield_10y,
         "yield_label": _yield_label(yield_10y),
         "sp500_momentum": sp500_momentum,
@@ -47,7 +45,8 @@ def get_macro_context(ticker: str) -> dict:
 def _get_latest_price(symbol: str) -> float:
     try:
         data = yf.download(symbol, period="5d", progress=False, auto_adjust=True)
-        return round(float(data["Close"].dropna().iloc[-1]), 2)
+        close_price = data["Close"].dropna().iloc[-1]
+        return round(float(close_price.item()) if hasattr(close_price, 'item') else float(close_price), 2)
     except Exception:
         return None
 
