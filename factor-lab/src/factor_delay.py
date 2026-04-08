@@ -77,7 +77,8 @@ def calculate_factor_delay_returns(
         
         # Get prices
         close_prices = data['Close']
-        current_price = float(close_prices.iloc[-1])
+        current_price_val = close_prices.iloc[-1]
+        current_price = float(current_price_val.item() if hasattr(current_price_val, 'item') else current_price_val)
         
         result = {
             "ticker": ticker,
@@ -95,7 +96,8 @@ def calculate_factor_delay_returns(
                 continue
             
             # Get price N days ago
-            price_n_days_ago = float(close_prices.iloc[-delay_days - 1])
+            price_n_days_ago_val = close_prices.iloc[-delay_days - 1]
+            price_n_days_ago = float(price_n_days_ago_val.item() if hasattr(price_n_days_ago_val, 'item') else price_n_days_ago_val)
             
             # Calculate return %
             return_pct = ((current_price - price_n_days_ago) / price_n_days_ago) * 100
