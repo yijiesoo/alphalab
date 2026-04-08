@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +11,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
@@ -20,36 +21,36 @@
             justify-content: center;
             padding: 20px;
         }
-        
+
         .auth-container {
             background: white;
             padding: 40px;
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             max-width: 400px;
             width: 100%;
         }
-        
+
         .auth-header {
             text-align: center;
             margin-bottom: 30px;
         }
-        
+
         .auth-header h1 {
             font-size: 2em;
             color: #2a5298;
             margin-bottom: 8px;
         }
-        
+
         .auth-header p {
             color: #666;
             font-size: 0.95em;
         }
-        
+
         .form-group {
             margin-bottom: 20px;
         }
-        
+
         .form-group label {
             display: block;
             margin-bottom: 8px;
@@ -57,7 +58,7 @@
             color: #333;
             font-size: 0.95em;
         }
-        
+
         .form-group input {
             width: 100%;
             padding: 12px;
@@ -66,12 +67,12 @@
             font-size: 1em;
             transition: border-color 0.2s;
         }
-        
+
         .form-group input:focus {
             outline: none;
             border-color: #2a5298;
         }
-        
+
         .error-message {
             background: #fee;
             color: #c33;
@@ -81,7 +82,7 @@
             border-left: 4px solid #c33;
             font-size: 0.9em;
         }
-        
+
         .submit-btn {
             width: 100%;
             padding: 12px;
@@ -95,37 +96,37 @@
             transition: background 0.2s;
             margin-bottom: 16px;
         }
-        
+
         .submit-btn:hover {
             background: #1e3c72;
         }
-        
+
         .submit-btn:active {
             transform: scale(0.98);
         }
-        
+
         .toggle-link {
             text-align: center;
             font-size: 0.9em;
             color: #666;
         }
-        
+
         .toggle-link a {
             color: #2a5298;
             text-decoration: none;
             font-weight: 600;
         }
-        
+
         .toggle-link a:hover {
             text-decoration: underline;
         }
-        
+
         .divider {
             margin: 24px 0;
             text-align: center;
             color: #ccc;
         }
-        
+
         .demo-info {
             background: #f0f8ff;
             padding: 12px;
@@ -135,62 +136,51 @@
             border: 1px solid #2a5298;
             margin-top: 20px;
         }
-        
+
         .demo-info strong {
             color: #2a5298;
         }
     </style>
 </head>
+
 <body>
     <div class="auth-container">
         <div class="auth-header">
             <h1>📊 alphalab</h1>
             <p>Data-driven stock analysis</p>
         </div>
-        
+
         {% if error %}
         <div class="error-message">
             {{ error }}
         </div>
         {% endif %}
-        
+
         <form method="POST">
             <div class="form-group">
                 <label for="email">Email</label>
-                <input 
-                    type="email" 
-                    id="email" 
-                    name="email" 
-                    placeholder="you@example.com" 
-                    required
-                    value="{{ request.form.get('email', '') }}"
-                >
+                <input type="email" id="email" name="email" placeholder="you@example.com" required
+                    value="{{ request.form.get('email', '') }}">
             </div>
-            
+
             <div class="form-group">
                 <label for="password">Password</label>
-                <input 
-                    type="password" 
-                    id="password" 
-                    name="password" 
-                    placeholder="••••••••" 
-                    required
-                    minlength="6"
-                >
+                <input type="password" id="password" name="password" placeholder="••••••••" required minlength="6">
             </div>
-            
+
             <button type="submit" class="submit-btn">Sign In</button>
         </form>
-        
+
         <div class="toggle-link">
             Don't have an account? <a href="{{ url_for('signup') }}">Sign Up</a>
         </div>
-        
+
         <div class="divider">━━━━━━━━━━</div>
-        
+
         <div class="demo-info">
             <strong>New user?</strong> Sign up to get started with stock analysis powered by AI.
         </div>
     </div>
 </body>
+
 </html>
