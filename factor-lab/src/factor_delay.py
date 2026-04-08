@@ -24,13 +24,13 @@ import yfinance as yf
 
 def calculate_factor_delay_returns(
     ticker: str,
-    delays: list = [1, 2, 3],
-    lookback_days: int = 60,
+    delays: list = [1, 5, 21, 63],  # 1 day, 1 week, 1 month, 3 months
+    lookback_days: int = 200,  # ~200 calendar days = ~140 trading days
 ) -> dict:
     """
     Calculate what would have happened if user acted N days ago.
 
-    For each delay day (1, 2, 3), shows:
+    For each delay period (1D, 1W, 1M, 3M), shows:
     - Price N days ago
     - Current price
     - Return % if bought N days ago
@@ -40,9 +40,9 @@ def calculate_factor_delay_returns(
     ticker : str
         Stock ticker (e.g., "AAPL")
     delays : list
-        List of days to look back (default [1, 2, 3])
+        List of days to look back (default [1, 5, 21, 63] for 1D, 1W, 1M, 3M)
     lookback_days : int
-        How far back to fetch data (default 60 days)
+        How far back to fetch data (default 200 calendar days = ~140 trading days)
 
     Returns
     -------
@@ -118,9 +118,22 @@ def calculate_factor_delay_returns(
             # Calculate return %
             return_pct = ((current_price - price_n_days_ago) / price_n_days_ago) * 100
 
-            delay_key = f"delay_{delay_days}d"
+            # Create human-readable label for delay period
+            if delay_days == 1:
+                label = "1D"
+            elif delay_days == 5:
+                label = "1W"
+            elif delay_days == 21:
+                label = "1M"
+            elif delay_days == 63:
+                label = "3M"
+            else:
+                label = f"{delay_days}d"
+            
+            delay_key = f"delay_{label}"
             result["delays"][delay_key] = {
                 "days_ago": delay_days,
+                "label": label,
                 "price_then": round(price_n_days_ago, 2),
                 "price_now": round(current_price, 2),
                 "return_pct": round(return_pct, 2),
@@ -191,7 +204,7 @@ def add_factor_delay_context(analysis_data: dict) -> dict:
     if not ticker:
         return analysis_data
 
-    delay_info = calculate_factor_delay_returns(ticker, delays=[1, 2, 3], lookback_days=60)
+    delay_info = calculate_factor_delay_returns(ticker, delays=[1, 5, 21, 63], lookback_days=200)
 
     analysis_data["factor_delay"] = delay_info
 

@@ -1114,7 +1114,7 @@
                 
                 for (const [key, delayData] of Object.entries(delays)) {
                     const returnClass = delayData.return_pct > 0 ? 'positive' : delayData.return_pct < 0 ? 'negative' : 'neutral';
-                    const label = delayData.label || `${delayData.days_ago} days ago`;  // Use label if available
+                    const label = delayData.label || `${delayData.days_ago} days`;  // Use label if available (1D, 1W, 1M, 3M)
                     delayHtml += `
                         <div class="factor-delay-row">
                             <div>
