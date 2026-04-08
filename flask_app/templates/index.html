@@ -1664,6 +1664,47 @@
         // ===== AUTHENTICATION HANDLED BY FLASK =====
         // Auth is managed server-side via Flask sessions + Firebase REST API
         // No client-side Firebase code needed here
+
+        // ===== SERVICE WORKER REGISTRATION =====
+        // Register service worker for background updates and offline support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+                .then(registration => {
+                    console.log('✅ Service Worker registered successfully');
+                    
+                    // Request periodic background sync (every 10 minutes)
+                    if ('periodicSync' in registration) {
+                        registration.periodicSync.register('refresh-analysis', {
+                            minInterval: 10 * 60 * 1000 // 10 minutes
+                        })
+                        .then(() => {
+                            console.log('✅ Periodic sync registered - data will refresh every 10 minutes');
+                        })
+                        .catch(err => {
+                            console.warn('Periodic sync not supported:', err);
+                            // Fallback: manual refresh still available
+                        });
+                    }
+                    
+                    // Listen for messages from service worker
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data.type === 'WATCHLIST_REFRESHED') {
+                            console.log('✅ Background: Watchlist data updated');
+                            // Could show subtle notification here if desired
+                        }
+                        if (event.data.type === 'ANALYSIS_REFRESHED') {
+                            console.log('✅ Background: Analysis data updated');
+                            // Could show subtle notification here if desired
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.warn('Service Worker registration failed:', err);
+                    // App still works without service worker
+                });
+        } else {
+            console.log('Service Workers not supported - offline features unavailable');
+        }
     </script>
 </body>
 </html>
