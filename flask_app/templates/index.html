@@ -351,14 +351,14 @@
         .loading {
             text-align: center;
             padding: 40px;
-            color: white;
+            color: #000;
         }
         .spinner {
             display: inline-block;
             width: 40px;
             height: 40px;
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top: 4px solid white;
+            border: 4px solid rgba(0,0,0,0.2);
+            border-top: 4px solid #000;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -1324,6 +1324,16 @@
             }
 
             await analyze(ticker);
+        });
+
+        // Auto-load ticker from URL parameter
+        window.addEventListener("load", () => {
+            const params = new URLSearchParams(window.location.search);
+            const urlTicker = params.get("ticker");
+            if (urlTicker) {
+                tickerInput.value = urlTicker.toUpperCase();
+                analyzeBtn.click();
+            }
         });
 
         // Logout button on header

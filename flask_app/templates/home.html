@@ -969,34 +969,76 @@
             document.getElementById('holding-form').reset();
         }
 
-        document.getElementById('add-holding-btn').addEventListener('click', showAddHoldingModal);
-
-        document.getElementById('holding-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        // Wait for DOM to be ready before attaching form handlers
+        function setupPortfolioForm() {
+            const holdingForm = document.getElementById('holding-form');
+            const addHoldingBtn = document.getElementById('add-holding-btn');
             
-            const ticker = document.getElementById('holding-ticker').value.toUpperCase();
-            const quantity = parseFloat(document.getElementById('holding-quantity').value);
-            const entryPrice = parseFloat(document.getElementById('holding-price').value);
-            
-            try {
-                const response = await fetch('/api/portfolio/holdings', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ticker, quantity, entry_price: entryPrice })
-                });
-                
-                if (response.ok) {
-                    closeAddHoldingModal();
-                    loadPortfolioHoldings();
-                    alert('✅ Holding added successfully!');
-                } else {
-                    const error = await response.json();
-                    alert(`❌ Error: ${error.error}`);
-                }
-            } catch (e) {
-                alert(`❌ Error: ${e.message}`);
+            if (!holdingForm) {
+                console.warn('❌ holding-form element not found');
+                return;
             }
-        });
+            
+            if (!addHoldingBtn) {
+                console.warn('❌ add-holding-btn element not found');
+                return;
+            }
+            
+            console.log('✅ Portfolio form elements found, attaching listeners');
+            
+            // Attach click handler to "Add Holding" button
+            addHoldingBtn.addEventListener('click', showAddHoldingModal);
+            
+            // Attach submit handler to form
+            holdingForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const ticker = document.getElementById('holding-ticker').value.toUpperCase().trim();
+                const quantity = parseFloat(document.getElementById('holding-quantity').value);
+                const entryPrice = parseFloat(document.getElementById('holding-price').value);
+                
+                if (!ticker || quantity <= 0 || entryPrice <= 0) {
+                    alert('❌ Please fill in all fields with valid values');
+                    return;
+                }
+                
+                try {
+                    console.log('📤 Submitting holding:', { ticker, quantity, entry_price: entryPrice });
+                    const response = await fetch('/api/portfolio/holdings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticker, quantity, entry_price: entryPrice })
+                    });
+                    
+                    const data = await response.json();
+                    console.log('📥 Response:', response.status, data);
+                    
+                    if (response.ok) {
+                        closeAddHoldingModal();
+                        document.getElementById('holding-form').reset();
+                        setTimeout(() => {
+                            loadPortfolioHoldings();
+                        }, 500);
+                        alert('✅ Holding added successfully!');
+                    } else {
+                        alert(`❌ Error: ${data.error || 'Unknown error'}`);
+                    }
+                } catch (e) {
+                    console.error('❌ Fetch error:', e);
+                    alert(`❌ Error: ${e.message}`);
+                }
+            });
+        }
+        
+        // Call setupPortfolioForm when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupPortfolioForm);
+        } else {
+            setupPortfolioForm();
+        }
+        
+        // Also setup on window load as backup
+        window.addEventListener('load', setupPortfolioForm);
 
         // Load holdings on page load
         window.addEventListener('load', () => {
@@ -1018,7 +1060,7 @@
             <form id="holding-form">
                 <div style="margin-bottom: 20px;">
                     <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Ticker Symbol</label>
-                    <input type="text" id="holding-ticker" required maxlength="5" placeholder="e.g. NVDA" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1em;">
+                    <input type="text" id="holding-ticker" required maxlength="5" placeholder="e.g. NVDA" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1em; text-transform: uppercase;">
                 </div>
                 
                 <div style="margin-bottom: 20px;">

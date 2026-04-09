@@ -764,30 +764,43 @@ def api_portfolio_holdings():
             if quantity <= 0 or entry_price <= 0:
                 return jsonify({"error": "quantity and entry_price must be positive"}), 400
             
-            print(f"✏️ Adding holding: {ticker} x{quantity} @ ${entry_price}")
+            print(f"✏️ Adding/Updating holding: {ticker} x{quantity} @ ${entry_price} for {user_email}")
             
-            # Check if already exists
-            existing = supabase.table("portfolio_holdings").select("*").eq("email", user_email).eq("ticker", ticker).execute()
-            
-            if existing.data and len(existing.data) > 0:
-                # Update existing
-                holding_id = existing.data[0]["id"]
-                supabase.table("portfolio_holdings").update({
-                    "quantity": quantity,
-                    "entry_price": entry_price,
-                    "entry_date": data.get("entry_date", datetime.now().isoformat()),
-                }).eq("id", holding_id).execute()
-                return jsonify({"success": True, "message": f"{ticker} holding updated"}), 200
-            else:
-                # Create new
-                supabase.table("portfolio_holdings").insert({
+            try:
+                # Try to insert first
+                result = supabase.table("portfolio_holdings").insert({
                     "email": user_email,
                     "ticker": ticker,
                     "quantity": quantity,
                     "entry_price": entry_price,
                     "entry_date": data.get("entry_date", datetime.now().isoformat()),
                 }).execute()
+                print(f"✅ New holding created: {ticker}")
                 return jsonify({"success": True, "message": f"{ticker} holding added"}), 201
+            except Exception as e:
+                error_str = str(e)
+                # If duplicate key error, update instead
+                if "23505" in error_str or "duplicate key" in error_str.lower():
+                    print(f"🔄 Holding exists, updating: {ticker}")
+                    try:
+                        # Get the existing record
+                        existing = supabase.table("portfolio_holdings").select("id").eq("email", user_email).eq("ticker", ticker).execute()
+                        if existing.data and len(existing.data) > 0:
+                            holding_id = existing.data[0]["id"]
+                            supabase.table("portfolio_holdings").update({
+                                "quantity": quantity,
+                                "entry_price": entry_price,
+                                "entry_date": data.get("entry_date", datetime.now().isoformat()),
+                                "updated_at": datetime.now().isoformat(),
+                            }).eq("id", holding_id).execute()
+                            print(f"✅ Holding updated: {ticker}")
+                            return jsonify({"success": True, "message": f"{ticker} holding updated"}), 200
+                    except Exception as update_e:
+                        print(f"❌ Update error: {update_e}")
+                        return jsonify({"error": f"Error updating holding: {str(update_e)}"}), 500
+                else:
+                    print(f"❌ Insert error: {e}")
+                    return jsonify({"error": str(e)}), 500
 
         elif request.method == "PUT":
             # Update holding
