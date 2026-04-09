@@ -116,6 +116,107 @@
             cursor: not-allowed;
         }
 
+        /* Dashboard Widgets */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .dashboard-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .dashboard-card h3 {
+            margin: 0 0 16px 0;
+            color: #2a5298;
+            font-size: 1em;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            font-size: 0.9em;
+        }
+        .stat-label {
+            color: #666;
+            font-weight: 500;
+        }
+        .stat-value {
+            font-weight: 700;
+            color: #2a5298;
+        }
+        .stat-value.positive {
+            color: #27ae60;
+        }
+        .stat-value.negative {
+            color: #e74c3c;
+        }
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9em;
+        }
+        .stock-item:last-child {
+            border-bottom: none;
+        }
+        .stock-ticker {
+            font-weight: 600;
+            color: #2a5298;
+        }
+        .stock-price {
+            color: #666;
+        }
+        .stock-change {
+            min-width: 70px;
+            text-align: right;
+            font-weight: 600;
+        }
+        .market-stat {
+            text-align: center;
+            padding: 12px 0;
+        }
+        .market-stat-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .market-stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #2a5298;
+        }
+        .vix-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        .vix-calm {
+            background: #d4edda;
+            color: #155724;
+        }
+        .vix-normal {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .vix-nervous {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .vix-fearful {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
         /* Loading state */
         .loading {
             text-align: center;
@@ -822,6 +923,58 @@
                 style="text-transform: uppercase;"
             >
             <button id="analyze-btn">Analyze</button>
+        </div>
+
+        <!-- Dashboard Widgets -->
+        <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
+            <!-- Option A: Portfolio Dashboard -->
+            <div class="dashboard-card">
+                <h3>📈 Portfolio</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Total Value</span>
+                    <span class="stat-value" id="portfolio-value">$0.00</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Daily Change</span>
+                    <span class="stat-value" id="portfolio-change">+$0.00</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">% Change</span>
+                    <span class="stat-value" id="portfolio-change-pct">+0.00%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Holdings</span>
+                    <span class="stat-value" id="portfolio-count">0</span>
+                </div>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                    <div style="font-size: 0.85em; color: #666; margin-bottom: 8px; font-weight: 500;">Top Performers</div>
+                    <div id="top-performers" style="font-size: 0.85em;"></div>
+                </div>
+            </div>
+
+            <!-- Option B: Watchlist Summary -->
+            <div class="dashboard-card">
+                <h3>⭐ Watchlist</h3>
+                <div id="watchlist-summary" style="max-height: 250px; overflow-y: auto;">
+                    <p style="color: #999; text-align: center; padding: 20px;">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Option C: Market Summary -->
+            <div class="dashboard-card">
+                <h3>🌍 Market</h3>
+                <div class="market-stat">
+                    <div class="market-stat-label">S&P 500</div>
+                    <div class="market-stat-value" id="sp500-price">-</div>
+                    <div style="font-size: 0.9em; color: #666;" id="sp500-change">-</div>
+                </div>
+                <hr style="margin: 12px 0; border: none; border-top: 1px solid #e0e0e0;">
+                <div class="market-stat">
+                    <div class="market-stat-label">VIX (Fear Index)</div>
+                    <div class="market-stat-value" id="vix-price">-</div>
+                    <div id="vix-sentiment" style="margin-top: 8px;"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Error display -->
@@ -1893,6 +2046,121 @@
         // ===== AUTHENTICATION HANDLED BY FLASK =====
         // Auth is managed server-side via Flask sessions + Firebase REST API
         // No client-side Firebase code needed here
+
+        // ===== DASHBOARD FUNCTIONS (Option A, B, C) =====
+
+        // Load all dashboards on page load
+        window.addEventListener("load", () => {
+            loadDashboards();
+            // Refresh every 5 minutes
+            setInterval(loadDashboards, 5 * 60 * 1000);
+        });
+
+        async function loadDashboards() {
+            await loadPortfolioDashboard();    // Option A
+            await loadWatchlistSummary();      // Option B
+            await loadMarketSummary();         // Option C
+        }
+
+        // OPTION A: PORTFOLIO DASHBOARD
+        async function loadPortfolioDashboard() {
+            try {
+                const response = await fetch("/api/dashboard/portfolio");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // Show dashboard if there are holdings
+                const dashboardGrid = document.getElementById("dashboard-grid");
+                if (data.holdings_count > 0) {
+                    dashboardGrid.style.display = "grid";
+                    
+                    // Update Portfolio Card
+                    document.getElementById("portfolio-value").textContent = `$${data.total_value.toFixed(2)}`;
+                    
+                    const changeSign = data.daily_change >= 0 ? "+" : "";
+                    document.getElementById("portfolio-change").textContent = `${changeSign}$${data.daily_change.toFixed(2)}`;
+                    document.getElementById("portfolio-change").className = `stat-value ${data.daily_change >= 0 ? 'positive' : 'negative'}`;
+                    
+                    const pctSign = data.daily_change_pct >= 0 ? "+" : "";
+                    document.getElementById("portfolio-change-pct").textContent = `${pctSign}${data.daily_change_pct.toFixed(2)}%`;
+                    document.getElementById("portfolio-change-pct").className = `stat-value ${data.daily_change_pct >= 0 ? 'positive' : 'negative'}`;
+                    
+                    document.getElementById("portfolio-count").textContent = data.holdings_count;
+                    
+                    // Top performers
+                    const topHtml = data.top_performers.slice(0, 3).map(stock => `
+                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.8em;">
+                            <span>${stock.ticker}</span>
+                            <span style="color: #27ae60; font-weight: 600;">+${stock.change_pct.toFixed(2)}%</span>
+                        </div>
+                    `).join("");
+                    document.getElementById("top-performers").innerHTML = topHtml || "<p style='color: #999; font-size: 0.85em;'>No data</p>";
+                } else {
+                    dashboardGrid.style.display = "none";
+                }
+            } catch (e) {
+                console.error("Portfolio dashboard error:", e);
+            }
+        }
+
+        // OPTION B: WATCHLIST SUMMARY
+        async function loadWatchlistSummary() {
+            try {
+                const response = await fetch("/api/dashboard/watchlist-summary");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                if (data.total_stocks > 0) {
+                    const watchlistHtml = data.stocks.map(stock => `
+                        <div class="stock-item">
+                            <div>
+                                <div class="stock-ticker">${stock.ticker}</div>
+                                <div class="stock-price">$${stock.price.toFixed(2)}</div>
+                            </div>
+                            <div class="stock-change ${stock.direction === 'up' ? 'positive' : 'negative'}">
+                                ${stock.direction === 'up' ? '▲' : '▼'} ${stock.change_pct.toFixed(2)}%
+                            </div>
+                        </div>
+                    `).join("");
+                    document.getElementById("watchlist-summary").innerHTML = watchlistHtml;
+                } else {
+                    document.getElementById("watchlist-summary").innerHTML = "<p style='color: #999; text-align: center; padding: 20px;'>No holdings yet</p>";
+                }
+            } catch (e) {
+                console.error("Watchlist summary error:", e);
+            }
+        }
+
+        // OPTION C: MARKET SUMMARY
+        async function loadMarketSummary() {
+            try {
+                const response = await fetch("/api/dashboard/market-summary");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // S&P 500
+                document.getElementById("sp500-price").textContent = `$${data.sp500_price.toFixed(2)}`;
+                const sp500Sign = data.sp500_change >= 0 ? "+" : "";
+                document.getElementById("sp500-change").textContent = `${sp500Sign}${data.sp500_change_pct.toFixed(2)}%`;
+                document.getElementById("sp500-change").style.color = data.sp500_change >= 0 ? '#27ae60' : '#e74c3c';
+                
+                // VIX
+                document.getElementById("vix-price").textContent = data.vix_value.toFixed(2);
+                
+                const vixIndicator = document.getElementById("vix-sentiment");
+                let vixClass = "vix-normal";
+                if (data.trend === "bullish") vixClass = "vix-calm";
+                else if (data.trend === "bearish") vixClass = "vix-nervous";
+                else if (data.trend === "very_bearish") vixClass = "vix-fearful";
+                
+                vixIndicator.innerHTML = `<span class="vix-indicator ${vixClass}">${data.market_sentiment}</span>`;
+            } catch (e) {
+                console.error("Market summary error:", e);
+            }
+        }
 
         // ===== SERVICE WORKER REGISTRATION =====
         // Register service worker for background updates and offline support

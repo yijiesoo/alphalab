@@ -1028,5 +1028,268 @@ def portfolio_value():
         return jsonify({"error": str(e)}), 500
 
 
+# ============================================================================
+# OPTION A: PORTFOLIO DASHBOARD - Total Value & Allocation
+# ============================================================================
+
+@app.route("/api/dashboard/portfolio", methods=["GET"])
+@login_required
+def dashboard_portfolio():
+    """Get portfolio dashboard: total value, daily change, top performers."""
+    user_email = session.get("user_email")
+    
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    try:
+        # Get all tickers from watchlists
+        response = supabase.table("watchlist").select("ticker").eq("email", user_email).execute()
+        tickers = [item.get("ticker") for item in response.data] if response.data else []
+        
+        if not tickers:
+            return jsonify({
+                "total_value": 0,
+                "daily_change": 0,
+                "daily_change_pct": 0,
+                "holdings_count": 0,
+                "top_performers": [],
+                "bottom_performers": []
+            }), 200
+        
+        # Remove duplicates
+        tickers = list(set(tickers))
+        
+        # Fetch prices
+        try:
+            data = yf.download(tickers, period="1d", progress=False)
+            if len(tickers) == 1:
+                current_price = data["Close"].iloc[-1]
+                prev_close = data["Open"].iloc[-1]
+            else:
+                current_price = data["Close"].iloc[-1]
+                prev_close = data["Open"].iloc[-1]
+        except Exception:
+            return jsonify({
+                "total_value": 0,
+                "daily_change": 0,
+                "daily_change_pct": 0,
+                "holdings_count": len(tickers),
+                "top_performers": [],
+                "bottom_performers": []
+            }), 200
+        
+        # Calculate portfolio metrics
+        total_value = 0
+        total_prev_value = 0
+        performers = []
+        
+        for ticker in tickers:
+            try:
+                if len(tickers) == 1:
+                    price = current_price
+                    prev = prev_close
+                else:
+                    price = current_price[ticker]
+                    prev = prev_close[ticker]
+                
+                change = price - prev
+                change_pct = (change / prev * 100) if prev > 0 else 0
+                
+                total_value += price
+                total_prev_value += prev
+                
+                performers.append({
+                    "ticker": ticker,
+                    "price": round(price, 2),
+                    "change": round(change, 2),
+                    "change_pct": round(change_pct, 2)
+                })
+            except Exception:
+                pass
+        
+        # Sort by performance
+        performers.sort(key=lambda x: x["change_pct"], reverse=True)
+        top_performers = performers[:3]
+        bottom_performers = performers[-3:] if len(performers) > 3 else []
+        
+        total_change = total_value - total_prev_value
+        total_change_pct = (total_change / total_prev_value * 100) if total_prev_value > 0 else 0
+        
+        return jsonify({
+            "total_value": round(total_value, 2),
+            "daily_change": round(total_change, 2),
+            "daily_change_pct": round(total_change_pct, 2),
+            "holdings_count": len(tickers),
+            "top_performers": top_performers,
+            "bottom_performers": bottom_performers
+        }), 200
+    
+    except Exception as e:
+        app.logger.error(f"Portfolio dashboard error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# OPTION B: WATCHLIST SUMMARY - Better Overview
+# ============================================================================
+
+@app.route("/api/dashboard/watchlist-summary", methods=["GET"])
+@login_required
+def dashboard_watchlist_summary():
+    """Get watchlist summary: all stocks with prices and performance."""
+    user_email = session.get("user_email")
+    
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    try:
+        # Get all watchlist items
+        response = supabase.table("watchlist").select("*").eq("email", user_email).execute()
+        items = response.data if response.data else []
+        
+        if not items:
+            return jsonify({
+                "total_stocks": 0,
+                "stocks": [],
+                "last_updated": datetime.now().isoformat()
+            }), 200
+        
+        # Extract unique tickers with add dates
+        ticker_map = {}
+        for item in items:
+            ticker = item.get("ticker")
+            added_at = item.get("added_at", "Unknown")
+            if ticker not in ticker_map:
+                ticker_map[ticker] = added_at
+        
+        tickers = list(ticker_map.keys())
+        
+        # Fetch current prices
+        try:
+            data = yf.download(tickers, period="1d", progress=False)
+            if len(tickers) == 1:
+                current_price = data["Close"].iloc[-1]
+                prev_close = data["Open"].iloc[-1]
+            else:
+                current_price = data["Close"].iloc[-1]
+                prev_close = data["Open"].iloc[-1]
+        except Exception:
+            return jsonify({
+                "total_stocks": len(tickers),
+                "stocks": [{"ticker": t, "price": 0, "change_pct": 0, "added_at": ticker_map[t]} for t in tickers],
+                "last_updated": datetime.now().isoformat()
+            }), 200
+        
+        # Build stock list
+        stocks = []
+        for ticker in tickers:
+            try:
+                if len(tickers) == 1:
+                    price = current_price
+                    prev = prev_close
+                else:
+                    price = current_price[ticker]
+                    prev = prev_close[ticker]
+                
+                change_pct = ((price - prev) / prev * 100) if prev > 0 else 0
+                
+                stocks.append({
+                    "ticker": ticker,
+                    "price": round(price, 2),
+                    "change_pct": round(change_pct, 2),
+                    "added_at": ticker_map[ticker],
+                    "direction": "up" if change_pct >= 0 else "down"
+                })
+            except Exception:
+                stocks.append({
+                    "ticker": ticker,
+                    "price": 0,
+                    "change_pct": 0,
+                    "added_at": ticker_map[ticker],
+                    "direction": "neutral"
+                })
+        
+        # Sort by change (best performers first)
+        stocks.sort(key=lambda x: x["change_pct"], reverse=True)
+        
+        return jsonify({
+            "total_stocks": len(stocks),
+            "stocks": stocks,
+            "last_updated": datetime.now().isoformat()
+        }), 200
+    
+    except Exception as e:
+        app.logger.error(f"Watchlist summary error: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+# ============================================================================
+# OPTION C: MARKET SUMMARY WIDGET - S&P 500, VIX, Market Stats
+# ============================================================================
+
+@app.route("/api/dashboard/market-summary", methods=["GET"])
+def dashboard_market_summary():
+    """Get market summary: S&P 500, VIX, market context."""
+    try:
+        # Fetch market indices
+        sp500 = yf.Ticker("^GSPC")
+        vix = yf.Ticker("^VIX")
+        
+        # Get latest data
+        sp500_data = sp500.history(period="1d")
+        vix_data = vix.history(period="1d")
+        
+        if sp500_data.empty or vix_data.empty:
+            return jsonify({
+                "sp500_price": 0,
+                "sp500_change_pct": 0,
+                "vix_value": 0,
+                "market_sentiment": "unknown",
+                "trend": "neutral"
+            }), 200
+        
+        sp500_price = sp500_data["Close"].iloc[-1]
+        sp500_open = sp500_data["Open"].iloc[-1]
+        sp500_change = sp500_price - sp500_open
+        sp500_change_pct = (sp500_change / sp500_open * 100) if sp500_open > 0 else 0
+        
+        vix_price = vix_data["Close"].iloc[-1]
+        
+        # Determine market sentiment based on VIX
+        if vix_price < 15:
+            sentiment = "Calm 😊"
+            trend = "bullish"
+        elif vix_price < 20:
+            sentiment = "Normal 😐"
+            trend = "neutral"
+        elif vix_price < 30:
+            sentiment = "Nervous 😟"
+            trend = "bearish"
+        else:
+            sentiment = "Fearful 😨"
+            trend = "very_bearish"
+        
+        return jsonify({
+            "sp500_price": round(sp500_price, 2),
+            "sp500_change": round(sp500_change, 2),
+            "sp500_change_pct": round(sp500_change_pct, 2),
+            "vix_value": round(vix_price, 2),
+            "market_sentiment": sentiment,
+            "trend": trend,
+            "timestamp": datetime.now().isoformat()
+        }), 200
+    
+    except Exception as e:
+        app.logger.error(f"Market summary error: {e}", exc_info=True)
+        return jsonify({
+            "sp500_price": 0,
+            "sp500_change_pct": 0,
+            "vix_value": 0,
+            "market_sentiment": "unknown",
+            "trend": "neutral",
+            "error": str(e)
+        }), 200
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=8000)
