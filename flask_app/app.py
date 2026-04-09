@@ -141,6 +141,14 @@ def _run_script():
 @app.route("/")
 @login_required
 def index():
+    """Root redirects to home/dashboard"""
+    return redirect(url_for("home"))
+
+
+@app.route("/analyze")
+@login_required
+def analyze():
+    """Stock analysis page"""
     return render_template("index.html")
 
 
@@ -189,7 +197,7 @@ def login():
                     }).execute()
                 except Exception as e:
                     app.logger.warning(f"Could not sync user to Supabase on login: {e}")
-                return redirect(url_for("index"))
+                return redirect(url_for("home"))  # Redirect to home/dashboard after login
             else:
                 error_data = response.json()
                 error_msg = error_data.get("error", {}).get("message", "Invalid credentials")
