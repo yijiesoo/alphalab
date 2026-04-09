@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session
 import yfinance as yf
+import pandas as pd
 
 # Load environment variables FIRST
 load_dotenv()
@@ -314,11 +315,21 @@ def api_price_chart():
         if data.empty:
             return jsonify({"error": "no price data available"}), 404
         
+        # Handle yfinance MultiIndex columns for single ticker
+        # yfinance returns columns like ('Close', 'AAPL') for single ticker
+        # or just 'Close' for multiple tickers
+        if isinstance(data.columns, pd.MultiIndex):
+            close_col = ('Close', ticker)
+            volume_col = ('Volume', ticker)
+        else:
+            close_col = 'Close'
+            volume_col = 'Volume'
+        
         # Format for chart.js
         chart_data = {
             "dates": data.index.strftime("%Y-%m-%d").tolist(),
-            "prices": data["Close"].round(2).tolist(),
-            "volumes": data["Volume"].astype(int).tolist(),
+            "prices": data[close_col].round(2).tolist(),
+            "volumes": data[volume_col].astype(int).tolist(),
         }
         print(f"✅ Got {len(chart_data['dates'])} data points for {ticker}")
         return jsonify(chart_data)
@@ -495,9 +506,9 @@ def beginner_guide(ticker):
         analysis = analyze_ticker(ticker)
         
         # Get beginner-friendly explanation
-        guide = explain_signal(analysis)
+        explanation = explain_signal(analysis)
         
-        return jsonify({"guide": guide, "ticker": ticker, "analysis": analysis})
+        return jsonify({"explanation": explanation, "ticker": ticker, "analysis": analysis})
     except Exception as e:
         app.logger.error(f"Beginner guide error for {ticker}: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
