@@ -3,42 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard — alphalab</title>
+    <title>Portfolio Analyzer — alphalab</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
+        :root {
+            --primary-blue: #3B82F6;
+            --dark-blue: #1E40AF;
+            --light-bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --border-color: #E2E8F0;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+        }
+        
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Roboto, sans-serif;
+            background: var(--light-bg);
             min-height: 100vh;
-            padding: 20px;
-            color: #333;
+            padding: 24px 20px;
+            color: var(--text-primary);
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
-        /* Header */
+        /* Header Navigation */
         .header {
-            text-align: center;
-            margin-bottom: 40px;
-            color: white;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 48px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .logo {
+            width: 48px;
+            height: 48px;
+            background: var(--primary-blue);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.5em;
         }
         
         .header-left h1 {
-            font-size: 2.5em;
-            margin-bottom: 8px;
+            font-size: 1.75em;
             font-weight: 700;
-        }
-        
-        .header-left p {
-            font-size: 1.1em;
-            opacity: 0.9;
+            color: var(--text-primary);
         }
         
         .header-right {
@@ -48,97 +75,172 @@
         }
         
         .user-info {
-            background: rgba(255,255,255,0.1);
-            padding: 12px 20px;
+            background: var(--card-bg);
+            padding: 10px 16px;
             border-radius: 8px;
-            color: white;
+            color: var(--text-secondary);
             font-size: 0.95em;
+            border: 1px solid var(--border-color);
         }
         
         .btn {
             padding: 10px 20px;
-            background: white;
-            color: #2a5298;
+            background: var(--primary-blue);
+            color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.2s;
             text-decoration: none;
             display: inline-block;
+            font-size: 0.95em;
         }
         
         .btn:hover {
+            background: var(--dark-blue);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
         
         .btn-logout {
-            background: #e74c3c;
-            color: white;
+            background: var(--danger);
+        }
+        
+        .btn-logout:hover {
+            background: #DC2626;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
         
         .btn-analyze {
-            background: #27ae60;
-            color: white;
+            background: var(--success);
         }
         
-        /* Main Grid */
+        .btn-analyze:hover {
+            background: #059669;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        /* Main Content Grid */
         .main-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
+            grid-template-columns: 1fr;
+            gap: 24px;
         }
         
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
+        /* Stat Cards Section */
+        .stat-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card-title {
+            color: var(--text-secondary);
+            font-size: 0.875em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-card-icon {
+            font-size: 1.5em;
+        }
+        
+        .stat-card-value {
+            font-size: 2em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+        
+        .stat-card-detail {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+            font-size: 0.875em;
+        }
+        
+        .stat-detail-item {
+            flex: 1;
+        }
+        
+        .stat-detail-label {
+            color: var(--text-secondary);
+            font-size: 0.75em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        .stat-detail-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .stat-detail-value.positive {
+            color: var(--success);
+        }
+        
+        .stat-detail-value.negative {
+            color: var(--danger);
         }
         
         /* Dashboard Cards Grid */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-        }
-        
-        @media (max-width: 768px) {
-            .dashboard-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
         }
         
         .dashboard-card {
-            background: white;
-            padding: 20px;
+            background: var(--card-bg);
+            padding: 28px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            border-top: 4px solid #2a5298;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         .dashboard-card h3 {
-            color: #2a5298;
-            font-size: 1em;
-            margin-bottom: 16px;
+            color: var(--text-primary);
+            font-size: 1.125em;
+            font-weight: 700;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 10px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 16px;
         }
         
         .stat-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 14px 0;
+            border-bottom: 1px solid var(--border-color);
         }
         
         .stat-row:last-child {
@@ -146,23 +248,23 @@
         }
         
         .stat-label {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.9em;
             font-weight: 500;
         }
         
         .stat-value {
-            font-size: 1.3em;
+            font-size: 1.25em;
             font-weight: 700;
-            color: #2a5298;
+            color: var(--text-primary);
         }
         
         .stat-value.positive {
-            color: #27ae60;
+            color: var(--success);
         }
         
         .stat-value.negative {
-            color: #e74c3c;
+            color: var(--danger);
         }
         
         /* Stock Items */
@@ -170,99 +272,134 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 10px;
-            border-bottom: 1px solid #f0f0f0;
+            padding: 14px;
+            border-bottom: 1px solid var(--border-color);
             font-size: 0.9em;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        
+        .stock-item:hover {
+            background: var(--light-bg);
         }
         
         .stock-item:last-child {
             border-bottom: none;
         }
         
+        .stock-info {
+            flex: 1;
+        }
+        
         .stock-ticker {
-            font-weight: 600;
-            color: #2a5298;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.95em;
         }
         
         .stock-price {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 0.85em;
+            margin-top: 2px;
         }
         
         .stock-change {
-            font-weight: 600;
-            min-width: 80px;
+            font-weight: 700;
+            min-width: 90px;
             text-align: right;
+            padding-left: 16px;
         }
         
         .stock-change.positive {
-            color: #27ae60;
+            color: var(--success);
         }
         
         .stock-change.negative {
-            color: #e74c3c;
+            color: var(--danger);
         }
         
         /* Market Stats */
         .market-stat {
-            margin-bottom: 16px;
-            padding: 12px;
-            background: #f9f9f9;
-            border-radius: 6px;
+            margin-bottom: 20px;
+            padding: 16px;
+            background: var(--light-bg);
+            border-radius: 8px;
+            border-left: 4px solid var(--primary-blue);
         }
         
         .market-stat-label {
             font-size: 0.85em;
-            color: #666;
-            font-weight: 500;
-            margin-bottom: 4px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
         }
         
         .market-stat-value {
             font-size: 1.5em;
             font-weight: 700;
-            color: #2a5298;
+            color: var(--text-primary);
+        }
+        
+        .market-stat-change {
+            font-size: 0.85em;
+            margin-top: 6px;
+            font-weight: 600;
+        }
+        
+        .market-stat-change.positive {
+            color: var(--success);
+        }
+        
+        .market-stat-change.negative {
+            color: var(--danger);
         }
         
         /* Sidebar */
         .sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
         }
         
         .card {
-            background: white;
-            padding: 20px;
+            background: var(--card-bg);
+            padding: 28px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
         
         .card h3 {
-            color: #2a5298;
-            font-size: 1em;
-            margin-bottom: 16px;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 12px;
+            color: var(--text-primary);
+            font-size: 1.125em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 16px;
         }
         
         .quick-action {
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 12px;
-            background: #f0f0f0;
-            border-radius: 6px;
+            background: var(--light-bg);
+            border: 2px solid transparent;
+            border-radius: 8px;
             text-decoration: none;
-            color: #2a5298;
-            font-weight: 500;
+            color: var(--primary-blue);
+            font-weight: 600;
             margin-bottom: 8px;
             transition: all 0.2s;
             text-align: center;
         }
         
         .quick-action:hover {
-            background: #2a5298;
+            background: var(--primary-blue);
             color: white;
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
         
         .quick-action:last-child {
@@ -271,42 +408,45 @@
         
         .stats-mini {
             display: grid;
-            gap: 8px;
+            gap: 12px;
         }
         
         .stat-mini {
             display: flex;
             justify-content: space-between;
-            padding: 8px;
-            background: #f9f9f9;
-            border-radius: 4px;
+            align-items: center;
+            padding: 12px;
+            background: var(--light-bg);
+            border-radius: 8px;
             font-size: 0.9em;
         }
         
         .stat-mini-label {
-            color: #666;
+            color: var(--text-secondary);
+            font-weight: 500;
         }
         
         .stat-mini-value {
-            font-weight: 600;
-            color: #2a5298;
+            font-weight: 700;
+            color: var(--text-primary);
         }
         
         /* Loading */
         .loading {
             text-align: center;
-            padding: 20px;
-            color: #666;
+            padding: 40px 20px;
+            color: var(--text-secondary);
         }
         
         .spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #e0e0e0;
-            border-top: 3px solid #2a5298;
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--primary-blue);
             border-radius: 50%;
             animation: spin 1s linear infinite;
+            margin-bottom: 12px;
         }
         
         @keyframes spin {
@@ -314,113 +454,226 @@
             100% { transform: rotate(360deg); }
         }
         
+        /* Empty State */
+        #empty-state {
+            text-align: center;
+            padding: 60px 40px;
+            background: var(--card-bg);
+            border: 2px dashed var(--border-color);
+            border-radius: 12px;
+        }
+        
+        #empty-state p:first-child {
+            font-size: 2em;
+            margin-bottom: 12px;
+        }
+        
+        #empty-state p:nth-child(2) {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 1em;
+        }
+        
+        /* Sentiment Badge */
         .sentiment-badge {
             display: inline-block;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85em;
+            padding: 8px 16px;
+            border-radius: 24px;
+            font-size: 0.875em;
             font-weight: 600;
-            margin-top: 8px;
+            margin-top: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .sentiment-bullish {
-            background: #d4edda;
-            color: #155724;
+            background: #DBEAFE;
+            color: #1E40AF;
         }
         
         .sentiment-neutral {
-            background: #fff3cd;
-            color: #856404;
+            background: #FEF3C7;
+            color: #92400E;
         }
         
         .sentiment-bearish {
-            background: #f8d7da;
-            color: #721c24;
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+            
+            .header-left h1 {
+                font-size: 1.5em;
+            }
+            
+            .header-right {
+                width: 100%;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .stat-cards-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
+        <!-- Header Navigation -->
         <div class="header">
             <div class="header-left">
-                <h1>📊 Dashboard</h1>
-                <p>Your portfolio at a glance</p>
+                <div class="logo">α</div>
+                <h1>Portfolio Analyzer</h1>
             </div>
             <div class="header-right">
                 <div class="user-info" id="user-info" style="display:none;">
                     <span id="user-email-display"></span>
                 </div>
-                <a href="/analyze" class="btn btn-analyze">🔍 Analyze Stocks</a>
-                <button class="btn btn-logout" id="logout-btn">🚪 Logout</button>
+                <a href="/analyze" class="btn btn-analyze">Factor Analysis</a>
+                <button class="btn btn-logout" id="logout-btn">Logout</button>
             </div>
         </div>
 
         <!-- Main Grid -->
         <div class="main-grid">
-            <!-- Left: Dashboard Cards -->
-            <div>
-                <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
-                    <!-- Option A: Portfolio Dashboard -->
-                    <div class="dashboard-card">
-                        <h3>📈 Portfolio</h3>
-                        <div class="stat-row">
-                            <span class="stat-label">Total Value</span>
-                            <span class="stat-value" id="portfolio-value">$0.00</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Daily Change</span>
-                            <span class="stat-value" id="portfolio-change">+$0.00</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">% Change</span>
-                            <span class="stat-value" id="portfolio-change-pct">+0.00%</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Holdings</span>
-                            <span class="stat-value" id="portfolio-count">0</span>
-                        </div>
+            <!-- Top Stats Cards -->
+            <div class="stat-cards-grid" id="stat-cards-grid" style="display:none;">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">Total Portfolio Value</span>
+                        <span class="stat-card-icon">💵</span>
                     </div>
-
-                    <!-- Option B: Watchlist Summary -->
-                    <div class="dashboard-card">
-                        <h3>⭐ Your Stocks</h3>
-                        <div id="watchlist-summary" style="max-height: 250px; overflow-y: auto; font-size: 0.9em;">
-                            <div class="loading">
-                                <div class="spinner"></div>
-                            </div>
+                    <div class="stat-card-value" id="portfolio-value">$0.00</div>
+                    <div class="stat-card-detail">
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Daily Change</div>
+                            <div class="stat-detail-value" id="portfolio-change">+$0.00</div>
                         </div>
-                    </div>
-
-                    <!-- Option C: Market Summary -->
-                    <div class="dashboard-card">
-                        <h3>🌍 Market</h3>
-                        <div class="market-stat">
-                            <div class="market-stat-label">S&P 500</div>
-                            <div class="market-stat-value" id="sp500-price">-</div>
-                            <div style="font-size: 0.85em; color: #666;" id="sp500-change">-</div>
-                        </div>
-                        <div class="market-stat">
-                            <div class="market-stat-label">VIX (Fear Index)</div>
-                            <div class="market-stat-value" id="vix-price">-</div>
-                            <div id="vix-sentiment" style="margin-top: 8px; font-size: 0.85em;"></div>
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">% Change</div>
+                            <div class="stat-detail-value" id="portfolio-change-pct">+0.00%</div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Empty State -->
-                <div id="empty-state" style="background: white; padding: 40px; border-radius: 12px; text-align: center;">
-                    <p style="font-size: 1.2em; color: #666; margin-bottom: 16px;">👋 Welcome!</p>
-                    <p style="color: #999; margin-bottom: 24px;">Add stocks to your watchlist to see your portfolio dashboard</p>
-                    <a href="/analyze" class="btn btn-analyze">Start Analyzing →</a>
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">Total Gain/Loss</span>
+                        <span class="stat-card-icon">📈</span>
+                    </div>
+                    <div class="stat-card-value" id="total-gain">$0.00</div>
+                    <div class="stat-card-detail">
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Holdings</div>
+                            <div class="stat-detail-value" id="portfolio-count">0</div>
+                        </div>
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Avg Return</div>
+                            <div class="stat-detail-value" id="avg-return">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">Portfolio Momentum</span>
+                        <span class="stat-card-icon">📊</span>
+                    </div>
+                    <div class="stat-card-value" id="portfolio-momentum">-</div>
+                    <div class="stat-card-detail">
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Best Stock</div>
+                            <div class="stat-detail-value" id="best-stock">-</div>
+                        </div>
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Worst Stock</div>
+                            <div class="stat-detail-value" id="worst-stock">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">Portfolio Volatility</span>
+                        <span class="stat-card-icon">⏱️</span>
+                    </div>
+                    <div class="stat-card-value" id="portfolio-volatility">-</div>
+                    <div class="stat-card-detail">
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Status</div>
+                            <div class="stat-detail-value" id="volatility-status">Low</div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Right: Sidebar -->
+            <!-- Dashboard Grid -->
+            <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
+                <!-- Portfolio Performance -->
+                <div class="dashboard-card">
+                    <h3>Portfolio Performance</h3>
+                    <div id="portfolio-chart-container" style="height: 300px; display: flex; align-items: center; justify-content: center; color: #999;">
+                        <span>Chart Coming Soon</span>
+                    </div>
+                </div>
+
+                <!-- Your Stocks -->
+                <div class="dashboard-card">
+                    <h3>Your Stocks</h3>
+                    <div id="watchlist-summary" style="max-height: 400px; overflow-y: auto;">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market Summary -->
+                <div class="dashboard-card">
+                    <h3>Market Summary</h3>
+                    <div class="market-stat">
+                        <div class="market-stat-label">S&P 500</div>
+                        <div class="market-stat-value" id="sp500-price">-</div>
+                        <div class="market-stat-change" id="sp500-change">-</div>
+                    </div>
+                    <div class="market-stat">
+                        <div class="market-stat-label">VIX (Fear Index)</div>
+                        <div class="market-stat-value" id="vix-price">-</div>
+                        <div id="vix-sentiment" style="margin-top: 12px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
             <div class="sidebar">
                 <!-- Quick Actions -->
                 <div class="card">
-                    <h3>⚡ Quick Actions</h3>
+                    <h3>Quick Actions</h3>
                     <a href="/analyze" class="quick-action">🔍 Search Stock</a>
                     <a href="/analyze" class="quick-action">➕ Add to Watchlist</a>
                     <a href="/analyze" class="quick-action">📊 View Analysis</a>
@@ -428,36 +681,40 @@
 
                 <!-- Portfolio Stats -->
                 <div class="card">
-                    <h3>💼 Portfolio Stats</h3>
+                    <h3>Portfolio Stats</h3>
                     <div class="stats-mini">
                         <div class="stat-mini">
                             <span class="stat-mini-label">Best Stock</span>
-                            <span class="stat-mini-value" id="best-stock">-</span>
+                            <span class="stat-mini-value" id="sidebar-best">-</span>
                         </div>
                         <div class="stat-mini">
                             <span class="stat-mini-label">Worst Stock</span>
-                            <span class="stat-mini-value" id="worst-stock">-</span>
+                            <span class="stat-mini-value" id="sidebar-worst">-</span>
                         </div>
                         <div class="stat-mini">
-                            <span class="stat-mini-label">Avg Return</span>
-                            <span class="stat-mini-value" id="avg-return">-</span>
-                        </div>
-                        <div class="stat-mini">
-                            <span class="stat-mini-label">Total Gain</span>
-                            <span class="stat-mini-value" id="total-gain">-</span>
+                            <span class="stat-mini-label">Top Mover</span>
+                            <span class="stat-mini-value" id="top-mover">-</span>
                         </div>
                     </div>
                 </div>
 
                 <!-- Market Sentiment -->
                 <div class="card">
-                    <h3>🎯 Market Sentiment</h3>
+                    <h3>Market Sentiment</h3>
                     <div style="text-align: center;">
-                        <div style="font-size: 3em; margin: 16px 0;" id="market-emoji">😐</div>
-                        <div style="color: #666; font-size: 0.9em;" id="market-text">Analyzing...</div>
-                        <div class="sentiment-badge neutral" id="sentiment-badge">Loading</div>
+                        <div style="font-size: 3.5em; margin: 16px 0;" id="market-emoji">😐</div>
+                        <div style="color: var(--text-secondary); font-size: 0.95em; margin-bottom: 12px;" id="market-text">Analyzing...</div>
+                        <div class="sentiment-badge" id="sentiment-badge">Loading</div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" style="display:none;">
+                <p>👋</p>
+                <p>Welcome to Portfolio Analyzer!</p>
+                <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 24px;">Add stocks to your watchlist to see your portfolio dashboard</p>
+                <a href="/analyze" class="btn btn-analyze">Start Analyzing</a>
             </div>
         </div>
     </div>
@@ -465,7 +722,6 @@
     <script>
         // Check authentication
         function checkAuth() {
-            // You can add session check here if needed
             const userEmail = localStorage.getItem('userEmail');
             if (userEmail) {
                 document.getElementById('user-info').style.display = 'block';
@@ -511,33 +767,57 @@
 
                 const data = await response.json();
                 
+                const statCardsGrid = document.getElementById('stat-cards-grid');
                 const dashboardGrid = document.getElementById('dashboard-grid');
                 const emptyState = document.getElementById('empty-state');
                 
                 if (data.holdings_count > 0) {
+                    statCardsGrid.style.display = 'grid';
                     dashboardGrid.style.display = 'grid';
                     emptyState.style.display = 'none';
                     
+                    // Update stat cards
                     document.getElementById('portfolio-value').textContent = `$${data.total_value.toFixed(2)}`;
                     
                     const changeSign = data.daily_change >= 0 ? '+' : '';
                     document.getElementById('portfolio-change').textContent = `${changeSign}$${data.daily_change.toFixed(2)}`;
-                    document.getElementById('portfolio-change').className = `stat-value ${data.daily_change >= 0 ? 'positive' : 'negative'}`;
+                    document.getElementById('portfolio-change').className = `stat-detail-value ${data.daily_change >= 0 ? 'positive' : 'negative'}`;
                     
                     const pctSign = data.daily_change_pct >= 0 ? '+' : '';
                     document.getElementById('portfolio-change-pct').textContent = `${pctSign}${data.daily_change_pct.toFixed(2)}%`;
-                    document.getElementById('portfolio-change-pct').className = `stat-value ${data.daily_change_pct >= 0 ? 'positive' : 'negative'}`;
+                    document.getElementById('portfolio-change-pct').className = `stat-detail-value ${data.daily_change_pct >= 0 ? 'positive' : 'negative'}`;
                     
                     document.getElementById('portfolio-count').textContent = data.holdings_count;
                     
+                    // Calculate and update gain/loss stats
+                    const avgReturn = data.holdings_count > 0 
+                        ? (data.top_performers.reduce((sum, p) => sum + p.change_pct, 0) / data.top_performers.length).toFixed(2) 
+                        : 0;
+                    document.getElementById('avg-return').textContent = `${avgReturn}%`;
+                    
+                    const totalGainLoss = data.daily_change >= 0 ? '+' : '';
+                    document.getElementById('total-gain').textContent = `${totalGainLoss}$${Math.abs(data.daily_change).toFixed(2)}`;
+                    document.getElementById('total-gain').style.color = data.daily_change >= 0 ? 'var(--success)' : 'var(--danger)';
+                    
                     // Update sidebar stats
                     if (data.top_performers && data.top_performers.length > 0) {
-                        document.getElementById('best-stock').textContent = `${data.top_performers[0].ticker} +${data.top_performers[0].change_pct.toFixed(2)}%`;
+                        const bestPerformer = data.top_performers[0];
+                        document.getElementById('best-stock').textContent = `${bestPerformer.ticker} +${bestPerformer.change_pct.toFixed(2)}%`;
+                        document.getElementById('sidebar-best').textContent = `${bestPerformer.ticker} +${bestPerformer.change_pct.toFixed(2)}%`;
                     }
                     if (data.bottom_performers && data.bottom_performers.length > 0) {
-                        document.getElementById('worst-stock').textContent = `${data.bottom_performers[0].ticker} ${data.bottom_performers[0].change_pct.toFixed(2)}%`;
+                        const worstPerformer = data.bottom_performers[0];
+                        document.getElementById('worst-stock').textContent = `${worstPerformer.ticker} ${worstPerformer.change_pct.toFixed(2)}%`;
+                        document.getElementById('sidebar-worst').textContent = `${worstPerformer.ticker} ${worstPerformer.change_pct.toFixed(2)}%`;
                     }
+                    
+                    // Momentum
+                    const totalMomentum = (avgReturn * data.holdings_count / 100).toFixed(2);
+                    document.getElementById('portfolio-momentum').textContent = `${avgReturn}%`;
+                    document.getElementById('portfolio-volatility').textContent = data.volatility ? `${data.volatility.toFixed(2)}%` : 'N/A';
+                    
                 } else {
+                    statCardsGrid.style.display = 'none';
                     dashboardGrid.style.display = 'none';
                     emptyState.style.display = 'block';
                 }
@@ -557,7 +837,7 @@
                 if (data.total_stocks > 0) {
                     const watchlistHtml = data.stocks.map(stock => `
                         <div class="stock-item">
-                            <div>
+                            <div class="stock-info">
                                 <div class="stock-ticker">${stock.ticker}</div>
                                 <div class="stock-price">$${stock.price.toFixed(2)}</div>
                             </div>
@@ -567,6 +847,12 @@
                         </div>
                     `).join('');
                     document.getElementById('watchlist-summary').innerHTML = watchlistHtml;
+                    
+                    // Update top mover
+                    const topMover = data.stocks.reduce((max, stock) => 
+                        Math.abs(stock.change_pct) > Math.abs(max.change_pct) ? stock : max
+                    );
+                    document.getElementById('top-mover').textContent = `${topMover.ticker} ${topMover.direction === 'up' ? '+' : ''}${topMover.change_pct.toFixed(2)}%`;
                 }
             } catch (e) {
                 console.error('Watchlist summary error:', e);
@@ -584,8 +870,9 @@
                 // S&P 500
                 document.getElementById('sp500-price').textContent = `$${data.sp500_price.toFixed(2)}`;
                 const sp500Sign = data.sp500_change >= 0 ? '+' : '';
-                document.getElementById('sp500-change').textContent = `${sp500Sign}${data.sp500_change_pct.toFixed(2)}%`;
-                document.getElementById('sp500-change').style.color = data.sp500_change >= 0 ? '#27ae60' : '#e74c3c';
+                const sp500Change = document.getElementById('sp500-change');
+                sp500Change.textContent = `${sp500Sign}${data.sp500_change_pct.toFixed(2)}%`;
+                sp500Change.className = `market-stat-change ${data.sp500_change >= 0 ? 'positive' : 'negative'}`;
                 
                 // VIX
                 document.getElementById('vix-price').textContent = data.vix_value.toFixed(2);
@@ -608,7 +895,7 @@
                     badgeClass = 'sentiment-bearish';
                 } else {
                     emoji = '😨';
-                    sentiment = 'Fearful - Very Bearish';
+                    sentiment = 'Fearful';
                     badgeClass = 'sentiment-bearish';
                 }
                 

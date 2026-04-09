@@ -3,132 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Analysis — alphalab</title>
+    <title>Factor Analysis — alphalab</title>
     <!-- Chart.js for price charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
+        
+        :root {
+            --primary-blue: #3B82F6;
+            --dark-blue: #1E40AF;
+            --light-bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --border-color: #E2E8F0;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
         }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Roboto, sans-serif;
+            background: var(--light-bg);
+            min-height: 100vh;
+            padding: 24px 20px;
+            color: var(--text-primary);
+        }
+        
         .container {
-            max-width: 900px;
+            max-width: 1000px;
             margin: 0 auto;
         }
         
         /* Header */
         .header {
-            text-align: center;
-            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .logo {
+            width: 44px;
+            height: 44px;
+            background: var(--primary-blue);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
-            position: relative;
-        }
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 8px;
             font-weight: 700;
+            font-size: 1.4em;
         }
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
+        
+        .header h1 {
+            font-size: 1.75em;
+            font-weight: 700;
+            color: var(--text-primary);
         }
+        
         .header-buttons {
             display: flex;
-            gap: 12px;
-            justify-content: center;
+            gap: 10px;
             flex-wrap: wrap;
-            margin-top: 16px;
         }
-        .logout-btn-header {
-            padding: 10px 20px;
-            background: #e74c3c;
+        
+        .btn {
+            padding: 10px 18px;
+            background: var(--primary-blue);
             color: white;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.2s;
-            font-size: 0.95em;
+            font-size: 0.9em;
         }
-        .logout-btn-header:hover {
-            background: #c0392b;
+        
+        .btn:hover {
+            background: var(--dark-blue);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
-        .home-btn-header {
-            padding: 10px 20px;
-            background: #3498db;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            font-size: 0.95em;
+        
+        .btn-logout {
+            background: var(--danger);
         }
-        .home-btn-header:hover {
-            background: #2980b9;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        
+        .btn-logout:hover {
+            background: #DC2626;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
         }
-        .watchlist-btn-header {
-            padding: 10px 20px;
-            background: #27ae60;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s;
-            font-size: 0.95em;
+        
+        .btn-home {
+            background: var(--primary-blue);
         }
-        .watchlist-btn-header:hover {
-            background: #229954;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        
+        .btn-home:hover {
+            background: var(--dark-blue);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-watchlist {
+            background: var(--success);
+        }
+        
+        .btn-watchlist:hover {
+            background: #059669;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
 
         /* Search box */
         .search-box {
             display: flex;
-            gap: 10px;
-            margin-bottom: 30px;
-            background: white;
-            padding: 20px;
+            gap: 12px;
+            margin-bottom: 32px;
+            background: var(--card-bg);
+            padding: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
+        
         .search-box input {
             flex: 1;
             padding: 12px 16px;
-            border: 2px solid #e0e0e0;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             font-size: 1em;
-            transition: border-color 0.2s;
+            transition: all 0.2s;
         }
+        
         .search-box input:focus {
             outline: none;
-            border-color: #2a5298;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
+        
         .search-box button {
-            padding: 12px 24px;
-            background: #2a5298;
+            padding: 12px 28px;
+            background: var(--primary-blue);
             color: white;
             border: none;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s;
+            transition: all 0.2s;
         }
+        
         .search-box button:hover {
-            background: #1e3c72;
+            background: var(--dark-blue);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
         }
+        
         .search-box button:disabled {
-            background: #ccc;
+            background: var(--border-color);
             cursor: not-allowed;
         }
 
@@ -137,66 +176,141 @@
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 20px;
-            margin-bottom: 30px;
+            margin-bottom: 32px;
         }
+        
         .dashboard-card {
-            background: white;
-            padding: 20px;
+            background: var(--card-bg);
+            padding: 24px;
             border-radius: 12px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
         }
+        
         .dashboard-card h3 {
-            margin: 0 0 16px 0;
-            color: #2a5298;
-            font-size: 1em;
-            border-bottom: 2px solid #e0e0e0;
-            padding-bottom: 8px;
+            margin: 0 0 18px 0;
+            color: var(--text-primary);
+            font-size: 1.05em;
+            font-weight: 700;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 12px;
         }
+        
         .stat-row {
             display: flex;
             justify-content: space-between;
-            padding: 8px 0;
+            align-items: center;
+            padding: 12px 0;
             font-size: 0.9em;
+            border-bottom: 1px solid var(--border-color);
         }
+        
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+        
         .stat-label {
-            color: #666;
+            color: var(--text-secondary);
             font-weight: 500;
         }
+        
         .stat-value {
             font-weight: 700;
-            color: #2a5298;
+            color: var(--text-primary);
         }
+        
         .stat-value.positive {
-            color: #27ae60;
+            color: var(--success);
         }
+        
         .stat-value.negative {
-            color: #e74c3c;
+            color: var(--danger);
         }
+        
         .stock-item {
             display: flex;
             justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #f0f0f0;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
             font-size: 0.9em;
+            border-radius: 6px;
+            transition: background 0.2s;
         }
+        
+        .stock-item:hover {
+            background: var(--light-bg);
+        }
+        
         .stock-item:last-child {
             border-bottom: none;
         }
+        
+        .stock-info {
+            flex: 1;
+        }
+        
         .stock-ticker {
-            font-weight: 600;
-            color: #2a5298;
+            font-weight: 700;
+            color: var(--text-primary);
         }
+        
         .stock-price {
-            color: #666;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            margin-top: 2px;
         }
+        
         .stock-change {
-            min-width: 70px;
+            min-width: 80px;
             text-align: right;
-            font-weight: 600;
+            font-weight: 700;
+            padding-left: 16px;
         }
+        
+        .stock-change.positive {
+            color: var(--success);
+        }
+        
+        .stock-change.negative {
+            color: var(--danger);
+        }
+        
         .market-stat {
             text-align: center;
-            padding: 12px 0;
+            padding: 16px;
+            background: var(--light-bg);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .market-stat-label {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        
+        .market-stat-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .market-stat-change {
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        
+        .market-stat-change.positive {
+            color: var(--success);
+        }
+        
+        .market-stat-change.negative {
+            color: var(--danger);
         }
         .market-stat-label {
             font-size: 0.85em;
@@ -921,12 +1035,14 @@
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>📊 Stock Analysis</h1>
-            <p>Data-driven verdict on any stock</p>
+            <div class="header-left">
+                <div class="logo">α</div>
+                <h1>Factor Analysis</h1>
+            </div>
             <div class="header-buttons">
-                <button id="home-btn" class="home-btn-header">🏠 Back to Home</button>
-                <button id="view-watchlist-btn" class="watchlist-btn-header">⭐ View Watchlist</button>
-                <button id="logout-btn-header" class="logout-btn-header">🚪 Logout</button>
+                <button id="home-btn" class="btn btn-home">Back to Home</button>
+                <button id="view-watchlist-btn" class="btn btn-watchlist">View Watchlist</button>
+                <button id="logout-btn-header" class="btn btn-logout">Logout</button>
             </div>
         </div>
 
