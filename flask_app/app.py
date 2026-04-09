@@ -732,8 +732,184 @@ def delete_watchlist(watchlist_id):
 
 
 # =====================================================================
-# Main Entry Point
+# Portfolio Holdings API
 # =====================================================================
+@app.route("/api/portfolio/holdings", methods=["GET", "POST", "PUT", "DELETE"])
+@login_required
+def api_portfolio_holdings():
+    """Manage portfolio holdings with entry prices and quantities"""
+    user_email = session.get("user_email")
+    
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+
+    try:
+        if request.method == "GET":
+            # Get all holdings for user
+            print(f"🔍 GET portfolio holdings for user: {user_email}")
+            response = supabase.table("portfolio_holdings").select("*").eq("email", user_email).execute()
+            holdings = response.data or []
+            print(f"✅ Found {len(holdings)} holdings")
+            return jsonify({"holdings": holdings}), 200
+
+        elif request.method == "POST":
+            # Add new holding
+            data = request.json
+            ticker = data.get("ticker", "").upper().strip()
+            quantity = float(data.get("quantity", 0))
+            entry_price = float(data.get("entry_price", 0))
+            
+            if not _valid_ticker(ticker):
+                return jsonify({"error": "invalid ticker"}), 400
+            if quantity <= 0 or entry_price <= 0:
+                return jsonify({"error": "quantity and entry_price must be positive"}), 400
+            
+            print(f"✏️ Adding holding: {ticker} x{quantity} @ ${entry_price}")
+            
+            # Check if already exists
+            existing = supabase.table("portfolio_holdings").select("*").eq("email", user_email).eq("ticker", ticker).execute()
+            
+            if existing.data and len(existing.data) > 0:
+                # Update existing
+                holding_id = existing.data[0]["id"]
+                supabase.table("portfolio_holdings").update({
+                    "quantity": quantity,
+                    "entry_price": entry_price,
+                    "entry_date": data.get("entry_date", datetime.now().isoformat()),
+                }).eq("id", holding_id).execute()
+                return jsonify({"success": True, "message": f"{ticker} holding updated"}), 200
+            else:
+                # Create new
+                supabase.table("portfolio_holdings").insert({
+                    "email": user_email,
+                    "ticker": ticker,
+                    "quantity": quantity,
+                    "entry_price": entry_price,
+                    "entry_date": data.get("entry_date", datetime.now().isoformat()),
+                }).execute()
+                return jsonify({"success": True, "message": f"{ticker} holding added"}), 201
+
+        elif request.method == "PUT":
+            # Update holding
+            data = request.json
+            holding_id = data.get("id")
+            quantity = float(data.get("quantity", 0))
+            entry_price = float(data.get("entry_price", 0))
+            
+            if quantity <= 0 or entry_price <= 0:
+                return jsonify({"error": "quantity and entry_price must be positive"}), 400
+            
+            print(f"✏️ Updating holding: {holding_id}")
+            supabase.table("portfolio_holdings").update({
+                "quantity": quantity,
+                "entry_price": entry_price,
+            }).eq("id", holding_id).execute()
+            return jsonify({"success": True}), 200
+
+        elif request.method == "DELETE":
+            # Delete holding
+            ticker = request.json.get("ticker", "").upper().strip()
+            
+            print(f"🗑️ Deleting holding: {ticker}")
+            supabase.table("portfolio_holdings").delete().eq("email", user_email).eq("ticker", ticker).execute()
+            return jsonify({"success": True}), 200
+
+    except Exception as e:
+        import traceback
+        print(f"❌ Error managing holdings: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Error managing holdings: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/portfolio/summary", methods=["GET"])
+@login_required
+def api_portfolio_summary():
+    """Get portfolio summary with P&L calculations"""
+    user_email = session.get("user_email")
+    
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+
+    try:
+        # Get all holdings
+        response = supabase.table("portfolio_holdings").select("*").eq("email", user_email).execute()
+        holdings = response.data or []
+        
+        if not holdings:
+            return jsonify({
+                "total_invested": 0,
+                "total_current_value": 0,
+                "total_gain_loss": 0,
+                "total_gain_loss_pct": 0,
+                "holdings_count": 0,
+                "holdings": []
+            }), 200
+        
+        # Calculate current values and P&L
+        total_invested = 0
+        total_current_value = 0
+        holding_details = []
+        
+        for holding in holdings:
+            ticker = holding["ticker"]
+            quantity = float(holding["quantity"])
+            entry_price = float(holding["entry_price"])
+            
+            # Get current price
+            try:
+                current_data = yf.download(ticker, period="1d", progress=False)
+                if current_data.empty or 'Close' not in current_data.columns:
+                    current_price = entry_price
+                else:
+                    current_price = float(current_data['Close'].iloc[-1])
+            except:
+                current_price = entry_price
+            
+            invested = quantity * entry_price
+            current_value = quantity * current_price
+            gain_loss = current_value - invested
+            gain_loss_pct = (gain_loss / invested * 100) if invested > 0 else 0
+            
+            total_invested += invested
+            total_current_value += current_value
+            
+            holding_details.append({
+                "ticker": ticker,
+                "quantity": quantity,
+                "entry_price": entry_price,
+                "current_price": current_price,
+                "invested": invested,
+                "current_value": current_value,
+                "gain_loss": gain_loss,
+                "gain_loss_pct": gain_loss_pct,
+            })
+        
+        total_gain_loss = total_current_value - total_invested
+        total_gain_loss_pct = (total_gain_loss / total_invested * 100) if total_invested > 0 else 0
+        
+        # Sort by gain/loss
+        holding_details.sort(key=lambda x: x["gain_loss"], reverse=True)
+        
+        print(f"📊 Portfolio Summary - Invested: ${total_invested:.2f}, Current: ${total_current_value:.2f}, P&L: ${total_gain_loss:.2f}")
+        
+        return jsonify({
+            "total_invested": total_invested,
+            "total_current_value": total_current_value,
+            "total_gain_loss": total_gain_loss,
+            "total_gain_loss_pct": total_gain_loss_pct,
+            "holdings_count": len(holdings),
+            "holdings": holding_details,
+        }), 200
+    
+    except Exception as e:
+        import traceback
+        print(f"❌ Error calculating portfolio summary: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Error calculating portfolio summary: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     # Create output directories
     OUT_DIR.mkdir(parents=True, exist_ok=True)

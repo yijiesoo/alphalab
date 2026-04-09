@@ -276,11 +276,13 @@
             border-bottom: 1px solid var(--border-color);
             font-size: 0.9em;
             border-radius: 6px;
-            transition: background 0.2s;
+            transition: all 0.2s;
+            cursor: pointer;
         }
         
         .stock-item:hover {
             background: var(--light-bg);
+            transform: translateX(4px);
         }
         
         .stock-item:last-child {
@@ -653,6 +655,19 @@
                     </div>
                 </div>
 
+                <!-- Portfolio Holdings -->
+                <div class="dashboard-card">
+                    <h3>Portfolio Holdings</h3>
+                    <div style="margin-bottom: 16px;">
+                        <button id="add-holding-btn" class="btn" style="width: 100%; margin-bottom: 12px;">+ Add Holding</button>
+                    </div>
+                    <div id="portfolio-holdings" style="max-height: 400px; overflow-y: auto;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            No holdings yet
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Market Summary -->
                 <div class="dashboard-card">
                     <h3>Market Summary</h3>
@@ -836,7 +851,7 @@
                 
                 if (data.total_stocks > 0) {
                     const watchlistHtml = data.stocks.map(stock => `
-                        <div class="stock-item">
+                        <div class="stock-item" style="cursor: pointer;" onclick="window.location.href='/analyze?ticker=${stock.ticker}'">
                             <div class="stock-info">
                                 <div class="stock-ticker">${stock.ticker}</div>
                                 <div class="stock-price">$${stock.price.toFixed(2)}</div>
@@ -908,6 +923,120 @@
                 console.error('Market summary error:', e);
             }
         }
+
+        // PORTFOLIO HOLDINGS
+        async function loadPortfolioHoldings() {
+            try {
+                const response = await fetch('/api/portfolio/summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                if (data.holdings_count > 0) {
+                    const holdingsHtml = data.holdings.map(holding => `
+                        <div class="stock-item">
+                            <div class="stock-info">
+                                <div class="stock-ticker">${holding.ticker}</div>
+                                <div class="stock-price">${holding.quantity} @ $${holding.entry_price.toFixed(2)}</div>
+                            </div>
+                            <div class="stock-change ${holding.gain_loss >= 0 ? 'positive' : 'negative'}">
+                                ${holding.gain_loss >= 0 ? '▲' : '▼'} ${holding.gain_loss_pct.toFixed(2)}%
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('portfolio-holdings').innerHTML = holdingsHtml;
+                } else {
+                    document.getElementById('portfolio-holdings').innerHTML = `
+                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            No holdings yet
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Portfolio holdings error:', e);
+            }
+        }
+
+        // Modal handling
+        function showAddHoldingModal() {
+            const modal = document.getElementById('add-holding-modal');
+            modal.style.display = 'flex';
+        }
+
+        function closeAddHoldingModal() {
+            const modal = document.getElementById('add-holding-modal');
+            modal.style.display = 'none';
+            document.getElementById('holding-form').reset();
+        }
+
+        document.getElementById('add-holding-btn').addEventListener('click', showAddHoldingModal);
+
+        document.getElementById('holding-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const ticker = document.getElementById('holding-ticker').value.toUpperCase();
+            const quantity = parseFloat(document.getElementById('holding-quantity').value);
+            const entryPrice = parseFloat(document.getElementById('holding-price').value);
+            
+            try {
+                const response = await fetch('/api/portfolio/holdings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ticker, quantity, entry_price: entryPrice })
+                });
+                
+                if (response.ok) {
+                    closeAddHoldingModal();
+                    loadPortfolioHoldings();
+                    alert('✅ Holding added successfully!');
+                } else {
+                    const error = await response.json();
+                    alert(`❌ Error: ${error.error}`);
+                }
+            } catch (e) {
+                alert(`❌ Error: ${e.message}`);
+            }
+        });
+
+        // Load holdings on page load
+        window.addEventListener('load', () => {
+            checkAuth();
+            loadAllDashboards();
+            loadPortfolioHoldings();
+            setInterval(() => {
+                loadAllDashboards();
+                loadPortfolioHoldings();
+            }, 5 * 60 * 1000);
+        });
     </script>
+
+    <!-- Modal for adding holdings -->
+    <div id="add-holding-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 32px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <h2 style="color: var(--text-primary); margin-bottom: 24px; font-size: 1.5em;">Add Portfolio Holding</h2>
+            
+            <form id="holding-form">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Ticker Symbol</label>
+                    <input type="text" id="holding-ticker" required maxlength="5" placeholder="e.g. NVDA" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1em;">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Quantity (Shares)</label>
+                    <input type="number" id="holding-quantity" required min="0.01" step="0.01" placeholder="e.g. 10" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1em;">
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Entry Price ($)</label>
+                    <input type="number" id="holding-price" required min="0.01" step="0.01" placeholder="e.g. 500" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1em;">
+                </div>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" style="flex: 1; padding: 12px; background: var(--primary-blue); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Add</button>
+                    <button type="button" onclick="closeAddHoldingModal()" style="flex: 1; padding: 12px; background: var(--border-color); color: var(--text-primary); border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
