@@ -1,107 +1,69 @@
+"""
+Minimalist Flask app.py - main entry point
+Routes and most logic have been moved to routes/ and services/
+"""
 import os
-import queue
-import re
-import shutil
-import subprocess
 import sys
+import queue
+import subprocess
 import threading
 import time
-import uuid
-import hashlib
+import shutil
+import re
 from pathlib import Path
 from datetime import datetime, timedelta
-from functools import wraps
 
 from dotenv import load_dotenv
+from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session
 
-# CRITICAL: Load environment variables FIRST, before any other imports
-# This ensures that NEWSAPI_KEY, FIREBASE_WEB_API_KEY, etc. are available
-# when factor-lab modules are imported
+# Load environment variables FIRST
 load_dotenv()
 
-from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session, redirect, url_for
-import yfinance as yf
-import numpy as np
-import requests
+# Import configuration
+from config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
 
-# FinBERT SENTIMENT ANALYSIS INTEGRATION
-# =======================================
-# The /api/analyze endpoint now uses FinBERT for sentiment scoring if available.
-# FinBERT is a financial BERT model with 80%+ accuracy on financial text.
-#
-# To enable FinBERT:
-#   $ pip install transformers torch
-#
-# If transformers/torch not installed, falls back to keyword matching automatically.
-# No changes needed - just install and it works!
+# Initialize supabase service
+from services import init_supabase, get_supabase
 
-# Supabase
-try:
-    from supabase import create_client, Client
-    SUPABASE_URL = os.getenv("SUPABASE_URL")
-    SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY) if SUPABASE_URL and SUPABASE_KEY else None
-    print("✅ Supabase initialized")
-except ImportError:
-    supabase = None
-    print("⚠️ Supabase not available")
+# Import blueprints
+from routes import auth_bp, login_required
+from routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
 
-# Derive project root from this file's location: flask_app/app.py → project root
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-FACTORLAB_ROOT = PROJECT_ROOT / "factor-lab"
-FACTORLAB_SRC = FACTORLAB_ROOT / "src"
-SCRIPT = FACTORLAB_ROOT / "scripts" / "run_backtest.py"
-FACTORLAB_OUT = FACTORLAB_ROOT / "outputs"
+# =====================================================================
+# Flask App Setup
+# =====================================================================
+app = Flask(__name__)
+app.config['SECRET_KEY'] = Config.SECRET_KEY
+app.config['SESSION_COOKIE_SECURE'] = Config.SESSION_COOKIE_SECURE
+app.config['SESSION_COOKIE_HTTPONLY'] = Config.SESSION_COOKIE_HTTPONLY
+app.config['SESSION_COOKIE_SAMESITE'] = Config.SESSION_COOKIE_SAMESITE
+app.config['PERMANENT_SESSION_LIFETIME'] = Config.PERMANENT_SESSION_LIFETIME
 
-APP_ROOT = Path(__file__).resolve().parent
-OUT_DIR = APP_ROOT / "outputs"
-LOG_FILE = OUT_DIR / "backtest.log"
+# Initialize Supabase
+supabase = init_supabase()
+init_dashboard_supabase(supabase)
 
-OUT_DIR.mkdir(parents=True, exist_ok=True)
-FACTORLAB_OUT.mkdir(parents=True, exist_ok=True)
-
-# Make factor-lab importable as a package (needed for /api/* endpoints)
-# factor-lab modules import from "src.*", so we add factor-lab to path
+# Add factor-lab to Python path
 if str(FACTORLAB_ROOT) not in sys.path:
     sys.path.insert(0, str(FACTORLAB_ROOT))
 
+# =====================================================================
+# Register Blueprints
+# =====================================================================
+app.register_blueprint(auth_bp)
+app.register_blueprint(dashboard_bp)
 
-app = Flask(__name__)
+# =====================================================================
+# Global Variables
+# =====================================================================
 _worker = {"proc": None, "thread": None, "running": False}
-
-# Configure session secret key for Flask session management
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
-
-# Configure session settings
-app.config['SESSION_COOKIE_SECURE'] = False  # Allow HTTP in development
-app.config['SESSION_COOKIE_HTTPONLY'] = True
-app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)# ---------------------------------------------------------------------------
-# Session-based Auth Decorator
-# ---------------------------------------------------------------------------
-def login_required(f):
-    """Decorator to require login (Flask session based)"""
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if "user_email" not in session:
-            return redirect(url_for("login"))
-        return f(*args, **kwargs)
-    return decorated_function
-
-# ---------------------------------------------------------------------------
-# In-memory per-ticker cache with TTL
-# ---------------------------------------------------------------------------
-_CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
-_cache: dict[str, dict] = {}  # ticker → {"data": ..., "expires_at": float}
-
-# Image extensions to look for
-IMAGE_EXTENSIONS = {'.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg'}
-
+_cache = {}
 _TICKER_RE = re.compile(r'^[A-Z]{1,5}$')
+_CACHE_TTL_SECONDS = Config.CACHE_TTL_SECONDS
 
 
 def _valid_ticker(ticker: str) -> bool:
-    """Return True if ticker looks like a valid US equity symbol (1-5 uppercase letters)."""
+    """Return True if ticker looks like a valid US equity symbol"""
     return bool(_TICKER_RE.match(ticker.upper())) if ticker else False
 
 
@@ -115,176 +77,32 @@ def _copy_images_to_flask():
 
 
 def _run_script():
+    """Run backtest script in background"""
     env = os.environ.copy()
-    env["PYTHONPATH"] = str(FACTORLAB_ROOT)  # Point to factor-lab root
+    env["PYTHONPATH"] = str(FACTORLAB_ROOT)
     with LOG_FILE.open("w") as f:
         proc = subprocess.Popen(
             ["python3", str(SCRIPT)],
             stdout=f,
             stderr=subprocess.STDOUT,
             env=env,
-            cwd=str(FACTORLAB_ROOT),  # Set working directory to factor-lab
+            cwd=str(FACTORLAB_ROOT),
         )
         _worker["proc"] = proc
         _worker["running"] = True
         proc.wait()
         _worker["running"] = False
         _worker["proc"] = None
-        # Copy images after script completes
         _copy_images_to_flask()
 
 
-# ---------------------------------------------------------------------------
-# Existing routes (preserved)
-# ---------------------------------------------------------------------------
-
-@app.route("/")
-@login_required
-def index():
-    """Root redirects to home/dashboard"""
-    return redirect(url_for("home"))
-
-
-@app.route("/analyze")
-@login_required
-def analyze():
-    """Stock analysis page"""
-    return render_template("index.html")
-
-
-@app.route("/home")
-@login_required
-def home():
-    """Home/Dashboard page - shows portfolio overview"""
-    return render_template("home.html")
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    """Login page with form"""
-    if request.method == "POST":
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
-        
-        if not email or not password:
-            return render_template("login.html", error="Email and password are required")
-        
-        try:
-            # Use Firebase REST API to sign in
-            api_key = os.getenv("FIREBASE_WEB_API_KEY")
-            if not api_key:
-                return render_template("login.html", error="Firebase not configured")
-            
-            response = requests.post(
-                f"https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key={api_key}",
-                json={"email": email, "password": password, "returnSecureToken": True}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                firebase_uid = data.get("localId")
-                email = data.get("email")
-                # Store user info in Flask session - use email as primary key
-                session["user_email"] = email
-                session["firebase_uid"] = firebase_uid
-                session["id_token"] = data.get("idToken")
-                session.permanent = True
-                # Add user to Supabase users table if not exists
-                try:
-                    supabase.table("users").upsert({
-                        "email": email,
-                        "firebase_uid": firebase_uid,
-                    }).execute()
-                except Exception as e:
-                    app.logger.warning(f"Could not sync user to Supabase on login: {e}")
-                return redirect(url_for("home"))  # Redirect to home/dashboard after login
-            else:
-                error_data = response.json()
-                error_msg = error_data.get("error", {}).get("message", "Invalid credentials")
-                return render_template("login.html", error=error_msg)
-        except Exception as e:
-            return render_template("login.html", error=f"Login error: {str(e)}")
-    
-    # If already logged in, redirect to home
-    if "user_id" in session:
-        return redirect(url_for("index"))
-    
-    return render_template("login.html")
-
-
-@app.route("/signup", methods=["GET", "POST"])
-def signup():
-    """Signup page with form"""
-    if request.method == "POST":
-        email = request.form.get("email", "").strip()
-        password = request.form.get("password", "")
-        password_confirm = request.form.get("password_confirm", "")
-        
-        # Validation
-        if not email or not password or not password_confirm:
-            return render_template("signup.html", error="All fields are required")
-        
-        if password != password_confirm:
-            return render_template("signup.html", error="Passwords do not match")
-        
-        if len(password) < 6:
-            return render_template("signup.html", error="Password must be at least 6 characters")
-        
-        try:
-            # Create user with Firebase REST API
-            api_key = os.getenv("FIREBASE_WEB_API_KEY")
-            if not api_key:
-                return render_template("signup.html", error="Firebase not configured")
-            
-            response = requests.post(
-                f"https://identitytoolkit.googleapis.com/v1/accounts:signUp?key={api_key}",
-                json={"email": email, "password": password, "returnSecureToken": True}
-            )
-            
-            if response.status_code == 200:
-                data = response.json()
-                firebase_uid = data.get("localId")
-                email = data.get("email")
-                # Auto-login after signup
-                session["user_email"] = email
-                session["firebase_uid"] = firebase_uid
-                session["id_token"] = data.get("idToken")
-                session.permanent = True
-                
-                # Add user to Supabase users table immediately on signup
-                try:
-                    supabase.table("users").insert({
-                        "email": email,
-                        "firebase_uid": firebase_uid,
-                    }).execute()
-                    app.logger.info(f"New user created in Supabase: {email}")
-                except Exception as e:
-                    app.logger.error(f"Could not create user in Supabase: {e}")
-                    # Don't fail signup if Supabase insert fails, just log it
-                
-                return redirect(url_for("index"))
-            else:
-                error_data = response.json()
-                error_msg = error_data.get("error", {}).get("message", "Signup failed")
-                return render_template("signup.html", error=error_msg)
-        except Exception as e:
-            return render_template("signup.html", error=f"Signup error: {str(e)}")
-    
-    # If already logged in, redirect to home
-    if "user_id" in session:
-        return redirect(url_for("index"))
-    
-    return render_template("signup.html")
-
-
-@app.route("/logout")
-def logout():
-    """Logout user"""
-    session.clear()
-    return redirect(url_for("login"))
+# =====================================================================
+# Backtest Routes
+# =====================================================================
 @app.route("/run", methods=["POST"])
 @login_required
 def run_backtest():
+    """Start backtest in background"""
     if _worker["running"]:
         return jsonify({"status": "already_running"}), 409
     t = threading.Thread(target=_run_script, daemon=True)
@@ -296,6 +114,7 @@ def run_backtest():
 
 @app.route("/status")
 def status():
+    """Get backtest status and log tail"""
     tail = ""
     if LOG_FILE.exists():
         with LOG_FILE.open("r") as f:
@@ -306,7 +125,7 @@ def status():
 
 @app.route("/images")
 def get_images():
-    """Return list of images in the output folder"""
+    """Get list of output images"""
     images = []
     if OUT_DIR.exists():
         for file in OUT_DIR.iterdir():
@@ -317,17 +136,21 @@ def get_images():
 
 @app.route("/outputs/<path:filename>")
 def outputs(filename):
+    """Serve output files"""
     return send_from_directory(str(OUT_DIR), filename, as_attachment=True)
 
 
-# ---------------------------------------------------------------------------
-# New /api/* endpoints
-# ---------------------------------------------------------------------------
-
+# =====================================================================
+# Analysis Routes
+# =====================================================================
 @app.route("/api/analyze")
 @login_required
 def api_analyze():
-    """GET /api/analyze?ticker=NVDA[&refresh=true]"""
+    """GET /api/analyze?ticker=NVDA[&refresh=true]
+    
+    Analyzes a stock ticker using factor-lab modules.
+    Results are cached for 15 minutes.
+    """
     ticker = (request.args.get("ticker") or "").upper().strip()
     if not ticker:
         return jsonify({"error": "ticker parameter is required"}), 400
@@ -337,7 +160,7 @@ def api_analyze():
     refresh = request.args.get("refresh", "").lower() == "true"
     now = time.time()
 
-    # Serve from cache if still valid and not forced refresh
+    # Serve from cache if valid and not forced refresh
     if not refresh and ticker in _cache:
         entry = _cache[ticker]
         if entry["expires_at"] > now:
@@ -345,25 +168,19 @@ def api_analyze():
             app.logger.info(f"Cache hit for {ticker}")
             return jsonify(cached_data)
 
-    # Cache miss (or refresh requested) — run analysis
+    # Cache miss — run analysis
     try:
         from src.scorer import analyze_ticker
         from src.factor_delay import add_factor_delay_context
         
         app.logger.info(f"Starting analysis for {ticker}")
         data = analyze_ticker(ticker)
-        
-        # Add factor delay information
-        app.logger.info(f"Adding factor_delay context for {ticker}")
         data = add_factor_delay_context(data)
-        app.logger.info(f"Factor delay context added: {data.get('factor_delay', {}).get('error') if 'factor_delay' in data else 'N/A'}")
-        
         app.logger.info(f"Analysis complete for {ticker}")
     except Exception as e:
         app.logger.error(f"Analysis failed for {ticker}: {e}", exc_info=True)
         return jsonify({"error": "analysis failed; check server logs"}), 500
 
-    # Ensure all fields are present
     if not data:
         app.logger.error(f"No data returned for {ticker}")
         return jsonify({"error": "no analysis data"}), 500
@@ -371,13 +188,12 @@ def api_analyze():
     expires_at = now + _CACHE_TTL_SECONDS
     _cache[ticker] = {"data": data, "expires_at": expires_at}
     response_data = {**data, "_cache": {"hit": False, "expires_at": expires_at}}
-    app.logger.info(f"Returning analysis for {ticker}: keys={list(response_data.keys())}")
     return jsonify(response_data)
 
 
 @app.route("/api/cache")
 def api_cache():
-    """GET /api/cache — list currently cached tickers and their remaining TTL."""
+    """GET /api/cache - List cached tickers and TTL"""
     now = time.time()
     valid = {
         ticker: {
@@ -393,9 +209,8 @@ def api_cache():
 @app.route("/api/backtest/stream")
 def api_backtest_stream():
     """GET /api/backtest/stream?ticker=NVDA
-
-    Server-Sent Events (SSE) endpoint.  Streams log lines from
-    run_single_ticker_backtest and closes with a 'data: [DONE]' event.
+    
+    Server-Sent Events endpoint. Streams backtest logs.
     """
     ticker = (request.args.get("ticker") or "").upper().strip()
     if not ticker:
@@ -404,7 +219,7 @@ def api_backtest_stream():
         return jsonify({"error": f"invalid ticker: {ticker}"}), 400
 
     def generate():
-        q: queue.Queue[str | None] = queue.Queue(maxsize=1000)
+        q = queue.Queue(maxsize=1000)
 
         def _log_fn(msg: str) -> None:
             q.put(msg)
@@ -416,7 +231,7 @@ def api_backtest_stream():
             except Exception as exc:
                 _log_fn(f"ERROR: {exc}")
             finally:
-                q.put(None)  # sentinel — signals the generator to stop
+                q.put(None)
 
         t = threading.Thread(target=_run, daemon=True)
         t.start()
@@ -436,9 +251,12 @@ def api_backtest_stream():
     )
 
 
+# =====================================================================
+# Health & Status Routes
+# =====================================================================
 @app.route("/api/health")
 def api_health():
-    """GET /api/health — liveness check and cache stats."""
+    """GET /api/health - Health check"""
     now = time.time()
     cached_count = sum(1 for entry in _cache.values() if entry["expires_at"] > now)
     return jsonify({"status": "ok", "cached_tickers": cached_count})
@@ -446,29 +264,29 @@ def api_health():
 
 @app.route("/api/latest-metrics")
 def api_latest_metrics():
-    """GET /api/latest-metrics — return latest backtest metrics."""
+    """GET /api/latest-metrics"""
     return jsonify({"metrics": [], "message": "No backtest metrics available"})
 
 
 @app.route("/api/all-backtests")
 def api_all_backtests():
-    """GET /api/all-backtests?limit=50 — return list of backtests."""
+    """GET /api/all-backtests?limit=50"""
     limit = request.args.get("limit", 50, type=int)
     return jsonify({"backtests": [], "total": 0, "limit": limit})
 
 
-# ---------------------------------------------------------------------------
-# New endpoints for watchlist, price charts, and history
-# ---------------------------------------------------------------------------
-
+# =====================================================================
+# Price Chart & Historical Data Routes
+# =====================================================================
 @app.route("/api/price-chart")
 @login_required
 def api_price_chart():
     """GET /api/price-chart?ticker=AAPL&timeframe=6M
     
-    Return price data for chart visualization.
-    Timeframe: 1M, 3M, 6M, 1Y, ALL (default: 6M)
+    Return price data for chart. Timeframe: 1M, 3M, 6M, 1Y, ALL
     """
+    import yfinance as yf
+    
     ticker = (request.args.get("ticker") or "").upper().strip()
     timeframe = (request.args.get("timeframe") or "6M").upper()
     
@@ -477,18 +295,10 @@ def api_price_chart():
     if not _valid_ticker(ticker):
         return jsonify({"error": f"invalid ticker: {ticker}"}), 400
     
-    # Map timeframe to days
-    timeframe_map = {
-        "1M": 30,
-        "3M": 90,
-        "6M": 180,
-        "1Y": 365,
-        "ALL": 1000  # effectively all available
-    }
+    timeframe_map = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": 1000}
     lookback_days = timeframe_map.get(timeframe, 180)
 
     try:
-        # Fetch price data
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days)
         
@@ -501,235 +311,88 @@ def api_price_chart():
         )
         
         if data.empty:
-            return jsonify({"error": f"No price data found for {ticker}"}), 404
+            return jsonify({"error": "no price data available"}), 404
         
-        # Handle both single ticker (Series) and multiple tickers (DataFrame)
-        if isinstance(data, __import__('pandas').Series):
-            close_prices = data
-        else:
-            close_prices = data["Close"] if "Close" in data.columns else data.iloc[:, 0]
-        
-        # Convert to list of [timestamp, price] pairs
-        prices = []
-        close_array = close_prices.values.flatten() if close_prices.ndim > 1 else close_prices.values
-        
-        for date, price in zip(close_prices.index, close_array):
-            if not np.isnan(price):
-                # Explicitly convert numpy scalars to Python native types
-                timestamp = int(date.timestamp() * 1000)
-                # Use item() method to safely convert numpy scalar
-                if hasattr(price, 'item'):
-                    price_val = round(float(price.item()), 2)
-                else:
-                    price_val = round(float(price), 2)
-                prices.append([timestamp, price_val])
-        
-        if not prices:
-            return jsonify({"error": f"No valid price data for {ticker}"}), 404
-        
-        return jsonify({
-            "ticker": ticker,
-            "prices": prices,
-            "current_price": round(float(prices[-1][1]), 2),
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat(),
-        })
+        # Format for chart.js
+        chart_data = {
+            "dates": data.index.strftime("%Y-%m-%d").tolist(),
+            "prices": data["Close"].round(2).tolist(),
+            "volumes": data["Volume"].astype(int).tolist(),
+        }
+        return jsonify(chart_data)
     except Exception as e:
-        return jsonify({"error": f"Failed to fetch price data: {str(e)}"}), 500
-
-
-@app.route("/api/signal-history")
-@login_required
-def api_signal_history():
-    """GET /api/signal-history?ticker=AAPL&timeframe=6M
-    
-    Returns momentum signal history for visualization on chart.
-    Timeframe: 1M, 3M, 6M, 1Y, ALL (default: 6M)
-    """
-    ticker = (request.args.get("ticker") or "").upper().strip()
-    timeframe = (request.args.get("timeframe") or "6M").upper()
-    
-    if not ticker:
-        return jsonify({"error": "ticker parameter required"}), 400
-    if not _valid_ticker(ticker):
-        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
-    if timeframe not in ["1M", "3M", "6M", "1Y", "ALL"]:
-        return jsonify({"error": f"invalid timeframe: {timeframe}"}), 400
-    
-    try:
-        from src.signal_history import calculate_momentum_history
-        
-        data = calculate_momentum_history(ticker, timeframe=timeframe)
-        app.logger.info(f"Signal history for {ticker} ({timeframe}): {data.get('data_points', 0)} points")
-        return jsonify(data)
-    except Exception as e:
-        app.logger.error(f"Signal history error for {ticker}: {e}", exc_info=True)
+        app.logger.error(f"Price chart error for {ticker}: {e}")
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/auth/sync-user", methods=["POST"])
-def sync_user():
-    """Sync user to Supabase on first login."""
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    try:
-        email = session.get("user_email")
-        firebase_uid = session.get("firebase_uid")
-        
-        if not email:
-            return jsonify({"error": "User not authenticated"}), 401
-        
-        # Check if user exists in Supabase
-        response = supabase.table("users").select("email").eq("email", email).execute()
-        
-        if not response.data:
-            # Create new user in Supabase (shouldn't happen if signup worked, but just in case)
-            supabase.table("users").insert({
-                "email": email,
-                "firebase_uid": firebase_uid,
-            }).execute()
-            app.logger.info(f"User synced to Supabase: {email}")
-        
-        return jsonify({"success": True, "email": email}), 200
-    
-    except Exception as e:
-        app.logger.error(f"Error syncing user: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
+# =====================================================================
+# Watchlist Routes (kept from original for API compatibility)
+# =====================================================================
 @app.route("/api/watchlist", methods=["GET", "POST", "DELETE"])
 @login_required
 def api_watchlist():
-    """Manage watchlist in Supabase with email as unique identifier.
-    
-    Watchlist is stored as a JSON array of tickers: ["NVDA", "AAPL", "TSLA"]
-    Each user has one row in the watchlist table with their email and ticker array.
-    """
-    if not supabase:
-        app.logger.error("❌ Supabase not configured")
-        return jsonify({"error": "Supabase not configured"}), 500
+    """Manage user watchlist"""
+    import yfinance as yf
     
     user_email = session.get("user_email")
-    if not user_email:
-        app.logger.error("❌ User email not in session")
-        return jsonify({"error": "User not authenticated"}), 401
     
-    app.logger.info(f"📌 Watchlist {request.method} request for user: {user_email}")
-    
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+
     try:
         if request.method == "GET":
-            # Get user's watchlist by email
-            try:
-                app.logger.info(f"🔍 Querying watchlist for email: {user_email}")
-                response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
-                tickers = response.data.get("tickers", []) if response.data else []
-                app.logger.info(f"✅ Found watchlist with {len(tickers)} tickers: {tickers}")
-                return jsonify({"watchlist": tickers, "count": len(tickers)}), 200
-            except Exception as e:
-                # If no record found, return empty watchlist
-                error_str = str(e)
-                if "No rows found" in error_str or "single()" in error_str or "PGRST116" in error_str or "0 rows" in error_str:
-                    app.logger.info(f"⚠️  No watchlist found for {user_email}, creating new one")
-                    # Create a new watchlist entry for this user
-                    try:
-                        supabase.table("watchlist").insert({
-                            "email": user_email,
-                            "tickers": [],
-                        }).execute()
-                        app.logger.info(f"✅ Created new watchlist for {user_email}")
-                    except Exception as insert_err:
-                        app.logger.error(f"❌ Error creating watchlist for {user_email}: {insert_err}")
-                    return jsonify({"watchlist": [], "count": 0}), 200
-                else:
-                    app.logger.error(f"❌ Watchlist GET error for {user_email}: {type(e).__name__}: {error_str}")
-                    raise
-        
+            # Get watchlist
+            response = supabase.table("watchlist").select("ticker").eq("email", user_email).execute()
+            tickers = [item.get("ticker") for item in response.data] if response.data else []
+            return jsonify({"watchlist": tickers}), 200
+
         elif request.method == "POST":
-            # Add ticker to watchlist
-            data = request.json or {}
-            ticker = (data.get("ticker") or "").upper().strip()
+            # Add to watchlist
+            ticker = request.json.get("ticker", "").upper().strip()
+            if not _valid_ticker(ticker):
+                return jsonify({"error": "invalid ticker"}), 400
             
-            if not ticker or not _valid_ticker(ticker):
-                app.logger.warning(f"⚠️  Invalid ticker: {ticker}")
-                return jsonify({"error": "Invalid ticker"}), 400
-            
-            app.logger.info(f"➕ Adding {ticker} to watchlist for {user_email}")
             try:
-                # Get current watchlist
-                response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
-                tickers = response.data.get("tickers", []) if response.data else []
-                
-                # Add ticker if not already present
-                if ticker not in tickers:
-                    tickers.append(ticker)
-                    # Update watchlist
-                    supabase.table("watchlist").update({
-                        "tickers": tickers,
-                        "updated_at": datetime.now().isoformat(),
-                    }).eq("email", user_email).execute()
-                    return jsonify({"success": True, "message": f"{ticker} added to watchlist", "watchlist": tickers}), 200
-                else:
-                    return jsonify({"success": True, "message": f"{ticker} already in watchlist", "watchlist": tickers}), 200
+                supabase.table("watchlist").insert({
+                    "email": user_email,
+                    "ticker": ticker,
+                    "added_at": datetime.now().isoformat(),
+                }).execute()
+                return jsonify({"success": True, "message": f"{ticker} added"}), 200
             except Exception as e:
-                # If no record found, create one
                 error_str = str(e)
-                if "No rows found" in error_str or "single()" in error_str or "PGRST116" in error_str or "0 rows" in error_str:
-                    try:
-                        supabase.table("watchlist").insert({
-                            "email": user_email,
-                            "tickers": [ticker],
-                        }).execute()
-                        app.logger.info(f"✅ Created watchlist with {ticker} for {user_email}")
-                        return jsonify({"success": True, "message": f"{ticker} added to watchlist", "watchlist": [ticker]}), 200
-                    except Exception as insert_err:
-                        app.logger.error(f"❌ Error creating watchlist for {user_email}: {insert_err}")
-                        raise
-                else:
-                    app.logger.error(f"❌ Watchlist POST error for {user_email}: {type(e).__name__}: {error_str}")
-                    raise
-        
+                if "duplicate" in error_str.lower() or "unique" in error_str.lower():
+                    return jsonify({"success": True, "message": f"{ticker} already in watchlist"}), 200
+                raise
+
         elif request.method == "DELETE":
-            # Remove ticker from watchlist
-            ticker = (request.args.get("ticker") or "").upper().strip()
-            if not ticker:
-                return jsonify({"error": "ticker parameter required"}), 400
+            # Remove from watchlist
+            ticker = request.json.get("ticker", "").upper().strip()
+            if not _valid_ticker(ticker):
+                return jsonify({"error": "invalid ticker"}), 400
             
             try:
-                # Get current watchlist
                 response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
-                tickers = response.data.get("tickers", []) if response.data else []
                 
-                # Remove ticker if present
-                if ticker in tickers:
-                    tickers.remove(ticker)
-                    # Update watchlist
-                    supabase.table("watchlist").update({
-                        "tickers": tickers,
-                        "updated_at": datetime.now().isoformat(),
-                    }).eq("email", user_email).execute()
-                    return jsonify({"success": True, "message": f"{ticker} removed from watchlist", "watchlist": tickers}), 200
+                if ticker in (response.data.get("tickers", []) if response.data else []):
+                    supabase.table("watchlist").delete().eq("email", user_email).eq("ticker", ticker).execute()
+                    return jsonify({"success": True, "message": f"{ticker} removed"}), 200
                 else:
-                    return jsonify({"success": True, "message": f"{ticker} not in watchlist", "watchlist": tickers}), 200
+                    return jsonify({"success": True, "message": f"{ticker} not in watchlist"}), 200
             except Exception as e:
-                # If no record found, nothing to delete
                 error_str = str(e)
-                if "No rows found" in error_str or "single()" in error_str or "PGRST116" in error_str or "0 rows" in error_str:
-                    return jsonify({"success": True, "message": f"Watchlist not found", "watchlist": []}), 200
-                else:
-                    app.logger.error(f"❌ Watchlist DELETE error for {user_email}: {type(e).__name__}: {error_str}")
-                    raise
-    
+                if "No rows found" in error_str or "0 rows" in error_str:
+                    return jsonify({"success": True, "message": "Watchlist not found"}), 200
+                raise
+
     except Exception as e:
-        app.logger.error(f"❌ WATCHLIST ERROR for {user_email}: {type(e).__name__}: {str(e)}")
-        import traceback
-        app.logger.error(f"📋 Traceback: {traceback.format_exc()}")
+        app.logger.error(f"Watchlist error: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
 
 @app.route("/api/analysis-history")
 def api_analysis_history():
-    """GET /api/analysis-history?session_id=xxx — get past analyses."""
+    """GET /api/analysis-history?session_id=xxx"""
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 500
     
@@ -744,567 +407,19 @@ def api_analysis_history():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/save-analysis", methods=["POST"])
-@login_required
-def api_save_analysis():
-    """POST /api/save-analysis — save analysis to history."""
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 500
-    
-    data = request.json
-    session_id = data.get("session_id", "default")
-    ticker = (data.get("ticker") or "").upper().strip()
-    
-    if not ticker or not _valid_ticker(ticker):
-        return jsonify({"error": "Invalid ticker"}), 400
-    
-    try:
-        supabase.table("analysis_history").insert({
-            "session_id": session_id,
-            "ticker": ticker,
-            "verdict": data.get("verdict"),
-            "factor_score": data.get("factor_score"),
-            "macro_context": data.get("macro_context"),
-            "sentiment": data.get("sentiment"),
-            "analyzed_at": datetime.now().isoformat(),
-        }).execute()
-        return jsonify({"message": "Analysis saved"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/beginner-guide/<ticker>", methods=["GET"])
-def beginner_guide(ticker):
-    """Get beginner-friendly explanation for a stock analysis."""
-    ticker = (ticker or "").upper().strip()
-    if not ticker or not _valid_ticker(ticker):
-        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
-    
-    try:
-        from src.scorer import analyze_ticker
-        from src.beginner_guide import explain_signal
-        
-        # Get analysis
-        analysis = analyze_ticker(ticker)
-        
-        # Get beginner-friendly explanation
-        explanation = explain_signal(analysis)
-        
-        return jsonify({
-            "ticker": ticker,
-            "company": analysis.get("company", "Unknown"),
-            "verdict": analysis.get("verdict"),
-            "score": analysis.get("factor_score", 50),
-            "explanation": explanation,
-            "latest_price": analysis.get("latest_price")
-        }), 200
-    
-    except Exception as e:
-        app.logger.error(f"Beginner guide error for {ticker}: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/portfolio-recommendation", methods=["GET", "POST"])
-@login_required
-def portfolio_recommendation():
-    """Get portfolio recommendations and diversification suggestions."""
-    user_email = session.get("user_email")
-    
-    try:
-        from src.beginner_guide import get_portfolio_recommendation
-        
-        # Get user's current watchlist as their portfolio
-        if not supabase:
-            return jsonify({"error": "Supabase not configured"}), 503
-        
-        response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
-        current_portfolio = response.data.get("tickers", []) if response.data else []
-        
-        # Get new stock to add (if provided)
-        new_stock = request.args.get("ticker", "").upper().strip() or None
-        
-        # Get recommendation
-        recommendation = get_portfolio_recommendation(current_portfolio, new_stock)
-        
-        return jsonify({
-            "current_portfolio": current_portfolio,
-            "new_stock": new_stock,
-            "recommendation": recommendation
-        }), 200
-    
-    except Exception as e:
-        app.logger.error(f"Portfolio recommendation error: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/compare-stocks", methods=["POST"])
-def compare_stocks_endpoint():
-    """Compare multiple stocks side-by-side for beginners."""
-    try:
-        from src.scorer import analyze_ticker
-        from src.beginner_guide import compare_stocks
-        
-        data = request.json or {}
-        tickers = data.get("tickers", [])
-        
-        if not tickers or len(tickers) < 2:
-            return jsonify({"error": "Provide at least 2 tickers to compare"}), 400
-        
-        # Analyze each stock
-        analyses = {}
-        for ticker in tickers:
-            ticker = ticker.upper().strip()
-            if not _valid_ticker(ticker):
-                app.logger.warning(f"⚠️  Invalid ticker: {ticker}")
-                continue
-            
-            try:
-                analyses[ticker] = analyze_ticker(ticker)
-            except Exception as e:
-                app.logger.error(f"Error analyzing {ticker}: {e}")
-                analyses[ticker] = {"error": str(e)}
-        
-        if not analyses:
-            return jsonify({"error": "No valid tickers to analyze"}), 400
-        
-        # Compare stocks
-        comparison = compare_stocks(analyses)
-        
-        return jsonify({
-            "comparison": comparison,
-            "analyses": analyses
-        }), 200
-    
-    except Exception as e:
-        app.logger.error(f"Stock comparison error: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-
-# ===== NEW FEATURE: MULTIPLE WATCHLISTS =====
-
-@app.route("/api/watchlists", methods=["GET"])
-@login_required
-def get_watchlists():
-    """Get all watchlists for current user."""
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    user_email = session.get("user_email")
-    
-    try:
-        from src.watchlists import get_user_watchlists
-        watchlists = get_user_watchlists(supabase, user_email)
-        return jsonify({"watchlists": watchlists, "count": len(watchlists)}), 200
-    except Exception as e:
-        app.logger.error(f"Error fetching watchlists: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/watchlists", methods=["POST"])
-@login_required
-def create_watchlist():
-    """Create a new watchlist."""
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    user_email = session.get("user_email")
-    data = request.json or {}
-    name = data.get("name", "").strip()
-    
-    if not name:
-        return jsonify({"error": "Watchlist name required"}), 400
-    
-    try:
-        from src.watchlists import create_watchlist as create_wl
-        watchlist = create_wl(supabase, user_email, name)
-        
-        if watchlist:
-            return jsonify({"watchlist": watchlist, "message": "Watchlist created"}), 201
-        else:
-            return jsonify({"error": "Could not create watchlist"}), 500
-    except Exception as e:
-        app.logger.error(f"Error creating watchlist: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/watchlists/<watchlist_id>", methods=["DELETE"])
-@login_required
-def delete_watchlist(watchlist_id):
-    """Delete a watchlist."""
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    try:
-        from src.watchlists import delete_watchlist as delete_wl
-        success = delete_wl(supabase, watchlist_id)
-        
-        if success:
-            return jsonify({"message": "Watchlist deleted"}), 200
-        else:
-            return jsonify({"error": "Could not delete watchlist"}), 500
-    except Exception as e:
-        app.logger.error(f"Error deleting watchlist: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/watchlists/<watchlist_id>/ticker", methods=["POST", "DELETE"])
-@login_required
-def manage_watchlist_ticker(watchlist_id):
-    """Add or remove ticker from watchlist."""
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    data = request.json or {}
-    ticker = (data.get("ticker") or "").upper().strip()
-    
-    if not ticker or not _valid_ticker(ticker):
-        return jsonify({"error": "Invalid ticker"}), 400
-    
-    try:
-        from src.watchlists import add_ticker_to_watchlist, remove_ticker_from_watchlist
-        
-        if request.method == "POST":
-            success = add_ticker_to_watchlist(supabase, watchlist_id, ticker)
-            message = f"{ticker} added to watchlist"
-        else:
-            success = remove_ticker_from_watchlist(supabase, watchlist_id, ticker)
-            message = f"{ticker} removed from watchlist"
-        
-        if success:
-            return jsonify({"message": message}), 200
-        else:
-            return jsonify({"error": "Could not modify watchlist"}), 500
-    except Exception as e:
-        app.logger.error(f"Error managing watchlist ticker: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-# ===== NEW FEATURE: PORTFOLIO TRACKING =====
-
-@app.route("/api/portfolio/performance", methods=["GET"])
-@login_required
-def portfolio_performance():
-    """Get portfolio performance metrics."""
-    user_email = session.get("user_email")
-    watchlist_id = request.args.get("watchlist_id")
-    period = request.args.get("period", "1y")
-    
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    try:
-        from src.watchlists import calculate_portfolio_performance
-        
-        # Get watchlist tickers
-        if watchlist_id:
-            response = supabase.table("watchlists").select("tickers").eq("id", watchlist_id).single().execute()
-            tickers = response.data.get("tickers", []) if response.data else []
-        else:
-            # Use default watchlist (first one or all)
-            response = supabase.table("watchlists").select("tickers").eq("email", user_email).limit(1).execute()
-            tickers = response.data[0].get("tickers", []) if response.data else []
-        
-        performance = calculate_portfolio_performance(tickers, period)
-        return jsonify(performance), 200
-    except Exception as e:
-        app.logger.error(f"Error calculating portfolio performance: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/api/portfolio/value", methods=["GET"])
-@login_required
-def portfolio_value():
-    """Get total portfolio value."""
-    user_email = session.get("user_email")
-    watchlist_id = request.args.get("watchlist_id")
-    
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    try:
-        from src.watchlists import calculate_portfolio_value
-        
-        # Get watchlist
-        if watchlist_id:
-            response = supabase.table("watchlists").select("*").eq("id", watchlist_id).single().execute()
-            watchlist = response.data if response.data else None
-        else:
-            response = supabase.table("watchlists").select("*").eq("email", user_email).limit(1).execute()
-            watchlist = response.data[0] if response.data else None
-        
-        if not watchlist:
-            return jsonify({"error": "Watchlist not found"}), 404
-        
-        value = calculate_portfolio_value(watchlist)
-        return jsonify(value), 200
-    except Exception as e:
-        app.logger.error(f"Error calculating portfolio value: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-# ============================================================================
-# OPTION A: PORTFOLIO DASHBOARD - Total Value & Allocation
-# ============================================================================
-
-@app.route("/api/dashboard/portfolio", methods=["GET"])
-@login_required
-def dashboard_portfolio():
-    """Get portfolio dashboard: total value, daily change, top performers."""
-    user_email = session.get("user_email")
-    
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    try:
-        # Get all tickers from watchlists
-        response = supabase.table("watchlist").select("ticker").eq("email", user_email).execute()
-        tickers = [item.get("ticker") for item in response.data] if response.data else []
-        
-        if not tickers:
-            return jsonify({
-                "total_value": 0,
-                "daily_change": 0,
-                "daily_change_pct": 0,
-                "holdings_count": 0,
-                "top_performers": [],
-                "bottom_performers": []
-            }), 200
-        
-        # Remove duplicates
-        tickers = list(set(tickers))
-        
-        # Fetch prices
-        try:
-            data = yf.download(tickers, period="1d", progress=False)
-            if len(tickers) == 1:
-                current_price = data["Close"].iloc[-1]
-                prev_close = data["Open"].iloc[-1]
-            else:
-                current_price = data["Close"].iloc[-1]
-                prev_close = data["Open"].iloc[-1]
-        except Exception:
-            return jsonify({
-                "total_value": 0,
-                "daily_change": 0,
-                "daily_change_pct": 0,
-                "holdings_count": len(tickers),
-                "top_performers": [],
-                "bottom_performers": []
-            }), 200
-        
-        # Calculate portfolio metrics
-        total_value = 0
-        total_prev_value = 0
-        performers = []
-        
-        for ticker in tickers:
-            try:
-                if len(tickers) == 1:
-                    price = current_price
-                    prev = prev_close
-                else:
-                    price = current_price[ticker]
-                    prev = prev_close[ticker]
-                
-                change = price - prev
-                change_pct = (change / prev * 100) if prev > 0 else 0
-                
-                total_value += price
-                total_prev_value += prev
-                
-                performers.append({
-                    "ticker": ticker,
-                    "price": round(price, 2),
-                    "change": round(change, 2),
-                    "change_pct": round(change_pct, 2)
-                })
-            except Exception:
-                pass
-        
-        # Sort by performance
-        performers.sort(key=lambda x: x["change_pct"], reverse=True)
-        top_performers = performers[:3]
-        bottom_performers = performers[-3:] if len(performers) > 3 else []
-        
-        total_change = total_value - total_prev_value
-        total_change_pct = (total_change / total_prev_value * 100) if total_prev_value > 0 else 0
-        
-        return jsonify({
-            "total_value": round(total_value, 2),
-            "daily_change": round(total_change, 2),
-            "daily_change_pct": round(total_change_pct, 2),
-            "holdings_count": len(tickers),
-            "top_performers": top_performers,
-            "bottom_performers": bottom_performers
-        }), 200
-    
-    except Exception as e:
-        app.logger.error(f"Portfolio dashboard error: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-# ============================================================================
-# OPTION B: WATCHLIST SUMMARY - Better Overview
-# ============================================================================
-
-@app.route("/api/dashboard/watchlist-summary", methods=["GET"])
-@login_required
-def dashboard_watchlist_summary():
-    """Get watchlist summary: all stocks with prices and performance."""
-    user_email = session.get("user_email")
-    
-    if not supabase:
-        return jsonify({"error": "Supabase not configured"}), 503
-    
-    try:
-        # Get all watchlist items
-        response = supabase.table("watchlist").select("*").eq("email", user_email).execute()
-        items = response.data if response.data else []
-        
-        if not items:
-            return jsonify({
-                "total_stocks": 0,
-                "stocks": [],
-                "last_updated": datetime.now().isoformat()
-            }), 200
-        
-        # Extract unique tickers with add dates
-        ticker_map = {}
-        for item in items:
-            ticker = item.get("ticker")
-            added_at = item.get("added_at", "Unknown")
-            if ticker not in ticker_map:
-                ticker_map[ticker] = added_at
-        
-        tickers = list(ticker_map.keys())
-        
-        # Fetch current prices
-        try:
-            data = yf.download(tickers, period="1d", progress=False)
-            if len(tickers) == 1:
-                current_price = data["Close"].iloc[-1]
-                prev_close = data["Open"].iloc[-1]
-            else:
-                current_price = data["Close"].iloc[-1]
-                prev_close = data["Open"].iloc[-1]
-        except Exception:
-            return jsonify({
-                "total_stocks": len(tickers),
-                "stocks": [{"ticker": t, "price": 0, "change_pct": 0, "added_at": ticker_map[t]} for t in tickers],
-                "last_updated": datetime.now().isoformat()
-            }), 200
-        
-        # Build stock list
-        stocks = []
-        for ticker in tickers:
-            try:
-                if len(tickers) == 1:
-                    price = current_price
-                    prev = prev_close
-                else:
-                    price = current_price[ticker]
-                    prev = prev_close[ticker]
-                
-                change_pct = ((price - prev) / prev * 100) if prev > 0 else 0
-                
-                stocks.append({
-                    "ticker": ticker,
-                    "price": round(price, 2),
-                    "change_pct": round(change_pct, 2),
-                    "added_at": ticker_map[ticker],
-                    "direction": "up" if change_pct >= 0 else "down"
-                })
-            except Exception:
-                stocks.append({
-                    "ticker": ticker,
-                    "price": 0,
-                    "change_pct": 0,
-                    "added_at": ticker_map[ticker],
-                    "direction": "neutral"
-                })
-        
-        # Sort by change (best performers first)
-        stocks.sort(key=lambda x: x["change_pct"], reverse=True)
-        
-        return jsonify({
-            "total_stocks": len(stocks),
-            "stocks": stocks,
-            "last_updated": datetime.now().isoformat()
-        }), 200
-    
-    except Exception as e:
-        app.logger.error(f"Watchlist summary error: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
-
-
-# ============================================================================
-# OPTION C: MARKET SUMMARY WIDGET - S&P 500, VIX, Market Stats
-# ============================================================================
-
-@app.route("/api/dashboard/market-summary", methods=["GET"])
-def dashboard_market_summary():
-    """Get market summary: S&P 500, VIX, market context."""
-    try:
-        # Fetch market indices
-        sp500 = yf.Ticker("^GSPC")
-        vix = yf.Ticker("^VIX")
-        
-        # Get latest data
-        sp500_data = sp500.history(period="1d")
-        vix_data = vix.history(period="1d")
-        
-        if sp500_data.empty or vix_data.empty:
-            return jsonify({
-                "sp500_price": 0,
-                "sp500_change_pct": 0,
-                "vix_value": 0,
-                "market_sentiment": "unknown",
-                "trend": "neutral"
-            }), 200
-        
-        sp500_price = sp500_data["Close"].iloc[-1]
-        sp500_open = sp500_data["Open"].iloc[-1]
-        sp500_change = sp500_price - sp500_open
-        sp500_change_pct = (sp500_change / sp500_open * 100) if sp500_open > 0 else 0
-        
-        vix_price = vix_data["Close"].iloc[-1]
-        
-        # Determine market sentiment based on VIX
-        if vix_price < 15:
-            sentiment = "Calm 😊"
-            trend = "bullish"
-        elif vix_price < 20:
-            sentiment = "Normal 😐"
-            trend = "neutral"
-        elif vix_price < 30:
-            sentiment = "Nervous 😟"
-            trend = "bearish"
-        else:
-            sentiment = "Fearful 😨"
-            trend = "very_bearish"
-        
-        return jsonify({
-            "sp500_price": round(sp500_price, 2),
-            "sp500_change": round(sp500_change, 2),
-            "sp500_change_pct": round(sp500_change_pct, 2),
-            "vix_value": round(vix_price, 2),
-            "market_sentiment": sentiment,
-            "trend": trend,
-            "timestamp": datetime.now().isoformat()
-        }), 200
-    
-    except Exception as e:
-        app.logger.error(f"Market summary error: {e}", exc_info=True)
-        return jsonify({
-            "sp500_price": 0,
-            "sp500_change_pct": 0,
-            "vix_value": 0,
-            "market_sentiment": "unknown",
-            "trend": "neutral",
-            "error": str(e)
-        }), 200
-
-
+# =====================================================================
+# Main Entry Point
+# =====================================================================
 if __name__ == "__main__":
+    # Create output directories
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    FACTORLAB_OUT.mkdir(parents=True, exist_ok=True)
+    
+    print("""
+    ╔════════════════════════════════════════╗
+    ║       AlphaLab Flask Server             ║
+    ║  http://127.0.0.1:8000                 ║
+    ╚════════════════════════════════════════╝
+    """)
+    
     app.run(debug=True, host="127.0.0.1", port=8000)
