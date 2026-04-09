@@ -59,9 +59,14 @@ def api_portfolio():
         return jsonify({"error": "Supabase not configured"}), 503
     
     try:
-        # Get all tickers from watchlist
-        response = supabase.table("watchlist").select("ticker").eq("email", user_email).execute()
-        tickers = [item.get("ticker") for item in response.data] if response.data else []
+        # Get tickers from watchlist (stored as array in 'tickers' column)
+        print(f"🔍 Fetching portfolio for user: {user_email}")
+        response = supabase.table("watchlist").select("tickers").eq("email", user_email).execute()
+        print(f"✅ Response data: {response.data}")
+        tickers = []
+        if response.data and len(response.data) > 0:
+            tickers = response.data[0].get("tickers", [])
+        print(f"✅ Tickers found: {tickers}")
         
         if not tickers:
             return jsonify({
@@ -143,8 +148,10 @@ def api_portfolio():
         }), 200
     
     except Exception as e:
+        import traceback
         print(f"❌ Portfolio error: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(traceback.format_exc())
+        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
 
 
 # =====================================================================
@@ -160,10 +167,16 @@ def api_watchlist_summary():
         return jsonify({"error": "Supabase not configured"}), 503
     
     try:
-        # Get watchlist tickers
-        response = supabase.table("watchlist").select("ticker, added_at").eq("email", user_email).execute()
-        ticker_map = {item.get("ticker"): item.get("added_at") for item in response.data} if response.data else {}
-        tickers = list(ticker_map.keys())
+        # Get watchlist tickers (stored as array in 'tickers' column)
+        print(f"🔍 Fetching watchlist for user: {user_email}")
+        response = supabase.table("watchlist").select("tickers, created_at").eq("email", user_email).execute()
+        print(f"✅ Response data: {response.data}")
+        tickers = []
+        added_at = None
+        if response.data and len(response.data) > 0:
+            tickers = response.data[0].get("tickers", [])
+            added_at = response.data[0].get("created_at")
+        print(f"✅ Tickers found: {tickers}")
         
         if not tickers:
             return jsonify({
@@ -180,7 +193,7 @@ def api_watchlist_summary():
         except Exception:
             return jsonify({
                 "total_stocks": len(tickers),
-                "stocks": [{"ticker": t, "price": 0, "change_pct": 0, "added_at": ticker_map[t], "direction": "neutral"} for t in tickers],
+                "stocks": [{"ticker": t, "price": 0, "change_pct": 0, "added_at": added_at, "direction": "neutral"} for t in tickers],
                 "last_updated": datetime.now().isoformat()
             }), 200
         
@@ -200,7 +213,7 @@ def api_watchlist_summary():
                     "ticker": ticker,
                     "price": round(price, 2),
                     "change_pct": round(change_pct, 2),
-                    "added_at": ticker_map[ticker],
+                    "added_at": added_at,
                     "direction": "up" if change_pct >= 0 else "down"
                 })
             except Exception:
@@ -208,7 +221,7 @@ def api_watchlist_summary():
                     "ticker": ticker,
                     "price": 0,
                     "change_pct": 0,
-                    "added_at": ticker_map[ticker],
+                    "added_at": added_at,
                     "direction": "neutral"
                 })
         
@@ -222,8 +235,10 @@ def api_watchlist_summary():
         }), 200
     
     except Exception as e:
+        import traceback
         print(f"❌ Watchlist summary error: {e}")
-        return jsonify({"error": str(e)}), 500
+        print(traceback.format_exc())
+        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
 
 
 # =====================================================================

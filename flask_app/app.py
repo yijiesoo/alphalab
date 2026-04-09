@@ -4,6 +4,7 @@ Routes and most logic have been moved to routes/ and services/
 """
 import os
 import sys
+import uuid
 import queue
 import subprocess
 import threading
@@ -15,6 +16,7 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session
+import yfinance as yf
 
 # Load environment variables FIRST
 load_dotenv()
@@ -285,8 +287,6 @@ def api_price_chart():
     
     Return price data for chart. Timeframe: 1M, 3M, 6M, 1Y, ALL
     """
-    import yfinance as yf
-    
     ticker = (request.args.get("ticker") or "").upper().strip()
     timeframe = (request.args.get("timeframe") or "6M").upper()
     
@@ -302,6 +302,7 @@ def api_price_chart():
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days)
         
+        print(f"📈 Fetching price chart for {ticker} ({timeframe}, {lookback_days} days)")
         data = yf.download(
             ticker,
             start=start_date.strftime("%Y-%m-%d"),
@@ -319,10 +320,14 @@ def api_price_chart():
             "prices": data["Close"].round(2).tolist(),
             "volumes": data["Volume"].astype(int).tolist(),
         }
+        print(f"✅ Got {len(chart_data['dates'])} data points for {ticker}")
         return jsonify(chart_data)
     except Exception as e:
-        app.logger.error(f"Price chart error for {ticker}: {e}")
-        return jsonify({"error": str(e)}), 500
+        import traceback
+        print(f"❌ Price chart error for {ticker}: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Price chart error for {ticker}: {e}", exc_info=True)
+        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
 
 
 # =====================================================================
@@ -332,8 +337,6 @@ def api_price_chart():
 @login_required
 def api_watchlist():
     """Manage user watchlist"""
-    import yfinance as yf
-    
     user_email = session.get("user_email")
     
     if not supabase:
@@ -341,9 +344,13 @@ def api_watchlist():
 
     try:
         if request.method == "GET":
-            # Get watchlist
-            response = supabase.table("watchlist").select("ticker").eq("email", user_email).execute()
-            tickers = [item.get("ticker") for item in response.data] if response.data else []
+            # Get watchlist (tickers stored as array in single row per user)
+            print(f"🔍 GET watchlist for user: {user_email}")
+            response = supabase.table("watchlist").select("tickers").eq("email", user_email).execute()
+            print(f"✅ Response data: {response.data}")
+            tickers = []
+            if response.data and len(response.data) > 0:
+                tickers = response.data[0].get("tickers", [])
             return jsonify({"watchlist": tickers}), 200
 
         elif request.method == "POST":
@@ -353,11 +360,29 @@ def api_watchlist():
                 return jsonify({"error": "invalid ticker"}), 400
             
             try:
-                supabase.table("watchlist").insert({
-                    "email": user_email,
-                    "ticker": ticker,
-                    "added_at": datetime.now().isoformat(),
-                }).execute()
+                print(f"✏️ Adding {ticker} to watchlist for {user_email}")
+                # Get existing watchlist
+                response = supabase.table("watchlist").select("tickers").eq("email", user_email).execute()
+                tickers = []
+                watchlist_id = None
+                
+                if response.data and len(response.data) > 0:
+                    # User already has a watchlist, update it
+                    watchlist_id = response.data[0].get("id")
+                    tickers = response.data[0].get("tickers", [])
+                    if ticker not in tickers:
+                        tickers.append(ticker)
+                        supabase.table("watchlist").update({"tickers": tickers}).eq("id", watchlist_id).execute()
+                    else:
+                        return jsonify({"success": True, "message": f"{ticker} already in watchlist"}), 200
+                else:
+                    # Create new watchlist for user
+                    tickers = [ticker]
+                    supabase.table("watchlist").insert({
+                        "email": user_email,
+                        "tickers": tickers,
+                    }).execute()
+                
                 return jsonify({"success": True, "message": f"{ticker} added"}), 200
             except Exception as e:
                 error_str = str(e)
@@ -372,22 +397,35 @@ def api_watchlist():
                 return jsonify({"error": "invalid ticker"}), 400
             
             try:
-                response = supabase.table("watchlist").select("tickers").eq("email", user_email).single().execute()
+                print(f"🗑️ Deleting {ticker} from watchlist for {user_email}")
+                # Get existing watchlist
+                response = supabase.table("watchlist").select("tickers, id").eq("email", user_email).execute()
                 
-                if ticker in (response.data.get("tickers", []) if response.data else []):
-                    supabase.table("watchlist").delete().eq("email", user_email).eq("ticker", ticker).execute()
-                    return jsonify({"success": True, "message": f"{ticker} removed"}), 200
+                if response.data and len(response.data) > 0:
+                    watchlist_id = response.data[0].get("id")
+                    tickers = response.data[0].get("tickers", [])
+                    
+                    if ticker in tickers:
+                        tickers.remove(ticker)
+                        supabase.table("watchlist").update({"tickers": tickers}).eq("id", watchlist_id).execute()
+                        return jsonify({"success": True, "message": f"{ticker} removed"}), 200
+                    else:
+                        return jsonify({"success": True, "message": "Ticker not in watchlist"}), 200
                 else:
-                    return jsonify({"success": True, "message": f"{ticker} not in watchlist"}), 200
+                    return jsonify({"success": True, "message": "Watchlist not found"}), 200
             except Exception as e:
                 error_str = str(e)
                 if "No rows found" in error_str or "0 rows" in error_str:
                     return jsonify({"success": True, "message": "Watchlist not found"}), 200
+                app.logger.error(f"Error deleting watchlist item: {e}", exc_info=True)
                 raise
 
     except Exception as e:
+        import traceback
+        print(f"❌ Watchlist error: {e}")
+        print(traceback.format_exc())
         app.logger.error(f"Watchlist error: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
 
 
 @app.route("/api/analysis-history")
@@ -405,6 +443,144 @@ def api_analysis_history():
         return jsonify({"history": items, "count": len(items)})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# =====================================================================
+# Save Analysis Route
+# =====================================================================
+@app.route("/api/save-analysis", methods=["POST"])
+@login_required
+def api_save_analysis():
+    """POST /api/save-analysis — save analysis to history."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 500
+    
+    data = request.json
+    session_id = data.get("session_id", "default")
+    ticker = (data.get("ticker") or "").upper().strip()
+    
+    if not ticker or not _valid_ticker(ticker):
+        return jsonify({"error": "Invalid ticker"}), 400
+    
+    try:
+        supabase.table("analysis_history").insert({
+            "session_id": session_id,
+            "ticker": ticker,
+            "verdict": data.get("verdict"),
+            "factor_score": data.get("factor_score"),
+            "macro_context": data.get("macro_context"),
+            "sentiment": data.get("sentiment"),
+            "analyzed_at": datetime.now().isoformat(),
+        }).execute()
+        return jsonify({"message": "Analysis saved"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# =====================================================================
+# Beginner Guide Route
+# =====================================================================
+@app.route("/api/beginner-guide/<ticker>", methods=["GET"])
+def beginner_guide(ticker):
+    """GET /api/beginner-guide/<ticker>"""
+    ticker = (ticker or "").upper().strip()
+    if not _valid_ticker(ticker):
+        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+    
+    try:
+        from src.beginner_guide import explain_signal
+        from src.scorer import analyze_ticker
+        
+        # Get the analysis first
+        analysis = analyze_ticker(ticker)
+        
+        # Get beginner-friendly explanation
+        guide = explain_signal(analysis)
+        
+        return jsonify({"guide": guide, "ticker": ticker, "analysis": analysis})
+    except Exception as e:
+        app.logger.error(f"Beginner guide error for {ticker}: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+# =====================================================================
+# Watchlists Management Routes
+# =====================================================================
+@app.route("/api/watchlists", methods=["GET"])
+@login_required
+def get_watchlists():
+    """GET /api/watchlists — get all watchlists for user"""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    user_email = session.get("user_email")
+    
+    try:
+        print(f"🔍 GET watchlists for user: {user_email}")
+        response = supabase.table("watchlists").select("*").eq("email", user_email).execute()
+        watchlists = response.data if response.data else []
+        print(f"✅ Found {len(watchlists)} watchlists")
+        return jsonify({"watchlists": watchlists}), 200
+    except Exception as e:
+        import traceback
+        print(f"❌ Error getting watchlists: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Error getting watchlists: {e}", exc_info=True)
+        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
+
+
+@app.route("/api/watchlists", methods=["POST"])
+@login_required
+def create_watchlist():
+    """POST /api/watchlists — create new watchlist"""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    user_email = session.get("user_email")
+    data = request.json
+    name = data.get("name", "").strip()
+    
+    if not name:
+        return jsonify({"error": "Watchlist name is required"}), 400
+    
+    try:
+        watchlist_id = str(uuid.uuid4())
+        print(f"✏️ Creating watchlist '{name}' for user: {user_email}")
+        supabase.table("watchlists").insert({
+            "id": watchlist_id,
+            "email": user_email,
+            "name": name,
+            "tickers": [],
+            "created_at": datetime.now().isoformat(),
+        }).execute()
+        print(f"✅ Created watchlist: {watchlist_id}")
+        return jsonify({"success": True, "watchlist_id": watchlist_id}), 201
+    except Exception as e:
+        import traceback
+        print(f"❌ Error creating watchlist: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Error creating watchlist: {e}", exc_info=True)
+        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
+
+
+@app.route("/api/watchlists/<watchlist_id>", methods=["DELETE"])
+@login_required
+def delete_watchlist(watchlist_id):
+    """DELETE /api/watchlists/<watchlist_id>"""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    try:
+        print(f"🗑️ Deleting watchlist: {watchlist_id}")
+        supabase.table("watchlists").delete().eq("id", watchlist_id).execute()
+        print(f"✅ Deleted watchlist: {watchlist_id}")
+        return jsonify({"success": True}), 200
+    except Exception as e:
+        import traceback
+        print(f"❌ Error deleting watchlist: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Error deleting watchlist: {e}", exc_info=True)
+        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
 
 
 # =====================================================================
