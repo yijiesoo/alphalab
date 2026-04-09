@@ -144,6 +144,13 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/home")
+@login_required
+def home():
+    """Home/Dashboard page - shows portfolio overview"""
+    return render_template("home.html")
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Login page with form"""

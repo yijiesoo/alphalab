@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — alphalab</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-left h1 {
+            font-size: 2.5em;
+            margin-bottom: 8px;
+            font-weight: 700;
+        }
+        
+        .header-left p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .user-info {
+            background: rgba(255,255,255,0.1);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.95em;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: white;
+            color: #2a5298;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .btn-logout {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-analyze {
+            background: #27ae60;
+            color: white;
+        }
+        
+        /* Main Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        /* Dashboard Cards Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .dashboard-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            border-top: 4px solid #2a5298;
+        }
+        
+        .dashboard-card h3 {
+            color: #2a5298;
+            font-size: 1em;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #2a5298;
+        }
+        
+        .stat-value.positive {
+            color: #27ae60;
+        }
+        
+        .stat-value.negative {
+            color: #e74c3c;
+        }
+        
+        /* Stock Items */
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 0.9em;
+        }
+        
+        .stock-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stock-ticker {
+            font-weight: 600;
+            color: #2a5298;
+        }
+        
+        .stock-price {
+            color: #666;
+            font-size: 0.85em;
+        }
+        
+        .stock-change {
+            font-weight: 600;
+            min-width: 80px;
+            text-align: right;
+        }
+        
+        .stock-change.positive {
+            color: #27ae60;
+        }
+        
+        .stock-change.negative {
+            color: #e74c3c;
+        }
+        
+        /* Market Stats */
+        .market-stat {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+        
+        .market-stat-label {
+            font-size: 0.85em;
+            color: #666;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        
+        .market-stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #2a5298;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card h3 {
+            color: #2a5298;
+            font-size: 1em;
+            margin-bottom: 16px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 12px;
+        }
+        
+        .quick-action {
+            display: block;
+            padding: 12px;
+            background: #f0f0f0;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #2a5298;
+            font-weight: 500;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+            text-align: center;
+        }
+        
+        .quick-action:hover {
+            background: #2a5298;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .quick-action:last-child {
+            margin-bottom: 0;
+        }
+        
+        .stats-mini {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .stat-mini {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        
+        .stat-mini-label {
+            color: #666;
+        }
+        
+        .stat-mini-value {
+            font-weight: 600;
+            color: #2a5298;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #e0e0e0;
+            border-top: 3px solid #2a5298;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .sentiment-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        
+        .sentiment-bullish {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .sentiment-neutral {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .sentiment-bearish {
+            background: #f8d7da;
+            color: #721c24;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <h1>📊 Dashboard</h1>
+                <p>Your portfolio at a glance</p>
+            </div>
+            <div class="header-right">
+                <div class="user-info" id="user-info" style="display:none;">
+                    <span id="user-email-display"></span>
+                </div>
+                <a href="/" class="btn btn-analyze">🔍 Analyze Stocks</a>
+                <button class="btn btn-logout" id="logout-btn">🚪 Logout</button>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Left: Dashboard Cards -->
+            <div>
+                <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
+                    <!-- Option A: Portfolio Dashboard -->
+                    <div class="dashboard-card">
+                        <h3>📈 Portfolio</h3>
+                        <div class="stat-row">
+                            <span class="stat-label">Total Value</span>
+                            <span class="stat-value" id="portfolio-value">$0.00</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Daily Change</span>
+                            <span class="stat-value" id="portfolio-change">+$0.00</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">% Change</span>
+                            <span class="stat-value" id="portfolio-change-pct">+0.00%</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label">Holdings</span>
+                            <span class="stat-value" id="portfolio-count">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Option B: Watchlist Summary -->
+                    <div class="dashboard-card">
+                        <h3>⭐ Your Stocks</h3>
+                        <div id="watchlist-summary" style="max-height: 250px; overflow-y: auto; font-size: 0.9em;">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Option C: Market Summary -->
+                    <div class="dashboard-card">
+                        <h3>🌍 Market</h3>
+                        <div class="market-stat">
+                            <div class="market-stat-label">S&P 500</div>
+                            <div class="market-stat-value" id="sp500-price">-</div>
+                            <div style="font-size: 0.85em; color: #666;" id="sp500-change">-</div>
+                        </div>
+                        <div class="market-stat">
+                            <div class="market-stat-label">VIX (Fear Index)</div>
+                            <div class="market-stat-value" id="vix-price">-</div>
+                            <div id="vix-sentiment" style="margin-top: 8px; font-size: 0.85em;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" style="background: white; padding: 40px; border-radius: 12px; text-align: center;">
+                    <p style="font-size: 1.2em; color: #666; margin-bottom: 16px;">👋 Welcome!</p>
+                    <p style="color: #999; margin-bottom: 24px;">Add stocks to your watchlist to see your portfolio dashboard</p>
+                    <a href="/" class="btn btn-analyze">Start Analyzing →</a>
+                </div>
+            </div>
+
+            <!-- Right: Sidebar -->
+            <div class="sidebar">
+                <!-- Quick Actions -->
+                <div class="card">
+                    <h3>⚡ Quick Actions</h3>
+                    <a href="/" class="quick-action">🔍 Search Stock</a>
+                    <a href="/#" class="quick-action">➕ Add to Watchlist</a>
+                    <a href="/#" class="quick-action">📊 View Analysis</a>
+                </div>
+
+                <!-- Portfolio Stats -->
+                <div class="card">
+                    <h3>💼 Portfolio Stats</h3>
+                    <div class="stats-mini">
+                        <div class="stat-mini">
+                            <span class="stat-mini-label">Best Stock</span>
+                            <span class="stat-mini-value" id="best-stock">-</span>
+                        </div>
+                        <div class="stat-mini">
+                            <span class="stat-mini-label">Worst Stock</span>
+                            <span class="stat-mini-value" id="worst-stock">-</span>
+                        </div>
+                        <div class="stat-mini">
+                            <span class="stat-mini-label">Avg Return</span>
+                            <span class="stat-mini-value" id="avg-return">-</span>
+                        </div>
+                        <div class="stat-mini">
+                            <span class="stat-mini-label">Total Gain</span>
+                            <span class="stat-mini-value" id="total-gain">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Market Sentiment -->
+                <div class="card">
+                    <h3>🎯 Market Sentiment</h3>
+                    <div style="text-align: center;">
+                        <div style="font-size: 3em; margin: 16px 0;" id="market-emoji">😐</div>
+                        <div style="color: #666; font-size: 0.9em;" id="market-text">Analyzing...</div>
+                        <div class="sentiment-badge neutral" id="sentiment-badge">Loading</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        function checkAuth() {
+            // You can add session check here if needed
+            const userEmail = localStorage.getItem('userEmail');
+            if (userEmail) {
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('user-email-display').textContent = userEmail;
+            }
+        }
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    localStorage.clear();
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        });
+
+        // Load all dashboards
+        window.addEventListener('load', () => {
+            checkAuth();
+            loadAllDashboards();
+            setInterval(loadAllDashboards, 5 * 60 * 1000);
+        });
+
+        async function loadAllDashboards() {
+            await loadPortfolioDashboard();
+            await loadWatchlistSummary();
+            await loadMarketSummary();
+        }
+
+        // OPTION A: PORTFOLIO DASHBOARD
+        async function loadPortfolioDashboard() {
+            try {
+                const response = await fetch('/api/dashboard/portfolio');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                const dashboardGrid = document.getElementById('dashboard-grid');
+                const emptyState = document.getElementById('empty-state');
+                
+                if (data.holdings_count > 0) {
+                    dashboardGrid.style.display = 'grid';
+                    emptyState.style.display = 'none';
+                    
+                    document.getElementById('portfolio-value').textContent = `$${data.total_value.toFixed(2)}`;
+                    
+                    const changeSign = data.daily_change >= 0 ? '+' : '';
+                    document.getElementById('portfolio-change').textContent = `${changeSign}$${data.daily_change.toFixed(2)}`;
+                    document.getElementById('portfolio-change').className = `stat-value ${data.daily_change >= 0 ? 'positive' : 'negative'}`;
+                    
+                    const pctSign = data.daily_change_pct >= 0 ? '+' : '';
+                    document.getElementById('portfolio-change-pct').textContent = `${pctSign}${data.daily_change_pct.toFixed(2)}%`;
+                    document.getElementById('portfolio-change-pct').className = `stat-value ${data.daily_change_pct >= 0 ? 'positive' : 'negative'}`;
+                    
+                    document.getElementById('portfolio-count').textContent = data.holdings_count;
+                    
+                    // Update sidebar stats
+                    if (data.top_performers && data.top_performers.length > 0) {
+                        document.getElementById('best-stock').textContent = `${data.top_performers[0].ticker} +${data.top_performers[0].change_pct.toFixed(2)}%`;
+                    }
+                    if (data.bottom_performers && data.bottom_performers.length > 0) {
+                        document.getElementById('worst-stock').textContent = `${data.bottom_performers[0].ticker} ${data.bottom_performers[0].change_pct.toFixed(2)}%`;
+                    }
+                } else {
+                    dashboardGrid.style.display = 'none';
+                    emptyState.style.display = 'block';
+                }
+            } catch (e) {
+                console.error('Portfolio dashboard error:', e);
+            }
+        }
+
+        // OPTION B: WATCHLIST SUMMARY
+        async function loadWatchlistSummary() {
+            try {
+                const response = await fetch('/api/dashboard/watchlist-summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                if (data.total_stocks > 0) {
+                    const watchlistHtml = data.stocks.map(stock => `
+                        <div class="stock-item">
+                            <div>
+                                <div class="stock-ticker">${stock.ticker}</div>
+                                <div class="stock-price">$${stock.price.toFixed(2)}</div>
+                            </div>
+                            <div class="stock-change ${stock.direction === 'up' ? 'positive' : 'negative'}">
+                                ${stock.direction === 'up' ? '▲' : '▼'} ${stock.change_pct.toFixed(2)}%
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('watchlist-summary').innerHTML = watchlistHtml;
+                }
+            } catch (e) {
+                console.error('Watchlist summary error:', e);
+            }
+        }
+
+        // OPTION C: MARKET SUMMARY
+        async function loadMarketSummary() {
+            try {
+                const response = await fetch('/api/dashboard/market-summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // S&P 500
+                document.getElementById('sp500-price').textContent = `$${data.sp500_price.toFixed(2)}`;
+                const sp500Sign = data.sp500_change >= 0 ? '+' : '';
+                document.getElementById('sp500-change').textContent = `${sp500Sign}${data.sp500_change_pct.toFixed(2)}%`;
+                document.getElementById('sp500-change').style.color = data.sp500_change >= 0 ? '#27ae60' : '#e74c3c';
+                
+                // VIX
+                document.getElementById('vix-price').textContent = data.vix_value.toFixed(2);
+                
+                // Market sentiment
+                const vix = data.vix_value;
+                let emoji, sentiment, badgeClass;
+                
+                if (vix < 15) {
+                    emoji = '😊';
+                    sentiment = 'Calm - Bullish';
+                    badgeClass = 'sentiment-bullish';
+                } else if (vix < 20) {
+                    emoji = '😐';
+                    sentiment = 'Normal';
+                    badgeClass = 'sentiment-neutral';
+                } else if (vix < 30) {
+                    emoji = '😟';
+                    sentiment = 'Nervous - Bearish';
+                    badgeClass = 'sentiment-bearish';
+                } else {
+                    emoji = '😨';
+                    sentiment = 'Fearful - Very Bearish';
+                    badgeClass = 'sentiment-bearish';
+                }
+                
+                document.getElementById('market-emoji').textContent = emoji;
+                document.getElementById('market-text').textContent = sentiment;
+                const badge = document.getElementById('sentiment-badge');
+                badge.textContent = sentiment;
+                badge.className = `sentiment-badge ${badgeClass}`;
+            } catch (e) {
+                console.error('Market summary error:', e);
+            }
+        }
+    </script>
+</body>
+</html>
