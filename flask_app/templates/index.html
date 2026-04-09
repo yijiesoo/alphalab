@@ -882,11 +882,43 @@
                 <canvas id="priceChart"></canvas>
             </div>
 
-            <!-- Watchlist section -->
+            <!-- Watchlist section with multiple watchlists support -->
             <div id="watchlist-tab" class="watchlist-panel" style="display:none;">
-                <h3 style="margin-bottom: 16px; color: #2a5298;">My Watchlist</h3>
-                <button class="add-watchlist-btn" id="add-to-watchlist">⭐ Add Current Ticker to Watchlist</button>
+                <h3 style="margin-bottom: 16px; color: #2a5298;">📋 My Watchlists</h3>
+                
+                <!-- Watchlist selector and controls -->
+                <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <select id="watchlist-selector" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; flex: 1; min-width: 200px;">
+                        <option value="">Select a watchlist...</option>
+                    </select>
+                    <button id="new-watchlist-btn" style="padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer;">➕ New</button>
+                    <button id="delete-watchlist-btn" style="padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; display: none;">🗑️ Delete</button>
+                </div>
+
+                <!-- Add ticker to watchlist -->
+                <button class="add-watchlist-btn" id="add-to-watchlist" style="display: none;">⭐ Add Current Ticker to Watchlist</button>
+                
+                <!-- Watchlist items -->
                 <div id="watchlist-items" style="margin-top: 16px;"></div>
+                
+                <!-- Portfolio tracking section -->
+                <div id="portfolio-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #eee; display: none;">
+                    <h4 style="color: #2a5298; margin-bottom: 12px;">💼 Portfolio Performance</h4>
+                    <div id="portfolio-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
+                        <div style="padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666;">Average Return</div>
+                            <div id="portfolio-return" style="font-size: 1.2em; font-weight: bold; color: #2a5298;">-</div>
+                        </div>
+                        <div style="padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666;">Best Stock</div>
+                            <div id="portfolio-best" style="font-size: 1.2em; font-weight: bold; color: #27ae60;">-</div>
+                        </div>
+                        <div style="padding: 12px; background: #f0f0f0; border-radius: 6px;">
+                            <div style="font-size: 0.85em; color: #666;">Worst Stock</div>
+                            <div id="portfolio-worst" style="font-size: 1.2em; font-weight: bold; color: #e74c3c;">-</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Analysis panels -->
@@ -1569,6 +1601,203 @@
             alert(`✅ ${ticker} removed from watchlist!`);
             loadWatchlist();
         }
+
+        // ===== NEW: MULTIPLE WATCHLISTS FUNCTIONS =====
+
+        let currentWatchlistId = null;
+
+        async function loadWatchlists() {
+            // Load all watchlists and populate selector
+            try {
+                const response = await fetch("/api/watchlists");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const selector = document.getElementById("watchlist-selector");
+                const addBtn = document.getElementById("add-to-watchlist");
+                const deleteBtn = document.getElementById("delete-watchlist-btn");
+
+                if (!data.watchlists || data.watchlists.length === 0) {
+                    selector.innerHTML = '<option value="">No watchlists yet - create one!</option>';
+                    addBtn.style.display = "none";
+                    deleteBtn.style.display = "none";
+                    return;
+                }
+
+                selector.innerHTML = '<option value="">Select a watchlist...</option>' +
+                    data.watchlists.map(wl => `<option value="${wl.id}">${wl.name} (${wl.tickers.length})</option>`).join("");
+
+                addBtn.style.display = "block";
+            } catch (e) {
+                console.error("Error loading watchlists:", e);
+            }
+        }
+
+        document.getElementById("watchlist-selector").addEventListener("change", async function() {
+            currentWatchlistId = this.value;
+            if (currentWatchlistId) {
+                document.getElementById("add-to-watchlist").style.display = "block";
+                document.getElementById("delete-watchlist-btn").style.display = "block";
+                loadWatchlistItems();
+                loadPortfolioPerformance();
+            }
+        });
+
+        document.getElementById("new-watchlist-btn").addEventListener("click", async function() {
+            const name = prompt("📋 Enter watchlist name (e.g., 'Tech Stocks'):");
+            if (!name) return;
+
+            try {
+                const response = await fetch("/api/watchlists", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name })
+                });
+
+                if (response.ok) {
+                    alert(`✅ Watchlist '${name}' created!`);
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error creating watchlist:", e);
+                alert("❌ Failed to create watchlist");
+            }
+        });
+
+        document.getElementById("delete-watchlist-btn").addEventListener("click", async function() {
+            if (!currentWatchlistId) return;
+            if (!confirm("⚠️ Are you sure? This will delete the entire watchlist!")) return;
+
+            try {
+                const response = await fetch(`/api/watchlists/${currentWatchlistId}`, { method: "DELETE" });
+                if (response.ok) {
+                    alert("✅ Watchlist deleted!");
+                    currentWatchlistId = null;
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error deleting watchlist:", e);
+            }
+        });
+
+        async function loadWatchlistItems() {
+            // Load items for currently selected watchlist
+            if (!currentWatchlistId) return;
+
+            try {
+                const response = await fetch(`/api/watchlists`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const watchlist = data.watchlists.find(wl => wl.id === currentWatchlistId);
+                
+                if (!watchlist) return;
+
+                const container = document.getElementById("watchlist-items");
+                if (!watchlist.tickers || watchlist.tickers.length === 0) {
+                    container.innerHTML = "<p style='color: #999;'>No items in this watchlist yet.</p>";
+                    document.getElementById("portfolio-section").style.display = "none";
+                    return;
+                }
+
+                container.innerHTML = watchlist.tickers.map(ticker => `
+                    <div class="watchlist-item">
+                        <span class="watchlist-ticker" onclick="analyzeFromWatchlist('${ticker}')">${ticker}</span>
+                        <button class="watchlist-btn" onclick="removeTickerFromWatchlist('${ticker}')">Remove</button>
+                    </div>
+                `).join("");
+
+                document.getElementById("portfolio-section").style.display = "block";
+            } catch (e) {
+                console.error("Error loading watchlist items:", e);
+            }
+        }
+
+        async function removeTickerFromWatchlist(ticker) {
+            if (!currentWatchlistId) return;
+
+            try {
+                const response = await fetch(`/api/watchlists/${currentWatchlistId}/ticker`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ticker })
+                });
+
+                if (response.ok) {
+                    alert(`✅ ${ticker} removed!`);
+                    loadWatchlistItems();
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error removing ticker:", e);
+            }
+        }
+
+        async function addCurrentTickerToWatchlist() {
+            if (!currentWatchlistId) {
+                alert("⚠️ Please select a watchlist first!");
+                return;
+            }
+
+            const ticker = (document.getElementById("company-ticker").textContent || "").trim();
+            if (!ticker) {
+                alert("⚠️ No ticker to add!");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/watchlists/${currentWatchlistId}/ticker`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ticker })
+                });
+
+                if (response.ok) {
+                    alert(`✅ ${ticker} added to watchlist!`);
+                    loadWatchlistItems();
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error adding ticker:", e);
+            }
+        }
+
+        async function loadPortfolioPerformance() {
+            // Load portfolio performance for selected watchlist
+            if (!currentWatchlistId) return;
+
+            try {
+                const response = await fetch(`/api/portfolio/performance?watchlist_id=${currentWatchlistId}&period=3mo`);
+                if (!response.ok) return;
+
+                const perf = await response.json();
+                
+                document.getElementById("portfolio-return").textContent = 
+                    `${perf.avg_return >= 0 ? '📈 +' : '📉 '}${perf.avg_return.toFixed(2)}%`;
+                
+                if (perf.best_performer) {
+                    document.getElementById("portfolio-best").textContent = 
+                        `${perf.best_performer.ticker} (+${perf.best_performer.return.toFixed(2)}%)`;
+                }
+                
+                if (perf.worst_performer) {
+                    document.getElementById("portfolio-worst").textContent = 
+                        `${perf.worst_performer.ticker} (${perf.worst_performer.return.toFixed(2)}%)`;
+                }
+            } catch (e) {
+                console.error("Error loading portfolio performance:", e);
+            }
+        }
+
+        // Update the add-to-watchlist button
+        document.getElementById("add-to-watchlist").addEventListener("click", addCurrentTickerToWatchlist);
+
+        // Load watchlists on page load
+        window.addEventListener("load", function() {
+            setTimeout(() => {
+                loadWatchlists();
+            }, 1000);
+        });
 
         async function saveAnalysisToHistory(data) {
             try {
