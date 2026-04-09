@@ -326,10 +326,15 @@ def api_price_chart():
             volume_col = 'Volume'
         
         # Format for chart.js
+        dates_list = data.index.strftime("%Y-%m-%d").tolist()
+        prices_list = data[close_col].round(2).tolist()
+        volumes_list = data[volume_col].astype(int).tolist()
+        
+        # Format as [date, price] pairs for chart
         chart_data = {
-            "dates": data.index.strftime("%Y-%m-%d").tolist(),
-            "prices": data[close_col].round(2).tolist(),
-            "volumes": data[volume_col].astype(int).tolist(),
+            "dates": dates_list,
+            "prices": [[dates_list[i], prices_list[i]] for i in range(len(dates_list))],
+            "volumes": volumes_list,
         }
         print(f"✅ Got {len(chart_data['dates'])} data points for {ticker}")
         return jsonify(chart_data)
@@ -339,6 +344,133 @@ def api_price_chart():
         print(traceback.format_exc())
         app.logger.error(f"Price chart error for {ticker}: {e}", exc_info=True)
         return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
+
+
+@app.route("/api/signal-history")
+@login_required
+def api_signal_history():
+    """GET /api/signal-history?ticker=AAPL&timeframe=6M
+    
+    Return momentum signal history for a ticker over timeframe.
+    """
+    ticker = (request.args.get("ticker") or "").upper().strip()
+    timeframe = (request.args.get("timeframe") or "6M").upper()
+    
+    if not ticker:
+        return jsonify({"error": "ticker parameter is required"}), 400
+    if not _valid_ticker(ticker):
+        return jsonify({"error": f"invalid ticker: {ticker}"}), 400
+    
+    try:
+        from src.signal_history import calculate_momentum_history
+        
+        print(f"📊 Fetching signal history for {ticker} ({timeframe})")
+        result = calculate_momentum_history(ticker, timeframe)
+        
+        if "error" in result:
+            print(f"⚠️ Signal history warning: {result['error']}")
+            return jsonify(result), 200  # Return as 200 even if partial data
+        
+        print(f"✅ Got signal history: {len(result.get('history', []))} data points")
+        return jsonify(result), 200
+    except Exception as e:
+        import traceback
+        print(f"❌ Signal history error for {ticker}: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Signal history error for {ticker}: {e}", exc_info=True)
+        return jsonify({"error": str(e), "ticker": ticker, "timeframe": timeframe}), 200
+
+
+@app.route("/api/portfolio/performance")
+@login_required
+def api_portfolio_performance():
+    """GET /api/portfolio/performance?watchlist_id=xxx&period=3mo
+    
+    Calculate portfolio performance metrics for a watchlist.
+    """
+    watchlist_id = request.args.get("watchlist_id", "")
+    period = request.args.get("period", "3mo")
+    
+    if not watchlist_id:
+        return jsonify({"error": "watchlist_id parameter is required"}), 400
+    
+    try:
+        user_email = session.get("user_email")
+        
+        # Get watchlist details
+        if not supabase:
+            return jsonify({"error": "Supabase not configured"}), 503
+        
+        print(f"📊 Fetching portfolio performance for watchlist: {watchlist_id}")
+        response = supabase.table("watchlists").select("tickers").eq("id", watchlist_id).execute()
+        
+        if not response.data:
+            return jsonify({"error": "Watchlist not found"}), 404
+        
+        tickers = response.data[0].get("tickers", [])
+        if not tickers:
+            return jsonify({
+                "avg_return": 0,
+                "best_performer": None,
+                "worst_performer": None,
+                "tickers_count": 0
+            }), 200
+        
+        # Calculate returns for each ticker over period
+        timeframe_map = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365}
+        lookback_days = timeframe_map.get(period, 90)
+        
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=lookback_days)
+        
+        returns = []
+        for ticker in tickers:
+            try:
+                data = yf.download(
+                    ticker,
+                    start=start_date.strftime("%Y-%m-%d"),
+                    end=end_date.strftime("%Y-%m-%d"),
+                    progress=False
+                )
+                
+                if len(data) > 0:
+                    start_price = data['Close'].iloc[0]
+                    end_price = data['Close'].iloc[-1]
+                    ret = ((end_price - start_price) / start_price) * 100
+                    returns.append({"ticker": ticker, "return": ret})
+            except Exception:
+                continue
+        
+        if not returns:
+            return jsonify({
+                "avg_return": 0,
+                "best_performer": None,
+                "worst_performer": None,
+                "tickers_count": len(tickers)
+            }), 200
+        
+        # Calculate metrics
+        avg_return = sum(r["return"] for r in returns) / len(returns)
+        best = max(returns, key=lambda x: x["return"])
+        worst = min(returns, key=lambda x: x["return"])
+        
+        result = {
+            "avg_return": round(avg_return, 2),
+            "best_performer": {"ticker": best["ticker"], "return": round(best["return"], 2)},
+            "worst_performer": {"ticker": worst["ticker"], "return": round(worst["return"], 2)},
+            "tickers_count": len(tickers),
+            "period": period,
+            "all_returns": returns
+        }
+        
+        print(f"✅ Portfolio performance: {result['avg_return']}% avg return")
+        return jsonify(result), 200
+    except Exception as e:
+        import traceback
+        print(f"❌ Portfolio performance error: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Portfolio performance error: {e}", exc_info=True)
+        return jsonify({"error": str(e), "avg_return": 0}), 200
 
 
 # =====================================================================
@@ -526,6 +658,10 @@ def get_watchlists():
     
     user_email = session.get("user_email")
     
+    if not user_email:
+        print(f"⚠️ No user_email in session")
+        return jsonify({"error": "No user session", "watchlists": []}), 200
+    
     try:
         print(f"🔍 GET watchlists for user: {user_email}")
         response = supabase.table("watchlists").select("*").eq("email", user_email).execute()
@@ -537,7 +673,8 @@ def get_watchlists():
         print(f"❌ Error getting watchlists: {e}")
         print(traceback.format_exc())
         app.logger.error(f"Error getting watchlists: {e}", exc_info=True)
-        return jsonify({"error": str(e), "debug": traceback.format_exc()}), 500
+        # Return 200 with empty list instead of 500 to prevent UI breakage
+        return jsonify({"error": str(e), "watchlists": [], "debug": str(e)}), 200
 
 
 @app.route("/api/watchlists", methods=["POST"])
