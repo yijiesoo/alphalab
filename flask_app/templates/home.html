@@ -544,6 +544,7 @@
             }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <div class="container">
@@ -619,20 +620,6 @@
                         </div>
                     </div>
                 </div>
-
-                <div class="stat-card">
-                    <div class="stat-card-header">
-                        <span class="stat-card-title">Portfolio Volatility</span>
-                        <span class="stat-card-icon">⏱️</span>
-                    </div>
-                    <div class="stat-card-value" id="portfolio-volatility">-</div>
-                    <div class="stat-card-detail">
-                        <div class="stat-detail-item">
-                            <div class="stat-detail-label">Status</div>
-                            <div class="stat-detail-value" id="volatility-status">Low</div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Dashboard Grid -->
@@ -640,8 +627,8 @@
                 <!-- Portfolio Performance -->
                 <div class="dashboard-card">
                     <h3>Portfolio Performance</h3>
-                    <div id="portfolio-chart-container" style="height: 300px; display: flex; align-items: center; justify-content: center; color: #999;">
-                        <span>Chart Coming Soon</span>
+                    <div id="portfolio-chart-container" style="height: 300px; position: relative;">
+                        <canvas id="portfolioChart"></canvas>
                     </div>
                 </div>
 
@@ -772,6 +759,8 @@
             await loadPortfolioDashboard();
             await loadWatchlistSummary();
             await loadMarketSummary();
+            await loadPortfolioHoldings();
+            await renderPortfolioChart();
         }
 
         // OPTION A: PORTFOLIO DASHBOARD
@@ -829,7 +818,6 @@
                     // Momentum
                     const totalMomentum = (avgReturn * data.holdings_count / 100).toFixed(2);
                     document.getElementById('portfolio-momentum').textContent = `${avgReturn}%`;
-                    document.getElementById('portfolio-volatility').textContent = data.volatility ? `${data.volatility.toFixed(2)}%` : 'N/A';
                     
                 } else {
                     statCardsGrid.style.display = 'none';
@@ -969,7 +957,111 @@
             document.getElementById('holding-form').reset();
         }
 
-        // Wait for DOM to be ready before attaching form handlers
+        // PORTFOLIO CHART
+        let portfolioChartInstance = null;
+        
+        async function renderPortfolioChart() {
+            try {
+                const response = await fetch('/api/portfolio/summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // If no holdings, show placeholder
+                if (data.holdings_count === 0) {
+                    const ctx = document.getElementById('portfolioChart');
+                    if (ctx) {
+                        ctx.parentElement.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999;">No holdings to display</div>';
+                    }
+                    return;
+                }
+
+                // Prepare chart data - show each holding's current value and gain/loss
+                const holdings = data.holdings;
+                const labels = holdings.map(h => h.ticker);
+                const currentValues = holdings.map(h => h.current_value);
+                const investedValues = holdings.map(h => h.invested);
+                const gainLoss = holdings.map(h => h.gain_loss);
+
+                const ctx = document.getElementById('portfolioChart');
+                if (!ctx) return;
+
+                // Destroy existing chart if it exists
+                if (portfolioChartInstance) {
+                    portfolioChartInstance.destroy();
+                }
+
+                portfolioChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Invested Value',
+                                data: investedValues,
+                                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                                borderColor: 'rgba(59, 130, 246, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4,
+                            },
+                            {
+                                label: 'Current Value',
+                                data: currentValues,
+                                backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                                borderColor: 'rgba(16, 185, 129, 1)',
+                                borderWidth: 1,
+                                borderRadius: 4,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: 'var(--text-primary)',
+                                    font: {
+                                        family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                        size: 12,
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: 'var(--text-secondary)',
+                                    callback: function(value) {
+                                        return '$' + value.toFixed(0);
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(0, 0, 0, 0.05)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: 'var(--text-secondary)'
+                                },
+                                grid: {
+                                    display: false
+                                }
+                            }
+                        }
+                    }
+                });
+
+                console.log('✅ Portfolio chart rendered');
+            } catch (e) {
+                console.error('Portfolio chart error:', e);
+            }
+        }
+
+
         function setupPortfolioForm() {
             const holdingForm = document.getElementById('holding-form');
             const addHoldingBtn = document.getElementById('add-holding-btn');
@@ -1018,6 +1110,7 @@
                         document.getElementById('holding-form').reset();
                         setTimeout(() => {
                             loadPortfolioHoldings();
+                            renderPortfolioChart();
                         }, 500);
                         alert('✅ Holding added successfully!');
                     } else {

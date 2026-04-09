@@ -1188,23 +1188,6 @@
                 <div id="watchlist-items" style="margin-top: 16px;"></div>
                 
                 <!-- Portfolio tracking section -->
-                <div id="portfolio-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #eee; display: none;">
-                    <h4 style="color: #2a5298; margin-bottom: 12px;">💼 Portfolio Performance</h4>
-                    <div id="portfolio-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;">
-                        <div style="padding: 12px; background: #f0f0f0; border-radius: 6px;">
-                            <div style="font-size: 0.85em; color: #666;">Average Return</div>
-                            <div id="portfolio-return" style="font-size: 1.2em; font-weight: bold; color: #2a5298;">-</div>
-                        </div>
-                        <div style="padding: 12px; background: #f0f0f0; border-radius: 6px;">
-                            <div style="font-size: 0.85em; color: #666;">Best Stock</div>
-                            <div id="portfolio-best" style="font-size: 1.2em; font-weight: bold; color: #27ae60;">-</div>
-                        </div>
-                        <div style="padding: 12px; background: #f0f0f0; border-radius: 6px;">
-                            <div style="font-size: 0.85em; color: #666;">Worst Stock</div>
-                            <div id="portfolio-worst" style="font-size: 1.2em; font-weight: bold; color: #e74c3c;">-</div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Analysis panels -->
@@ -1237,16 +1220,8 @@
                             <span class="macro-value" id="yield-value"></span>
                         </div>
                         <div class="macro-row">
-                            <span class="macro-label">Market Trend (S&P 500):</span>
-                            <span class="macro-value" id="sp500-value"></span>
-                        </div>
-                        <div class="macro-row">
                             <span class="macro-label">Sector:</span>
                             <span class="macro-value" id="sector-value"></span>
-                        </div>
-                        <div class="macro-row">
-                            <span class="macro-label">Sector Momentum:</span>
-                            <span class="macro-value" id="sector-signal"></span>
                         </div>
                         <div class="macro-summary" id="macro-summary"></div>
                     </div>
@@ -1503,25 +1478,8 @@
                 document.getElementById("yield-value").textContent = "N/A";
             }
             
-            // S&P 500 Momentum
-            const sp500Mom = data.macro && data.macro.sp500_momentum;
-            if (sp500Mom && sp500Mom !== "unavailable") {
-                const sp500Label = data.macro.sp500_label || "N/A";
-                document.getElementById("sp500-value").textContent = `${sp500Mom.charAt(0).toUpperCase() + sp500Mom.slice(1)} — ${sp500Label}`;
-            } else {
-                document.getElementById("sp500-value").textContent = "N/A";
-            }
-            
             // Sector
             document.getElementById("sector-value").textContent = (data.macro && data.macro.sector) || "Unknown";
-            
-            // Sector Signal
-            const sectorSignal = data.macro && data.macro.sector_signal;
-            if (sectorSignal && sectorSignal !== "unavailable") {
-                document.getElementById("sector-signal").textContent = sectorSignal;
-            } else {
-                document.getElementById("sector-signal").textContent = "N/A";
-            }
             
             // Macro Summary
             document.getElementById("macro-summary").textContent = (data.macro && data.macro.summary) || "Data unavailable";
@@ -1943,7 +1901,6 @@
                 document.getElementById("add-to-watchlist").style.display = "block";
                 document.getElementById("delete-watchlist-btn").style.display = "block";
                 loadWatchlistItems();
-                loadPortfolioPerformance();
             }
         });
 
@@ -2000,7 +1957,6 @@
                 const container = document.getElementById("watchlist-items");
                 if (!watchlist.tickers || watchlist.tickers.length === 0) {
                     container.innerHTML = "<p style='color: #999;'>No items in this watchlist yet.</p>";
-                    document.getElementById("portfolio-section").style.display = "none";
                     return;
                 }
 
@@ -2010,8 +1966,6 @@
                         <button class="watchlist-btn" onclick="removeTickerFromWatchlist('${ticker}')">Remove</button>
                     </div>
                 `).join("");
-
-                document.getElementById("portfolio-section").style.display = "block";
             } catch (e) {
                 console.error("Error loading watchlist items:", e);
             }
@@ -2063,33 +2017,6 @@
                 }
             } catch (e) {
                 console.error("Error adding ticker:", e);
-            }
-        }
-
-        async function loadPortfolioPerformance() {
-            // Load portfolio performance for selected watchlist
-            if (!currentWatchlistId) return;
-
-            try {
-                const response = await fetch(`/api/portfolio/performance?watchlist_id=${currentWatchlistId}&period=3mo`);
-                if (!response.ok) return;
-
-                const perf = await response.json();
-                
-                document.getElementById("portfolio-return").textContent = 
-                    `${perf.avg_return >= 0 ? '📈 +' : '📉 '}${perf.avg_return.toFixed(2)}%`;
-                
-                if (perf.best_performer) {
-                    document.getElementById("portfolio-best").textContent = 
-                        `${perf.best_performer.ticker} (+${perf.best_performer.return.toFixed(2)}%)`;
-                }
-                
-                if (perf.worst_performer) {
-                    document.getElementById("portfolio-worst").textContent = 
-                        `${perf.worst_performer.ticker} (${perf.worst_performer.return.toFixed(2)}%)`;
-                }
-            } catch (e) {
-                console.error("Error loading portfolio performance:", e);
             }
         }
 
