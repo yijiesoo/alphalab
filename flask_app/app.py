@@ -865,5 +865,168 @@ def compare_stocks_endpoint():
         return jsonify({"error": str(e)}), 500
 
 
+
+# ===== NEW FEATURE: MULTIPLE WATCHLISTS =====
+
+@app.route("/api/watchlists", methods=["GET"])
+@login_required
+def get_watchlists():
+    """Get all watchlists for current user."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    user_email = session.get("user_email")
+    
+    try:
+        from src.watchlists import get_user_watchlists
+        watchlists = get_user_watchlists(supabase, user_email)
+        return jsonify({"watchlists": watchlists, "count": len(watchlists)}), 200
+    except Exception as e:
+        app.logger.error(f"Error fetching watchlists: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/watchlists", methods=["POST"])
+@login_required
+def create_watchlist():
+    """Create a new watchlist."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    user_email = session.get("user_email")
+    data = request.json or {}
+    name = data.get("name", "").strip()
+    
+    if not name:
+        return jsonify({"error": "Watchlist name required"}), 400
+    
+    try:
+        from src.watchlists import create_watchlist as create_wl
+        watchlist = create_wl(supabase, user_email, name)
+        
+        if watchlist:
+            return jsonify({"watchlist": watchlist, "message": "Watchlist created"}), 201
+        else:
+            return jsonify({"error": "Could not create watchlist"}), 500
+    except Exception as e:
+        app.logger.error(f"Error creating watchlist: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/watchlists/<watchlist_id>", methods=["DELETE"])
+@login_required
+def delete_watchlist(watchlist_id):
+    """Delete a watchlist."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    try:
+        from src.watchlists import delete_watchlist as delete_wl
+        success = delete_wl(supabase, watchlist_id)
+        
+        if success:
+            return jsonify({"message": "Watchlist deleted"}), 200
+        else:
+            return jsonify({"error": "Could not delete watchlist"}), 500
+    except Exception as e:
+        app.logger.error(f"Error deleting watchlist: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/watchlists/<watchlist_id>/ticker", methods=["POST", "DELETE"])
+@login_required
+def manage_watchlist_ticker(watchlist_id):
+    """Add or remove ticker from watchlist."""
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    data = request.json or {}
+    ticker = (data.get("ticker") or "").upper().strip()
+    
+    if not ticker or not _valid_ticker(ticker):
+        return jsonify({"error": "Invalid ticker"}), 400
+    
+    try:
+        from src.watchlists import add_ticker_to_watchlist, remove_ticker_from_watchlist
+        
+        if request.method == "POST":
+            success = add_ticker_to_watchlist(supabase, watchlist_id, ticker)
+            message = f"{ticker} added to watchlist"
+        else:
+            success = remove_ticker_from_watchlist(supabase, watchlist_id, ticker)
+            message = f"{ticker} removed from watchlist"
+        
+        if success:
+            return jsonify({"message": message}), 200
+        else:
+            return jsonify({"error": "Could not modify watchlist"}), 500
+    except Exception as e:
+        app.logger.error(f"Error managing watchlist ticker: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+# ===== NEW FEATURE: PORTFOLIO TRACKING =====
+
+@app.route("/api/portfolio/performance", methods=["GET"])
+@login_required
+def portfolio_performance():
+    """Get portfolio performance metrics."""
+    user_email = session.get("user_email")
+    watchlist_id = request.args.get("watchlist_id")
+    period = request.args.get("period", "1y")
+    
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    try:
+        from src.watchlists import calculate_portfolio_performance
+        
+        # Get watchlist tickers
+        if watchlist_id:
+            response = supabase.table("watchlists").select("tickers").eq("id", watchlist_id).single().execute()
+            tickers = response.data.get("tickers", []) if response.data else []
+        else:
+            # Use default watchlist (first one or all)
+            response = supabase.table("watchlists").select("tickers").eq("email", user_email).limit(1).execute()
+            tickers = response.data[0].get("tickers", []) if response.data else []
+        
+        performance = calculate_portfolio_performance(tickers, period)
+        return jsonify(performance), 200
+    except Exception as e:
+        app.logger.error(f"Error calculating portfolio performance: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/portfolio/value", methods=["GET"])
+@login_required
+def portfolio_value():
+    """Get total portfolio value."""
+    user_email = session.get("user_email")
+    watchlist_id = request.args.get("watchlist_id")
+    
+    if not supabase:
+        return jsonify({"error": "Supabase not configured"}), 503
+    
+    try:
+        from src.watchlists import calculate_portfolio_value
+        
+        # Get watchlist
+        if watchlist_id:
+            response = supabase.table("watchlists").select("*").eq("id", watchlist_id).single().execute()
+            watchlist = response.data if response.data else None
+        else:
+            response = supabase.table("watchlists").select("*").eq("email", user_email).limit(1).execute()
+            watchlist = response.data[0] if response.data else None
+        
+        if not watchlist:
+            return jsonify({"error": "Watchlist not found"}), 404
+        
+        value = calculate_portfolio_value(watchlist)
+        return jsonify(value), 200
+    except Exception as e:
+        app.logger.error(f"Error calculating portfolio value: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == "__main__":
     app.run(debug=True, host="127.0.0.1", port=8000)
