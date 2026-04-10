@@ -46,6 +46,13 @@ def analyze():
     return render_template("index.html")
 
 
+@dashboard_bp.route("/transparency")
+@login_required
+def transparency():
+    """Transparency & Methodology page"""
+    return render_template("transparency.html")
+
+
 # =====================================================================
 # API: Portfolio Dashboard (Option A)
 # =====================================================================

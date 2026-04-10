@@ -70,6 +70,142 @@ def get_verdict_with_emoji(score: float) -> Dict[str, str]:
         }
 
 
+# ========== CONFIDENCE SCORING ==========
+
+def calculate_confidence(analysis_data: Dict) -> Dict:
+    """
+    Calculate how confident we are in the signal (0-100%).
+    
+    Factors:
+    1. Score extremeness (how far from 50)
+    2. Signal agreement (do momentum, sentiment, macro all agree?)
+    3. Data quality (is there enough data?)
+    
+    Parameters
+    ----------
+    analysis_data : dict
+        Output from analyze_ticker or API
+        
+    Returns
+    -------
+    dict with confidence score, reasoning, and warnings
+    """
+    factor = analysis_data.get("factor", {})
+    score = factor.get("score", 50) if isinstance(factor, dict) else 50
+    
+    # Count how many signals align
+    signal_agreement = 0
+    signals_count = 0
+    
+    # 1. Momentum signal
+    momentum = factor.get("momentum", 0) if isinstance(factor, dict) else 0
+    signals_count += 1
+    if (score > 60 and momentum > 0) or (score < 40 and momentum < 0):
+        signal_agreement += 1
+    
+    # 2. Sentiment signal
+    sentiment = analysis_data.get("sentiment", {})
+    signals_count += 1
+    if isinstance(sentiment, dict):
+        sentiment_score = sentiment.get("score", 0)
+        if (score > 60 and sentiment_score > 0) or (score < 40 and sentiment_score < 0):
+            signal_agreement += 1
+    
+    # 3. Macro signal
+    macro = analysis_data.get("macro", {})
+    signals_count += 1
+    if isinstance(macro, dict):
+        vix = macro.get("vix", 20)
+        # In low VIX (calm market), buy signals are more reliable
+        if score > 60 and vix < 20:
+            signal_agreement += 1
+        elif score < 40 and vix > 20:
+            signal_agreement += 1
+    
+    # Calculate confidence
+    extremeness = abs(score - 50) / 50  # 0-1: how extreme is the score?
+    agreement = signal_agreement / signals_count if signals_count > 0 else 0.5  # 0-1: alignment
+    
+    # Final confidence: 60% from extremeness, 40% from agreement
+    base_confidence = (extremeness * 0.6 + agreement * 0.4) * 100
+    
+    # Cap at 95% to show appropriate humility
+    confidence = min(base_confidence, 95)
+    
+    # Generate explanation
+    if confidence < 50:
+        confidence_label = "Low - Mixed signals"
+    elif confidence < 70:
+        confidence_label = "Medium - Some agreement"
+    else:
+        confidence_label = "High - Strong signals"
+    
+    return {
+        "confidence": round(confidence, 0),
+        "confidence_label": confidence_label,
+        "factors_aligned": signal_agreement,
+        "factors_total": signals_count,
+        "explanation": f"{signal_agreement}/{signals_count} signals agree ({confidence_label})"
+    }
+
+
+# ========== GENERATE WARNINGS ==========
+
+def generate_warnings(analysis_data: Dict) -> List[str]:
+    """
+    Generate beginner-friendly warnings for the user.
+    
+    Parameters
+    ----------
+    analysis_data : dict
+        Output from analyze_ticker or API
+        
+    Returns
+    -------
+    list of warning strings
+    """
+    warnings = []
+    
+    # 1. Low confidence warning
+    confidence = calculate_confidence(analysis_data)
+    if confidence["confidence"] < 50:
+        warnings.append(
+            "⚠️ Low confidence signal - Signals are mixed. Be extra careful with this trade."
+        )
+    
+    # 2. High volatility warning
+    macro = analysis_data.get("macro", {})
+    if isinstance(macro, dict):
+        vix = macro.get("vix", 15)
+        if vix > 25:
+            warnings.append(
+                "⚠️ Market is nervous (VIX > 25). Stock prices could jump around dramatically."
+            )
+        elif vix > 30:
+            warnings.append(
+                "🚨 Market is very fearful (VIX > 30). Extra risky time to trade. Consider waiting."
+            )
+    
+    # 3. Weak signal warning
+    factor = analysis_data.get("factor", {})
+    score = factor.get("score", 50) if isinstance(factor, dict) else 50
+    if 40 <= score <= 60:
+        warnings.append(
+            "💭 Signal is neutral (around 50/100). Not a strong reason to buy or sell yet."
+        )
+    
+    # 4. Sentiment disagreement
+    sentiment = analysis_data.get("sentiment", {})
+    if isinstance(sentiment, dict):
+        sent_score = sentiment.get("score", 0)
+        if (score > 60 and sent_score < 0) or (score < 40 and sent_score > 0):
+            warnings.append(
+                "⚡ Sentiment disagrees with the score. News sentiment is not aligned with technical signals."
+            )
+    
+    return warnings
+
+
 # ========== WHY THIS SIGNAL EXPLANATION ==========
 
 def explain_signal(analysis_data: Dict) -> Dict:
@@ -83,34 +219,50 @@ def explain_signal(analysis_data: Dict) -> Dict:
         
     Returns
     -------
-    dict with detailed explanation broken down by factor (momentum, sentiment, macro as dicts)
+    dict with detailed explanation including confidence, warnings, and tips
     """
     # Get score from factor dict (contains 'score' key)
     factor = analysis_data.get("factor", {})
     score = factor.get("score", 50) if isinstance(factor, dict) else 50
     
+    # Calculate confidence
+    confidence = calculate_confidence(analysis_data)
+    
+    # Generate warnings
+    warnings = generate_warnings(analysis_data)
+    
     explanation = {
         "score": score,  # Keep numerical score for comparison
+        "confidence": confidence,  # Add confidence breakdown
         "verdict": get_verdict_with_emoji(score),  # Add beginner-friendly verdict
         "momentum": _format_momentum(factor),
+        "rsi": _format_rsi(factor),  # NEW: Add RSI strength indicator
         "sentiment": _format_sentiment(analysis_data.get("sentiment", {})),
         "macro": _format_macro(analysis_data.get("macro", {})),
         "overall": "",
-        "warnings": [],
+        "warnings": warnings,  # Use calculated warnings
         "tips": []
     }
     
     # Overall explanation
     verdict = explanation["verdict"]
-    explanation["overall"] = f"{verdict['emoji']} {verdict['explanation']}"
+    confidence_text = f" ({confidence['confidence']}% confidence)" if confidence["confidence"] else ""
+    explanation["overall"] = f"{verdict['emoji']} {verdict['explanation']}{confidence_text}"
     
-    # Add warnings if score is low
-    if score < 40:
-        explanation["warnings"].append("⚠️ Weak momentum - Price might drop further")
+    # Add beginner-friendly tips
+    if score > 70:
+        explanation["tips"].append("💡 If you buy, diversify: Don't put all money in one stock")
+        explanation["tips"].append("📅 Dollar-Cost Average: Buy in 3-4 portions over 2-4 weeks instead of all at once")
+    elif score < 40:
+        explanation["tips"].append("⚠️ Consider waiting for a better entry point or skip this stock")
+        explanation["tips"].append("� This is NOT a recommendation to sell - only to be cautious")
+    else:
+        explanation["tips"].append("💭 Mixed signals - do your own research before buying")
+        explanation["tips"].append("� Wait for a clearer signal (score above 70 or below 30)")
     
-    # Add tips
-    explanation["tips"].append("💡 Diversify: Don't put all money in one stock")
-    explanation["tips"].append("📅 Dollar-Cost Average: Buy in 3-4 portions over 2-4 weeks")
+    explanation["tips"].append("🎯 This is a tool to help, not a guarantee. Always invest responsibly.")
+    
+    return explanation
     
     return explanation
 
@@ -120,27 +272,32 @@ def _format_momentum(factor: Dict) -> Dict:
     if not factor:
         return {"strength": "WEAK", "text": "⏳ Price trend: Not enough data yet"}
     
-    momentum = factor.get("momentum_score", 0)
+    # New: Include both momentum and RSI
+    momentum_score = factor.get("momentum_score", 0)
     
-    if momentum >= 70:
+    # Get RSI information
+    rsi_dict = factor.get("rsi", {})
+    rsi_value = rsi_dict.get("rsi_value", 50)
+    
+    if momentum_score >= 70:
         return {
             "strength": "STRONG",
-            "text": f"🔥 Buying Pressure is STRONG ({momentum}/100) - Price is moving up fast!"
+            "text": f"🔥 Price Trend: STRONG ({momentum_score}/100) - Uptrend is very strong. RSI: {rsi_value:.1f}"
         }
-    elif momentum >= 50:
+    elif momentum_score >= 50:
         return {
             "strength": "GOOD",
-            "text": f"📈 Buying Pressure is GOOD ({momentum}/100) - Price is moving up"
+            "text": f"📈 Price Trend: GOOD ({momentum_score}/100) - Price is trending up. RSI: {rsi_value:.1f}"
         }
-    elif momentum >= 30:
+    elif momentum_score >= 30:
         return {
             "strength": "WEAK",
-            "text": f"➡️ Buying Pressure is WEAK ({momentum}/100) - Price is sideways"
+            "text": f"➡️ Price Trend: WEAK ({momentum_score}/100) - Price is sideways. RSI: {rsi_value:.1f}"
         }
     else:
         return {
             "strength": "VERY WEAK",
-            "text": f"📉 Buying Pressure is VERY WEAK ({momentum}/100) - Price is dropping"
+            "text": f"📉 Price Trend: VERY WEAK ({momentum_score}/100) - Price is trending down. RSI: {rsi_value:.1f}"
         }
 
 
@@ -187,6 +344,39 @@ def _format_sentiment(sentiment: Dict) -> Dict:
         return {
             "sentiment_type": "neutral",
             "text": f"� News Sentiment is NEUTRAL ({neutral} neutral articles) - Mixed opinions"
+        }
+
+
+def _format_rsi(factor: Dict) -> Dict:
+    """Format RSI explanation as dict with easy-to-understand terms."""
+    if not factor:
+        return {
+            "strength": "NEUTRAL",
+            "text": "Stream Price Momentum: Not enough data yet"
+        }
+    
+    rsi_dict = factor.get("rsi", {})
+    rsi_value = rsi_dict.get("rsi_value", 50)
+    
+    if rsi_value < 30:
+        return {
+            "strength": "OVERSOLD - BUY",
+            "text": f"Green Stock Strength: {rsi_value:.1f}/100 - OVERSOLD (Stock is down, might bounce back - Good to buy)"
+        }
+    elif rsi_value < 50:
+        return {
+            "strength": "WEAK - SLIGHT BUY",
+            "text": f"Yellow Stock Strength: {rsi_value:.1f}/100 - WEAK (Momentum improving but still not strong)"
+        }
+    elif rsi_value < 70:
+        return {
+            "strength": "STRONG - SLIGHT SELL",
+            "text": f"Orange Stock Strength: {rsi_value:.1f}/100 - STRONG (Momentum is good but getting stretched)"
+        }
+    else:
+        return {
+            "strength": "OVERBOUGHT - SELL",
+            "text": f"Red Stock Strength: {rsi_value:.1f}/100 - OVERBOUGHT (Stock up alot, might pull back - Consider selling)"
         }
 
 

@@ -13,6 +13,9 @@ import shutil
 import re
 from pathlib import Path
 from datetime import datetime, timedelta
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session
@@ -942,6 +945,96 @@ def api_portfolio_summary():
         print(traceback.format_exc())
         app.logger.error(f"Error calculating portfolio summary: {e}", exc_info=True)
         return jsonify({"error": str(e), "holdings": []}), 500
+
+
+# =====================================================================
+# FEEDBACK ENDPOINT
+# =====================================================================
+@app.route("/api/feedback", methods=["POST"])
+@login_required
+def submit_feedback():
+    """
+    Send user feedback to admin email
+    """
+    try:
+        data = request.get_json()
+        feedback_text = data.get("feedback", "").strip()
+        page = data.get("page", "unknown")
+        timestamp = data.get("timestamp", datetime.now().isoformat())
+        
+        if not feedback_text:
+            return jsonify({"error": "Feedback text is required"}), 400
+        
+        # Get user email from session
+        user_email = session.get("user_email", "anonymous")
+        
+        # Send email to admin
+        send_feedback_email(user_email, feedback_text, page, timestamp)
+        
+        print(f"✅ Feedback email sent from {user_email}: {feedback_text[:50]}...")
+        return jsonify({"message": "Feedback received successfully"}), 200
+    
+    except Exception as e:
+        import traceback
+        print(f"❌ Error sending feedback: {e}")
+        print(traceback.format_exc())
+        app.logger.error(f"Error sending feedback: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+def send_feedback_email(user_email, feedback_text, page, timestamp):
+    """
+    Send feedback email to admin
+    """
+    try:
+        # Email configuration
+        sender_email = os.getenv("GMAIL_USER", "alphalab.feedback@gmail.com")
+        sender_password = os.getenv("GMAIL_PASSWORD", "")
+        recipient_email = "sooyijie111@gmail.com"
+        
+        # Create message
+        message = MIMEMultipart()
+        message["From"] = sender_email
+        message["To"] = recipient_email
+        message["Subject"] = f"📬 AlphaLab Feedback from {user_email}"
+        
+        # Email body
+        body = f"""
+        <html>
+            <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1F2937;">
+                <h2 style="color: #3B82F6;">📬 New Feedback Received</h2>
+                
+                <div style="background: #F8FAFC; padding: 16px; border-radius: 8px; margin: 16px 0;">
+                    <p><strong>From:</strong> {user_email}</p>
+                    <p><strong>Page:</strong> {page}</p>
+                    <p><strong>Time:</strong> {timestamp}</p>
+                </div>
+                
+                <div style="background: #FFFFFF; padding: 16px; border: 1px solid #E2E8F0; border-radius: 8px; margin: 16px 0;">
+                    <h3 style="color: #1F2937; margin-top: 0;">Feedback:</h3>
+                    <p style="white-space: pre-wrap; color: #4B5563; line-height: 1.6;">{feedback_text}</p>
+                </div>
+                
+                <p style="color: #6B7280; font-size: 0.9em; margin-top: 24px;">
+                    — AlphaLab Feedback System
+                </p>
+            </body>
+        </html>
+        """
+        
+        message.attach(MIMEText(body, "html"))
+        
+        # Send email
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(sender_email, sender_password)
+            server.send_message(message)
+        
+        print(f"✅ Email sent to {recipient_email}")
+    
+    except Exception as e:
+        print(f"❌ Error sending email: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 if __name__ == "__main__":
