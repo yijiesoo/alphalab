@@ -24,7 +24,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Roboto, sans-serif;
             background: var(--light-bg);
             min-height: 100vh;
-            padding: 24px 20px;
+            padding: 32px 20px;
             color: var(--text-primary);
         }
         
@@ -38,150 +38,174 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 48px;
-            padding-bottom: 24px;
-            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 56px;
+            padding-bottom: 32px;
+            border-bottom: 2px solid var(--border-color);
         }
         
         .header-left {
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 20px;
         }
         
         .logo {
-            width: 48px;
-            height: 48px;
-            background: var(--primary-blue);
-            border-radius: 12px;
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
             font-weight: 700;
-            font-size: 1.5em;
+            font-size: 1.6em;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
         }
         
         .header-left h1 {
-            font-size: 1.75em;
+            font-size: 1.875em;
             font-weight: 700;
             color: var(--text-primary);
+            letter-spacing: -0.5px;
         }
         
         .header-right {
             display: flex;
-            gap: 12px;
+            gap: 16px;
             align-items: center;
         }
         
         .user-info {
             background: var(--card-bg);
-            padding: 10px 16px;
-            border-radius: 8px;
+            padding: 12px 18px;
+            border-radius: 10px;
             color: var(--text-secondary);
-            font-size: 0.95em;
-            border: 1px solid var(--border-color);
+            font-size: 0.9em;
+            border: 1.5px solid var(--border-color);
+            font-weight: 500;
         }
         
         .btn {
-            padding: 10px 20px;
+            padding: 11px 24px;
             background: var(--primary-blue);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             text-decoration: none;
             display: inline-block;
             font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
         }
         
         .btn:hover {
             background: var(--dark-blue);
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
         }
         
         .btn-logout {
             background: var(--danger);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
         }
         
         .btn-logout:hover {
             background: #DC2626;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
         }
         
         .btn-analyze {
             background: var(--success);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
         }
         
         .btn-analyze:hover {
             background: #059669;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
         }
         
         /* Main Content Grid */
         .main-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 24px;
+            gap: 32px;
+        }
+        
+        /* Content Wrapper - Main content + Sidebar */
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 32px;
+            align-items: start;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
         }
         
         /* Stat Cards Section */
         .stat-cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 16px;
         }
         
         .stat-card {
             background: var(--card-bg);
-            padding: 24px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 28px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
         }
         
         .stat-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(-4px);
+            border-color: var(--primary-blue);
         }
         
         .stat-card-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
+            align-items: flex-start;
+            margin-bottom: 18px;
         }
         
         .stat-card-title {
             color: var(--text-secondary);
-            font-size: 0.875em;
-            font-weight: 600;
+            font-size: 0.8em;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
         }
         
         .stat-card-icon {
-            font-size: 1.5em;
+            font-size: 1.8em;
+            opacity: 0.8;
         }
         
         .stat-card-value {
-            font-size: 2em;
-            font-weight: 700;
+            font-size: 2.2em;
+            font-weight: 800;
             color: var(--text-primary);
-            margin-bottom: 8px;
+            margin-bottom: 12px;
+            letter-spacing: -1px;
         }
         
         .stat-card-detail {
             display: flex;
-            gap: 12px;
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid var(--border-color);
-            font-size: 0.875em;
+            gap: 16px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1.5px solid var(--border-color);
+            font-size: 0.85em;
         }
         
         .stat-detail-item {
@@ -192,12 +216,15 @@
             color: var(--text-secondary);
             font-size: 0.75em;
             text-transform: uppercase;
-            margin-bottom: 4px;
+            margin-bottom: 6px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
         
         .stat-detail-value {
-            font-weight: 600;
+            font-weight: 700;
             color: var(--text-primary);
+            font-size: 1.1em;
         }
         
         .stat-detail-value.positive {
@@ -208,38 +235,48 @@
             color: var(--danger);
         }
         
-        /* Dashboard Cards Grid */
+        /* Dashboard Cards Grid - 2 column layout */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 24px;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+        
+        .dashboard-grid .dashboard-card:first-child {
+            grid-column: 1 / -1;
         }
         
         .dashboard-card {
             background: var(--card-bg);
-            padding: 28px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 32px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .dashboard-card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
         }
         
         .dashboard-card h3 {
             color: var(--text-primary);
-            font-size: 1.125em;
+            font-size: 1.25em;
             font-weight: 700;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             display: flex;
             align-items: center;
-            gap: 10px;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 16px;
+            gap: 12px;
+            border-bottom: 2.5px solid var(--border-color);
+            padding-bottom: 18px;
+            letter-spacing: -0.3px;
         }
         
         .stat-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px 0;
+            padding: 16px 0;
             border-bottom: 1px solid var(--border-color);
         }
         
@@ -249,12 +286,12 @@
         
         .stat-label {
             color: var(--text-secondary);
-            font-size: 0.9em;
+            font-size: 0.95em;
             font-weight: 500;
         }
         
         .stat-value {
-            font-size: 1.25em;
+            font-size: 1.35em;
             font-weight: 700;
             color: var(--text-primary);
         }
@@ -272,17 +309,17 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 14px;
+            padding: 16px;
             border-bottom: 1px solid var(--border-color);
-            font-size: 0.9em;
-            border-radius: 6px;
-            transition: all 0.2s;
+            font-size: 0.95em;
+            border-radius: 8px;
+            transition: all 0.2s ease;
             cursor: pointer;
         }
         
         .stock-item:hover {
             background: var(--light-bg);
-            transform: translateX(4px);
+            transform: translateX(6px);
         }
         
         .stock-item:last-child {
@@ -295,21 +332,24 @@
         
         .stock-ticker {
             font-weight: 700;
-            color: var(--text-primary);
-            font-size: 0.95em;
+            color: var(--primary-blue);
+            font-size: 1em;
+            margin-bottom: 4px;
         }
         
         .stock-price {
             color: var(--text-secondary);
             font-size: 0.85em;
-            margin-top: 2px;
+            margin-top: 6px;
+            font-weight: 500;
         }
         
         .stock-change {
-            font-weight: 700;
-            min-width: 90px;
+            font-weight: 800;
+            min-width: 100px;
             text-align: right;
             padding-left: 16px;
+            font-size: 1.1em;
         }
         
         .stock-change.positive {
@@ -322,31 +362,45 @@
         
         /* Market Stats */
         .market-stat {
-            margin-bottom: 20px;
-            padding: 16px;
-            background: var(--light-bg);
-            border-radius: 8px;
-            border-left: 4px solid var(--primary-blue);
+            margin-bottom: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, var(--light-bg) 0%, #F3F4F6 100%);
+            border-radius: 10px;
+            border-left: 4.5px solid var(--primary-blue);
+            transition: all 0.3s ease;
+        }
+        
+        .market-stat:hover {
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateX(4px);
+        }
+        
+        .market-stat:last-child {
+            margin-bottom: 0;
         }
         
         .market-stat-label {
-            font-size: 0.85em;
+            font-size: 0.8em;
             color: var(--text-secondary);
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
         }
         
         .market-stat-value {
-            font-size: 1.5em;
-            font-weight: 700;
+            font-size: 1.75em;
+            font-weight: 800;
             color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
         }
         
         .market-stat-change {
-            font-size: 0.85em;
-            margin-top: 6px;
-            font-weight: 600;
+            font-size: 0.9em;
+            margin-top: 8px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
         }
         
         .market-stat-change.positive {
@@ -360,25 +414,34 @@
         /* Sidebar */
         .sidebar {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: 1fr;
             gap: 24px;
+            height: fit-content;
+            position: sticky;
+            top: 32px;
         }
         
         .card {
             background: var(--card-bg);
-            padding: 28px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 32px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
         }
         
         .card h3 {
             color: var(--text-primary);
-            font-size: 1.125em;
-            font-weight: 700;
+            font-size: 1.1em;
+            font-weight: 800;
             margin-bottom: 20px;
-            border-bottom: 2px solid var(--border-color);
-            padding-bottom: 16px;
+            border-bottom: 2.5px solid var(--border-color);
+            padding-bottom: 14px;
+            letter-spacing: -0.3px;
         }
         
         .quick-action {
@@ -387,21 +450,24 @@
             justify-content: center;
             padding: 12px;
             background: var(--light-bg);
-            border: 2px solid transparent;
-            border-radius: 8px;
+            border: 1.5px solid transparent;
+            border-radius: 10px;
             text-decoration: none;
             color: var(--primary-blue);
-            font-weight: 600;
-            margin-bottom: 8px;
-            transition: all 0.2s;
+            font-weight: 700;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
             text-align: center;
+            font-size: 0.9em;
+            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.08);
         }
         
         .quick-action:hover {
             background: var(--primary-blue);
             color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            transform: translateY(-4px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
+            border-color: var(--primary-blue);
         }
         
         .quick-action:last-child {
@@ -410,45 +476,55 @@
         
         .stats-mini {
             display: grid;
-            gap: 12px;
+            gap: 10px;
         }
         
         .stat-mini {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
-            background: var(--light-bg);
-            border-radius: 8px;
-            font-size: 0.9em;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--light-bg) 0%, #F3F4F6 100%);
+            border-radius: 10px;
+            font-size: 0.85em;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        
+        .stat-mini:hover {
+            background: linear-gradient(135deg, #F3F4F6 0%, var(--light-bg) 100%);
+            transform: translateX(4px);
         }
         
         .stat-mini-label {
             color: var(--text-secondary);
-            font-weight: 500;
+            font-weight: 600;
+            font-size: 0.85em;
         }
         
         .stat-mini-value {
-            font-weight: 700;
+            font-weight: 800;
             color: var(--text-primary);
+            font-size: 1em;
         }
         
         /* Loading */
         .loading {
             text-align: center;
-            padding: 40px 20px;
+            padding: 48px 20px;
             color: var(--text-secondary);
+            font-weight: 500;
         }
         
         .spinner {
             display: inline-block;
-            width: 24px;
-            height: 24px;
-            border: 3px solid var(--border-color);
-            border-top: 3px solid var(--primary-blue);
+            width: 28px;
+            height: 28px;
+            border: 3.5px solid rgba(0, 0, 0, 0.1);
+            border-top: 3.5px solid var(--primary-blue);
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
         }
         
         @keyframes spin {
@@ -459,66 +535,235 @@
         /* Empty State */
         #empty-state {
             text-align: center;
-            padding: 60px 40px;
+            padding: 80px 40px;
             background: var(--card-bg);
-            border: 2px dashed var(--border-color);
-            border-radius: 12px;
+            border: 2.5px dashed var(--border-color);
+            border-radius: 14px;
+            margin: 40px 0;
         }
         
         #empty-state p:first-child {
-            font-size: 2em;
-            margin-bottom: 12px;
+            font-size: 3em;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
         }
         
         #empty-state p:nth-child(2) {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-size: 1.3em;
+            font-weight: 700;
+        }
+        
+        #empty-state p:nth-child(3) {
             color: var(--text-secondary);
-            margin-bottom: 24px;
-            font-size: 1em;
+            margin-bottom: 32px;
+            font-size: 0.95em;
         }
         
         /* Sentiment Badge */
         .sentiment-badge {
             display: inline-block;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 24px;
-            font-size: 0.875em;
-            font-weight: 600;
-            margin-top: 12px;
+            font-size: 0.85em;
+            font-weight: 700;
+            margin-top: 14px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.7px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
         }
         
         .sentiment-bullish {
-            background: #DBEAFE;
+            background: linear-gradient(135deg, #DBEAFE 0%, #BAE6FD 100%);
             color: #1E40AF;
         }
         
         .sentiment-neutral {
-            background: #FEF3C7;
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
             color: #92400E;
         }
         
         .sentiment-bearish {
-            background: #FEE2E2;
+            background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
             color: #991B1B;
+        }
+        
+        /* Modal Styles */
+        #add-holding-modal {
+            backdrop-filter: blur(4px);
+            animation: fadeInBackdrop 0.25s ease;
+        }
+        
+        @keyframes fadeInBackdrop {
+            from { backdrop-filter: blur(0px); }
+            to { backdrop-filter: blur(4px); }
+        }
+        
+        #add-holding-modal > div {
+            animation: slideInModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1.5px solid var(--border-color);
+            background: var(--card-bg);
+        }
+        
+        @keyframes slideInModal {
+            from {
+                transform: translateY(-60px) scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        #add-holding-modal h2 {
+            font-size: 1.6em;
+            font-weight: 800;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2.5px solid var(--border-color);
+            letter-spacing: -0.5px;
+        }
+        
+        #add-holding-modal input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 1em;
+            color: var(--text-primary);
+            background: var(--card-bg);
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+        
+        #add-holding-modal input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+        
+        #add-holding-modal input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        #add-holding-modal input[type="text"] {
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+        
+        #add-holding-modal div:has(> label) {
+            margin-bottom: 24px;
+        }
+        
+        #add-holding-modal label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.95em;
+            text-transform: capitalize;
+        }
+        
+        #add-holding-modal form > div:last-of-type {
+            display: flex;
+            gap: 16px;
+            margin-top: 32px;
+        }
+        
+        #add-holding-modal button {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        #add-holding-modal button[type="submit"] {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
+        #add-holding-modal button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        #add-holding-modal button[type="submit"]:active {
+            transform: translateY(0);
+        }
+        
+        #add-holding-modal button[type="button"] {
+            background: var(--light-bg);
+            color: var(--text-primary);
+            border: 1.5px solid var(--border-color);
+            font-weight: 600;
+        }
+        
+        #add-holding-modal button[type="button"]:hover {
+            background: var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
         }
         
         /* Responsive */
         @media (max-width: 1024px) {
-            .main-grid {
+            .content-wrapper {
                 grid-template-columns: 1fr;
             }
             
-            .sidebar {
+            .stat-cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .dashboard-grid {
                 grid-template-columns: 1fr;
+            }
+            
+            .dashboard-grid .dashboard-card:first-child {
+                grid-column: 1;
+            }
+            
+            .sidebar {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                position: static;
             }
         }
         
         @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .stat-cards-grid {
+                grid-template-columns: 1fr;
+            }
+            
             .header {
                 flex-direction: column;
                 gap: 20px;
-                text-align: center;
+                text-align: left;
+                align-items: flex-start;
+                margin-bottom: 36px;
+                padding-bottom: 24px;
             }
             
             .header-left h1 {
@@ -528,19 +773,45 @@
             .header-right {
                 width: 100%;
                 flex-wrap: wrap;
-                justify-content: center;
             }
             
-            .stat-cards-grid {
-                grid-template-columns: 1fr;
+            .header-right .btn {
+                flex: 1;
+                min-width: 120px;
+            }
+            
+            .stat-card {
+                padding: 20px;
+            }
+            
+            .stat-card-value {
+                font-size: 1.8em;
             }
             
             .dashboard-grid {
                 grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .dashboard-card {
+                padding: 24px;
+            }
+            
+            .dashboard-card h3 {
+                font-size: 1.1em;
+                margin-bottom: 16px;
+                padding-bottom: 12px;
             }
             
             .sidebar {
                 grid-template-columns: 1fr;
+                position: static;
+            }
+            
+            #add-holding-modal > div {
+                width: 92%;
+                margin: 40px auto;
+                padding: 28px 24px;
             }
         }
     </style>
@@ -622,91 +893,100 @@
                 </div>
             </div>
 
-            <!-- Dashboard Grid -->
-            <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
-                <!-- Portfolio Performance -->
-                <div class="dashboard-card">
-                    <h3>Portfolio Performance</h3>
-                    <div id="portfolio-chart-container" style="height: 300px; position: relative;">
-                        <canvas id="portfolioChart"></canvas>
-                    </div>
-                </div>
+            <!-- Content Wrapper: Main content + Sidebar -->
+            <div class="content-wrapper">
+                <!-- Main Content -->
+                <div class="main-content">
+                    <!-- Dashboard Grid -->
+                    <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
+                        <!-- Portfolio Performance -->
+                        <div class="dashboard-card">
+                            <h3>Portfolio Performance</h3>
+                            <div id="portfolio-chart-container" style="height: 300px; position: relative;">
+                                <canvas id="portfolioChart"></canvas>
+                            </div>
+                        </div>
 
-                <!-- Your Stocks -->
-                <div class="dashboard-card">
-                    <h3>Your Stocks</h3>
-                    <div id="watchlist-summary" style="max-height: 400px; overflow-y: auto;">
-                        <div class="loading">
-                            <div class="spinner"></div>
+                        <!-- Your Stocks -->
+                        <div class="dashboard-card">
+                            <h3>Your Stocks</h3>
+                            <div id="watchlist-summary" style="max-height: 400px; overflow-y: auto;">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Portfolio Holdings -->
+                        <div class="dashboard-card">
+                            <h3>Portfolio Holdings</h3>
+                            <div style="margin-bottom: 16px;">
+                                <button id="add-holding-btn" class="btn" style="width: 100%; margin-bottom: 12px;">+ Add Holding</button>
+                                <div style="font-size: 0.75em; color: var(--text-secondary); text-align: center;">
+                                    📅 Last updated: <span id="holdings-timestamp">just now</span>
+                                </div>
+                            </div>
+                            <div id="portfolio-holdings" style="max-height: 400px; overflow-y: auto;">
+                                <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                                    No holdings yet
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Market Summary -->
+                        <div class="dashboard-card">
+                            <h3>Market Summary</h3>
+                            <div class="market-stat">
+                                <div class="market-stat-label">S&P 500</div>
+                                <div class="market-stat-value" id="sp500-price">-</div>
+                                <div class="market-stat-change" id="sp500-change">-</div>
+                            </div>
+                            <div class="market-stat">
+                                <div class="market-stat-label">VIX (Fear Index)</div>
+                                <div class="market-stat-value" id="vix-price">-</div>
+                                <div id="vix-sentiment" style="margin-top: 12px;"></div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Portfolio Holdings -->
-                <div class="dashboard-card">
-                    <h3>Portfolio Holdings</h3>
-                    <div style="margin-bottom: 16px;">
-                        <button id="add-holding-btn" class="btn" style="width: 100%; margin-bottom: 12px;">+ Add Holding</button>
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <h3>Quick Actions</h3>
+                        <a href="/analyze" class="quick-action">🔍 Search Stock</a>
+                        <a href="/analyze" class="quick-action">➕ Add to Watchlist</a>
+                        <a href="/analyze" class="quick-action">📊 View Analysis</a>
                     </div>
-                    <div id="portfolio-holdings" style="max-height: 400px; overflow-y: auto;">
-                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                            No holdings yet
+
+                    <!-- Portfolio Stats -->
+                    <div class="card">
+                        <h3>Portfolio Stats</h3>
+                        <div class="stats-mini">
+                            <div class="stat-mini">
+                                <span class="stat-mini-label">Best Stock</span>
+                                <span class="stat-mini-value" id="sidebar-best">-</span>
+                            </div>
+                            <div class="stat-mini">
+                                <span class="stat-mini-label">Worst Stock</span>
+                                <span class="stat-mini-value" id="sidebar-worst">-</span>
+                            </div>
+                            <div class="stat-mini">
+                                <span class="stat-mini-label">Top Mover</span>
+                                <span class="stat-mini-value" id="top-mover">-</span>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Market Summary -->
-                <div class="dashboard-card">
-                    <h3>Market Summary</h3>
-                    <div class="market-stat">
-                        <div class="market-stat-label">S&P 500</div>
-                        <div class="market-stat-value" id="sp500-price">-</div>
-                        <div class="market-stat-change" id="sp500-change">-</div>
-                    </div>
-                    <div class="market-stat">
-                        <div class="market-stat-label">VIX (Fear Index)</div>
-                        <div class="market-stat-value" id="vix-price">-</div>
-                        <div id="vix-sentiment" style="margin-top: 12px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Sidebar -->
-            <div class="sidebar">
-                <!-- Quick Actions -->
-                <div class="card">
-                    <h3>Quick Actions</h3>
-                    <a href="/analyze" class="quick-action">🔍 Search Stock</a>
-                    <a href="/analyze" class="quick-action">➕ Add to Watchlist</a>
-                    <a href="/analyze" class="quick-action">📊 View Analysis</a>
-                </div>
-
-                <!-- Portfolio Stats -->
-                <div class="card">
-                    <h3>Portfolio Stats</h3>
-                    <div class="stats-mini">
-                        <div class="stat-mini">
-                            <span class="stat-mini-label">Best Stock</span>
-                            <span class="stat-mini-value" id="sidebar-best">-</span>
+                    <!-- Market Sentiment -->
+                    <div class="card">
+                        <h3>Market Sentiment</h3>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3.5em; margin: 16px 0;" id="market-emoji">😐</div>
+                            <div style="color: var(--text-secondary); font-size: 0.95em; margin-bottom: 12px;" id="market-text">Analyzing...</div>
+                            <div class="sentiment-badge" id="sentiment-badge">Loading</div>
                         </div>
-                        <div class="stat-mini">
-                            <span class="stat-mini-label">Worst Stock</span>
-                            <span class="stat-mini-value" id="sidebar-worst">-</span>
-                        </div>
-                        <div class="stat-mini">
-                            <span class="stat-mini-label">Top Mover</span>
-                            <span class="stat-mini-value" id="top-mover">-</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Market Sentiment -->
-                <div class="card">
-                    <h3>Market Sentiment</h3>
-                    <div style="text-align: center;">
-                        <div style="font-size: 3.5em; margin: 16px 0;" id="market-emoji">😐</div>
-                        <div style="color: var(--text-secondary); font-size: 0.95em; margin-bottom: 12px;" id="market-text">Analyzing...</div>
-                        <div class="sentiment-badge" id="sentiment-badge">Loading</div>
                     </div>
                 </div>
             </div>
@@ -912,6 +1192,21 @@
             }
         }
 
+        // Utility: Format timestamp in a user-friendly way
+        function formatTimestamp(isoString) {
+            if (!isoString) return "just now";
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return "just now";
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return date.toLocaleTimeString();
+        }
+
         // PORTFOLIO HOLDINGS
         async function loadPortfolioHoldings() {
             try {
@@ -920,23 +1215,45 @@
 
                 const data = await response.json();
                 
+                // Update timestamp
+                if (data.data_timestamp) {
+                    const timestampEl = document.getElementById('holdings-timestamp');
+                    if (timestampEl) {
+                        timestampEl.textContent = formatTimestamp(data.data_timestamp);
+                    }
+                }
+                
                 if (data.holdings_count > 0) {
-                    const holdingsHtml = data.holdings.map(holding => `
-                        <div class="stock-item">
-                            <div class="stock-info">
-                                <div class="stock-ticker">${holding.ticker}</div>
-                                <div class="stock-price">${holding.quantity} @ $${holding.entry_price.toFixed(2)}</div>
+                    const holdingsHtml = data.holdings.map(holding => {
+                        // Determine color and status based on position
+                        const gainColor = holding.gain_loss >= 0 ? 'var(--success)' : 'var(--danger)';
+                        const statusEmoji = holding.gain_loss >= 0 ? '✅' : '❌';
+                        const statusText = holding.position_status === 'winning' ? 'Winning' : 
+                                          holding.position_status === 'losing' ? 'Losing' : 'Holding';
+                        
+                        return `
+                            <div class="stock-item">
+                                <div class="stock-info">
+                                    <div class="stock-ticker">${holding.ticker}</div>
+                                    <div class="stock-price">${holding.quantity} shares @ $${holding.entry_price.toFixed(2)}</div>
+                                    <div style="font-size: 0.75em; color: var(--text-secondary); margin-top: 4px;">
+                                        Current: $${holding.current_price.toFixed(2)}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div class="stock-change ${holding.gain_loss >= 0 ? 'positive' : 'negative'}" style="color: ${gainColor};">
+                                        ${statusEmoji} ${statusText}<br>
+                                        <span style="font-size: 0.85em;">$${holding.gain_loss.toFixed(2)} (${holding.gain_loss_pct > 0 ? '+' : ''}${holding.gain_loss_pct.toFixed(2)}%)</span>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="stock-change ${holding.gain_loss >= 0 ? 'positive' : 'negative'}">
-                                ${holding.gain_loss >= 0 ? '▲' : '▼'} ${holding.gain_loss_pct.toFixed(2)}%
-                            </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                     document.getElementById('portfolio-holdings').innerHTML = holdingsHtml;
                 } else {
                     document.getElementById('portfolio-holdings').innerHTML = `
                         <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
-                            No holdings yet
+                            No holdings yet. Add your first stock to track it!
                         </div>
                     `;
                 }

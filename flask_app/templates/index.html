@@ -1441,10 +1441,36 @@
             document.getElementById("verdict-text").textContent = 
                 `Based on momentum, macro conditions, and sentiment, this stock is showing a ${verdictLabel.toLowerCase()}.`;
             
-            // Add score to verdict card
+            // Add score and confidence to verdict card
             if (data.factor && data.factor.score !== undefined) {
+                let confidenceHtml = '';
+                if (data.explanation && data.explanation.confidence) {
+                    const conf = data.explanation.confidence;
+                    confidenceHtml = `
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1.5px solid var(--border-color);">
+                            <strong>Confidence:</strong> ${conf.confidence}% (${conf.factors_aligned}/${conf.factors_total} signals aligned)<br>
+                            <small style="color: var(--text-secondary);">${conf.explanation}</small>
+                        </div>
+                    `;
+                }
                 document.getElementById("verdict-score").innerHTML = 
-                    `<strong>Signal Strength:</strong> ${data.factor.score}/100 — Use this score to compare stocks`;
+                    `<strong>Signal Strength:</strong> ${data.factor.score}/100<br><small>Use this score to compare different stocks</small>${confidenceHtml}`;
+            }
+            
+            // Add warnings if present
+            if (data.explanation && data.explanation.warnings && data.explanation.warnings.length > 0) {
+                const warningsHtml = data.explanation.warnings.map(w => `<div style="padding: 8px 0; border-bottom: 1px solid #FFE2E2;">• ${w}</div>`).join('');
+                const warningsSection = document.createElement('div');
+                warningsSection.innerHTML = `
+                    <div style="margin-top: 16px; padding: 16px; background: #FEE2E2; border: 1.5px solid #FECACA; border-radius: 8px;">
+                        <div style="color: #991B1B; font-weight: 700; margin-bottom: 8px;">⚠️ Important Warnings:</div>
+                        ${warningsHtml}
+                    </div>
+                `;
+                const resultsPanel = document.getElementById("results-panel");
+                if (resultsPanel && warningsHtml.trim()) {
+                    resultsPanel.parentElement.insertBefore(warningsSection, resultsPanel.nextSibling);
+                }
             }
 
             // Fetch and display beginner guide

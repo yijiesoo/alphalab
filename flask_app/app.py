@@ -838,7 +838,7 @@ def api_portfolio_holdings():
 @app.route("/api/portfolio/summary", methods=["GET"])
 @login_required
 def api_portfolio_summary():
-    """Get portfolio summary with P&L calculations"""
+    """Get portfolio summary with accurate P&L calculations"""
     user_email = session.get("user_email")
     
     if not supabase:
@@ -856,7 +856,8 @@ def api_portfolio_summary():
                 "total_gain_loss": 0,
                 "total_gain_loss_pct": 0,
                 "holdings_count": 0,
-                "holdings": []
+                "holdings": [],
+                "data_timestamp": datetime.now().isoformat()
             }), 200
         
         # Calculate current values and P&L
@@ -869,14 +870,25 @@ def api_portfolio_summary():
             quantity = float(holding["quantity"])
             entry_price = float(holding["entry_price"])
             
-            # Get current price
+            # Get current price - use multiple strategies for accuracy
+            current_price = entry_price
             try:
-                current_data = yf.download(ticker, period="1d", progress=False)
-                if current_data.empty or 'Close' not in current_data.columns:
-                    current_price = entry_price
-                else:
-                    current_price = float(current_data['Close'].iloc[-1])
-            except:
+                # Strategy 1: Try to get real-time price from yfinance info
+                ticker_obj = yf.Ticker(ticker)
+                info = ticker_obj.info
+                current_price = info.get('currentPrice') or info.get('regularMarketPrice')
+                
+                # Strategy 2: If no real-time, use Adj Close (accounts for splits/dividends)
+                if not current_price or current_price == 0:
+                    hist = yf.download(ticker, period="5d", progress=False, show_errors=False)
+                    if not hist.empty and 'Adj Close' in hist.columns:
+                        current_price = float(hist['Adj Close'].iloc[-1])
+                    elif not hist.empty and 'Close' in hist.columns:
+                        current_price = float(hist['Close'].iloc[-1])
+                
+                current_price = float(current_price) if current_price else entry_price
+            except Exception as price_error:
+                print(f"⚠️ Price fetch error for {ticker}: {price_error}")
                 current_price = entry_price
             
             invested = quantity * entry_price
@@ -887,32 +899,41 @@ def api_portfolio_summary():
             total_invested += invested
             total_current_value += current_value
             
+            # Determine position status for beginner-friendly display
+            position_status = "holding"
+            if gain_loss_pct > 15:
+                position_status = "winning"
+            elif gain_loss_pct < -10:
+                position_status = "losing"
+            
             holding_details.append({
                 "ticker": ticker,
                 "quantity": quantity,
-                "entry_price": entry_price,
-                "current_price": current_price,
-                "invested": invested,
-                "current_value": current_value,
-                "gain_loss": gain_loss,
-                "gain_loss_pct": gain_loss_pct,
+                "entry_price": round(entry_price, 2),
+                "current_price": round(current_price, 2),
+                "invested": round(invested, 2),
+                "current_value": round(current_value, 2),
+                "gain_loss": round(gain_loss, 2),
+                "gain_loss_pct": round(gain_loss_pct, 2),
+                "position_status": position_status,  # "winning", "losing", or "holding"
             })
         
         total_gain_loss = total_current_value - total_invested
         total_gain_loss_pct = (total_gain_loss / total_invested * 100) if total_invested > 0 else 0
         
-        # Sort by gain/loss
+        # Sort by gain/loss (best performers first)
         holding_details.sort(key=lambda x: x["gain_loss"], reverse=True)
         
         print(f"📊 Portfolio Summary - Invested: ${total_invested:.2f}, Current: ${total_current_value:.2f}, P&L: ${total_gain_loss:.2f}")
         
         return jsonify({
-            "total_invested": total_invested,
-            "total_current_value": total_current_value,
-            "total_gain_loss": total_gain_loss,
-            "total_gain_loss_pct": total_gain_loss_pct,
+            "total_invested": round(total_invested, 2),
+            "total_current_value": round(total_current_value, 2),
+            "total_gain_loss": round(total_gain_loss, 2),
+            "total_gain_loss_pct": round(total_gain_loss_pct, 2),
             "holdings_count": len(holdings),
             "holdings": holding_details,
+            "data_timestamp": datetime.now().isoformat(),
         }), 200
     
     except Exception as e:
@@ -920,7 +941,7 @@ def api_portfolio_summary():
         print(f"❌ Error calculating portfolio summary: {e}")
         print(traceback.format_exc())
         app.logger.error(f"Error calculating portfolio summary: {e}", exc_info=True)
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e), "holdings": []}), 500
 
 
 if __name__ == "__main__":
