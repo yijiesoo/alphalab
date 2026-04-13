@@ -64,13 +64,38 @@ app.register_blueprint(dashboard_bp)
 # =====================================================================
 _worker = {"proc": None, "thread": None, "running": False}
 _cache = {}
-_TICKER_RE = re.compile(r'^[A-Z]{1,5}$')
+# Separate sentiment cache keyed by ticker; longer TTL (4h) to reduce NewsAPI usage.
+_sentiment_cache: dict = {}
+_SENTIMENT_CACHE_TTL_SECONDS = 4 * 60 * 60  # 4 hours
+_TICKER_RE = re.compile(r'^[A-Z]{1,5}([-\.][A-Z]{1,2})?$')
 _CACHE_TTL_SECONDS = Config.CACHE_TTL_SECONDS
 
 
 def _valid_ticker(ticker: str) -> bool:
-    """Return True if ticker looks like a valid US equity symbol"""
+    """Return True if ticker looks like a valid US equity symbol (e.g. AAPL, BRK-B, BF.B)"""
     return bool(_TICKER_RE.match(ticker.upper())) if ticker else False
+
+
+def _yf_download_with_retry(tickers, max_retries: int = 3, **kwargs):
+    """
+    Wrapper around yf.download with exponential back-off retry logic.
+
+    yfinance scrapes Yahoo Finance and can receive HTTP 429 (Too Many Requests)
+    under concurrent or rapid usage.  This wrapper retries up to *max_retries*
+    times with a short sleep between attempts so callers get a result even when
+    one attempt is rate-limited.
+    """
+    for attempt in range(max_retries):
+        try:
+            data = yf.download(tickers, **kwargs)
+            if not data.empty:
+                return data
+        except Exception as exc:
+            app.logger.warning(f"yf.download attempt {attempt + 1} failed: {exc}")
+        if attempt < max_retries - 1:
+            time.sleep(1.5 * (attempt + 1))  # 1.5s, 3s back-off
+    # Return empty DataFrame on persistent failure
+    return pd.DataFrame()
 
 
 def _copy_images_to_flask():
@@ -126,7 +151,21 @@ def status():
         with LOG_FILE.open("r") as f:
             lines = f.readlines()
             tail = "".join(lines[-200:])
-    return jsonify({"running": _worker["running"], "log_tail": tail})
+    return jsonify({
+        "running": _worker["running"],
+        "log_tail": tail,
+        "_disclaimers": {
+            "survivorship_bias": (
+                "Backtest results use yfinance which only returns currently-listed tickers. "
+                "Companies delisted between the start date and today (due to bankruptcy or "
+                "acquisition) are excluded. This systematically overstates historical returns. "
+                "Use point-in-time constituent data for production-grade research."
+            ),
+            "data_latency": (
+                "All prices are end-of-day adjusted close. No intraday or real-time data is used."
+            ),
+        },
+    })
 
 
 @app.route("/images")
@@ -170,7 +209,21 @@ def api_analyze():
     if not refresh and ticker in _cache:
         entry = _cache[ticker]
         if entry["expires_at"] > now:
-            cached_data = {**entry["data"], "_cache": {"hit": True, "expires_at": entry["expires_at"]}}
+            cached_data = {
+                **entry["data"],
+                "_cache": {"hit": True, "expires_at": entry["expires_at"]},
+                "_disclaimers": {
+                    "data_latency": (
+                        "Price data is end-of-day (delayed). Do not use for intraday trading decisions."
+                    ),
+                    "survivorship_bias": (
+                        "Analysis uses yfinance which only returns currently-listed tickers. "
+                        "Delisted companies (bankruptcy, acquisitions) are excluded, causing an "
+                        "optimistic bias in historical performance. Use a point-in-time data "
+                        "provider for production-grade research."
+                    ),
+                },
+            }
             app.logger.info(f"Cache hit for {ticker}")
             return jsonify(cached_data)
 
@@ -193,7 +246,21 @@ def api_analyze():
     
     expires_at = now + _CACHE_TTL_SECONDS
     _cache[ticker] = {"data": data, "expires_at": expires_at}
-    response_data = {**data, "_cache": {"hit": False, "expires_at": expires_at}}
+    response_data = {
+        **data,
+        "_cache": {"hit": False, "expires_at": expires_at},
+        "_disclaimers": {
+            "data_latency": (
+                "Price data is end-of-day (delayed). Do not use for intraday trading decisions."
+            ),
+            "survivorship_bias": (
+                "Analysis uses yfinance which only returns currently-listed tickers. "
+                "Delisted companies (bankruptcy, acquisitions) are excluded, causing an "
+                "optimistic bias in historical performance. Use a point-in-time data "
+                "provider for production-grade research."
+            ),
+        },
+    }
     return jsonify(response_data)
 
 
@@ -307,7 +374,7 @@ def api_price_chart():
         start_date = end_date - timedelta(days=lookback_days)
         
         print(f"📈 Fetching price chart for {ticker} ({timeframe}, {lookback_days} days)")
-        data = yf.download(
+        data = _yf_download_with_retry(
             ticker,
             start=start_date.strftime("%Y-%m-%d"),
             end=end_date.strftime("%Y-%m-%d"),
@@ -405,7 +472,7 @@ def api_portfolio_performance():
             return jsonify({"error": "Supabase not configured"}), 503
         
         print(f"📊 Fetching portfolio performance for watchlist: {watchlist_id}")
-        response = supabase.table("watchlists").select("tickers").eq("id", watchlist_id).execute()
+        response = supabase.table("watchlist").select("tickers").eq("id", watchlist_id).execute()
         
         if not response.data:
             return jsonify({"error": "Watchlist not found"}), 404
@@ -873,22 +940,22 @@ def api_portfolio_summary():
             quantity = float(holding["quantity"])
             entry_price = float(holding["entry_price"])
             
-            # Get current price - use multiple strategies for accuracy
+            # Get current price using auto-adjusted close (handles splits/dividends).
+            # Strategy 1: yfinance .info for near-real-time price (delayed ~15 min).
+            # Strategy 2: fall back to the most recent adjusted close from history.
             current_price = entry_price
             try:
-                # Strategy 1: Try to get real-time price from yfinance info
                 ticker_obj = yf.Ticker(ticker)
                 info = ticker_obj.info
-                current_price = info.get('currentPrice') or info.get('regularMarketPrice')
-                
-                # Strategy 2: If no real-time, use Adj Close (accounts for splits/dividends)
-                if not current_price or current_price == 0:
-                    hist = yf.download(ticker, period="5d", progress=False, show_errors=False)
-                    if not hist.empty and 'Adj Close' in hist.columns:
-                        current_price = float(hist['Adj Close'].iloc[-1])
-                    elif not hist.empty and 'Close' in hist.columns:
+                rt_price = info.get('currentPrice') or info.get('regularMarketPrice')
+                if rt_price and float(rt_price) > 0:
+                    current_price = float(rt_price)
+                else:
+                    # auto_adjust=True returns only "Close" (already adjusted)
+                    hist = yf.download(ticker, period="5d", progress=False,
+                                       auto_adjust=True, show_errors=False)
+                    if not hist.empty:
                         current_price = float(hist['Close'].iloc[-1])
-                
                 current_price = float(current_price) if current_price else entry_price
             except Exception as price_error:
                 print(f"⚠️ Price fetch error for {ticker}: {price_error}")

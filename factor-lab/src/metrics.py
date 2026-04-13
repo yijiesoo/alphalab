@@ -23,7 +23,6 @@ from scipy import stats
 
 def compute_cagr(returns: pd.Series, periods_per_year: int = 252) -> float:
     """
-    COMMENTED OUT: CAGR calculation disabled.
     Compound Annual Growth Rate.
 
     Formula:
@@ -41,14 +40,14 @@ def compute_cagr(returns: pd.Series, periods_per_year: int = 252) -> float:
     -------
     CAGR as a decimal (e.g. 0.12 = 12% per year)
     """
-    # CAGR calculation disabled - returns 0.0
-    return 0.0
-    
-    # Original implementation (commented out):
-    # total_return = (1 + returns).prod()
-    # n_years = len(returns) / periods_per_year
-    # cagr = total_return ** (1.0 / n_years) - 1.0
-    # return float(cagr)
+    if len(returns) == 0:
+        return 0.0
+    total_return = (1 + returns).prod()
+    n_years = len(returns) / periods_per_year
+    if n_years <= 0 or total_return <= 0:
+        return 0.0
+    cagr = total_return ** (1.0 / n_years) - 1.0
+    return float(cagr)
 
 
 def compute_sharpe(
@@ -254,11 +253,8 @@ def full_tear_sheet(results: dict) -> dict:
     market_returns = results.get("market_returns")  # For beta calculation
 
     metrics = {
-        # COMMENTED OUT: CAGR disabled
-        # "cagr_net":         compute_cagr(returns),
-        # "cagr_gross":       compute_cagr(gross_returns),
-        "cagr_net":         0.0,  # CAGR disabled
-        "cagr_gross":       0.0,  # CAGR disabled
+        "cagr_net":         compute_cagr(returns),
+        "cagr_gross":       compute_cagr(gross_returns),
         "sharpe_net":       compute_sharpe(returns),
         "sharpe_gross":     compute_sharpe(gross_returns),
         "max_drawdown":     compute_max_drawdown(returns),
@@ -286,9 +282,8 @@ def print_tear_sheet(metrics: dict) -> None:
     print("\n" + "=" * 45)
     print("  FACTOR LAB — PERFORMANCE TEAR SHEET")
     print("=" * 45)
-    # COMMENTED OUT: CAGR disabled
-    # print(f"  CAGR (net of costs)   : {metrics['cagr_net']:>8.2%}")
-    # print(f"  CAGR (gross)          : {metrics['cagr_gross']:>8.2%}")
+    print(f"  CAGR (net of costs)   : {metrics['cagr_net']:>8.2%}")
+    print(f"  CAGR (gross)          : {metrics['cagr_gross']:>8.2%}")
     print(f"  Sharpe (net)          : {metrics['sharpe_net']:>8.3f}")
     print(f"  Sharpe (gross)        : {metrics['sharpe_gross']:>8.3f}")
     print(f"  Max drawdown          : {metrics['max_drawdown']:>8.2%}")

@@ -112,9 +112,26 @@ def _calculate_rsi_score(rsi_value):
 
 def _calculate_entry_exit_levels(prices_series: pd.Series, current_price: float) -> dict:
     """
-    Calculate technical entry/exit price levels based on recent price action.
-    
-    Uses 52-week high/low and moving averages to suggest entry/exit zones.
+    Calculate technical price levels as reference zones for entries and exits.
+
+    These levels are based on moving averages and 52-week range.  They are
+    *not* buy or sell recommendations — they are reference points to help you
+    understand where the stock has historically found support (buyers stepped
+    in) and resistance (sellers stepped in).
+
+    Entry watch zones (potential support / where price may stabilise):
+    - Conservative : 200-day moving average (long-term trend baseline)
+    - Moderate     : 50-day moving average  (medium-term trend support)
+    - Aggressive   : current price (momentum entry — buying at current levels)
+
+    Exit watch zones (potential resistance / where price may face selling):
+    - Conservative : 10% above 200-day MA (modest target)
+    - Moderate     : 50-day MA if above current price (near-term resistance)
+    - Ambitious    : 52-week high (historical ceiling for this period)
+
+    WARNING: These are mechanical price levels only.  A stock hitting its
+    52-week low may be in freefall, not a buying opportunity.  Always check
+    the fundamental reason behind price moves before acting.
     
     Parameters
     ----------
@@ -125,41 +142,46 @@ def _calculate_entry_exit_levels(prices_series: pd.Series, current_price: float)
     
     Returns
     -------
-    dict with entry_prices (buy zones) and exit_prices (sell zones)
+    dict with entry_watch_zones, exit_watch_zones, and 52w range
     """
     try:
-        # Calculate support/resistance levels
-        high_52w = prices_series.tail(252).max()  # 52 weeks
+        high_52w = prices_series.tail(252).max()
         low_52w = prices_series.tail(252).min()
-        
-        # Moving averages
         ma_50 = prices_series.tail(50).mean()
         ma_200 = prices_series.tail(200).mean()
-        
-        # Entry zones (support levels - good buying opportunities)
-        entry_strong = round(low_52w, 2)  # Strong support (52w low)
-        entry_moderate = round(ma_200, 2)  # Moderate support (200-day MA)
-        entry_weak = round(min(current_price, ma_50), 2)  # Weak support (current or 50-day MA)
-        
-        # Exit zones (resistance levels - good selling opportunities)
-        exit_weak = round(max(current_price, ma_50), 2)  # Weak resistance (50-day MA)
-        exit_moderate = round(ma_200 * 1.1, 2)  # Moderate resistance (200-day MA + 10%)
-        exit_strong = round(high_52w, 2)  # Strong resistance (52w high)
-        
+
+        # Entry watch zones — moving average support levels are more meaningful
+        # than the 52w low (which could reflect a crash, not genuine support).
+        entry_conservative = round(ma_200, 2)    # Long-term trend support
+        entry_moderate = round(ma_50, 2)         # Medium-term trend support
+        entry_aggressive = round(current_price, 2)  # Current price (momentum entry)
+
+        # Exit watch zones — resistance levels above current price
+        exit_conservative = round(ma_200 * 1.10, 2)  # 10% above 200-day MA
+        exit_moderate = round(max(ma_50, current_price * 1.05), 2)  # 50-day MA or +5%
+        exit_ambitious = round(high_52w, 2)      # 52-week high (historical ceiling)
+
         return {
-            "current": current_price,
-            "entry_prices": {
-                "weak": entry_weak,
+            "current": round(current_price, 2),
+            "entry_watch_zones": {
+                "conservative": entry_conservative,
                 "moderate": entry_moderate,
-                "strong": entry_strong,
+                "aggressive": entry_aggressive,
             },
-            "exit_prices": {
-                "weak": exit_weak,
+            "exit_watch_zones": {
+                "conservative": exit_conservative,
                 "moderate": exit_moderate,
-                "strong": exit_strong,
+                "ambitious": exit_ambitious,
             },
-            "support": round(low_52w, 2),
-            "resistance": round(high_52w, 2),
+            "week_52_high": round(high_52w, 2),
+            "week_52_low": round(low_52w, 2),
+            "ma_50": round(ma_50, 2),
+            "ma_200": round(ma_200, 2),
+            "disclaimer": (
+                "These are mechanical reference levels, not buy/sell recommendations. "
+                "A stock near its 52-week low may be declining for fundamental reasons. "
+                "Always research the underlying business before acting."
+            ),
         }
     except Exception as e:
         print(f"Error calculating entry/exit levels: {e}")

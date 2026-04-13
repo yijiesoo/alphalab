@@ -44,6 +44,7 @@ This gives you the best of both worlds: relevance + accuracy
 """
 
 import os
+import time
 import requests
 from typing import Optional
 
@@ -132,11 +133,20 @@ def _score_headline_keyword(headline: str) -> str:
         return "neutral"
 
 
+# ---------------------------------------------------------------------------
+# Sentiment result cache: keyed by ticker (or company query), TTL = 4 hours.
+# This dramatically reduces NewsAPI usage on the free tier (100 calls/day).
+# ---------------------------------------------------------------------------
+_sentiment_result_cache: dict = {}
+_SENTIMENT_CACHE_TTL = 4 * 60 * 60  # 4 hours in seconds
+
+
 def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool = True) -> dict:
     """
     Fetches recent headlines for a ticker and scores sentiment.
-    Returns a summary dict with counts and a plain-English line.
-    
+    Results are cached per-ticker for 4 hours to conserve NewsAPI quota
+    (free tier: 100 requests/day; each analysis makes up to 4 calls).
+
     Parameters
     ----------
     ticker : str
@@ -147,19 +157,31 @@ def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool 
         If True, use FinBERT for sentiment scoring (requires transformers + torch).
         If False or FinBERT unavailable, falls back to keyword matching.
     """
+    now = time.time()
+    cache_key = ticker.upper()
+
+    # Return cached result if still fresh
+    if cache_key in _sentiment_result_cache:
+        cached = _sentiment_result_cache[cache_key]
+        if cached["expires_at"] > now:
+            print(f"[sentiment] Cache hit for {cache_key} (TTL {int(cached['expires_at'] - now)}s remaining)")
+            return cached["data"]
+
     query = company_name if company_name else ticker
     headlines = _fetch_headlines(query)
     print(f"[sentiment] Fetched {len(headlines)} headlines for {query}")
 
     if not headlines:
         print(f"[sentiment] No headlines found for {query}")
-        return {
+        result = {
             "positive": 0,
             "negative": 0,
             "neutral": 0,
             "summary": "No recent news found.",
             "headlines": [],
         }
+        _sentiment_result_cache[cache_key] = {"data": result, "expires_at": now + _SENTIMENT_CACHE_TTL}
+        return result
 
     # Choose scoring method
     if use_finbert and FINBERT_AVAILABLE:
@@ -174,13 +196,15 @@ def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool 
     neg = sum(1 for s in scored if s == "negative")
     neu = sum(1 for s in scored if s == "neutral")
 
-    return {
+    result = {
         "positive": pos,
         "negative": neg,
         "neutral": neu,
         "summary": _plain_summary(pos, neg, neu, len(headlines)),
         "headlines": headlines[:5],  # cap at 5 for display
     }
+    _sentiment_result_cache[cache_key] = {"data": result, "expires_at": now + _SENTIMENT_CACHE_TTL}
+    return result
 
 
 def _fetch_headlines(query: str) -> list:

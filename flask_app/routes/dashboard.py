@@ -88,15 +88,18 @@ def api_portfolio():
         # Remove duplicates
         tickers = list(set(tickers))
         
-        # Fetch prices
+        # Fetch prices: use 5d period so we always have at least 2 trading days
+        # and can compute close-to-close daily change (not intraday open-to-close).
         try:
-            data = yf.download(tickers, period="1d", progress=False)
+            data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
+            if data.empty or len(data) < 2:
+                raise ValueError("Insufficient price data")
             if len(tickers) == 1:
                 current_price = data["Close"].iloc[-1]
-                prev_close = data["Open"].iloc[-1]
+                prev_close = data["Close"].iloc[-2]  # yesterday's close
             else:
                 current_price = data["Close"].iloc[-1]
-                prev_close = data["Open"].iloc[-1]
+                prev_close = data["Close"].iloc[-2]  # yesterday's close
         except Exception:
             return jsonify({
                 "total_value": 0,
@@ -192,11 +195,14 @@ def api_watchlist_summary():
                 "last_updated": datetime.now().isoformat()
             }), 200
         
-        # Fetch prices
+        # Fetch prices: 5d period to guarantee at least 2 trading days for
+        # close-to-close daily change calculation.
         try:
-            data = yf.download(tickers, period="1d", progress=False)
+            data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
+            if data.empty or len(data) < 2:
+                raise ValueError("Insufficient price data")
             current_price = data["Close"].iloc[-1]
-            prev_close = data["Open"].iloc[-1]
+            prev_close = data["Close"].iloc[-2]  # yesterday's close (not today's open)
         except Exception:
             return jsonify({
                 "total_stocks": len(tickers),

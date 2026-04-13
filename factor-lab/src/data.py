@@ -66,6 +66,20 @@ def download_prices(
     prices: pd.DataFrame = raw["Close"].copy()
 
     prices = _clean_prices(prices)
+
+    # SURVIVORSHIP BIAS WARNING (logged once per download):
+    # yfinance only returns data for tickers that still exist today.
+    # Any ticker in the input list that was delisted between `start` and today
+    # will be silently absent from `prices`, biasing results upward.
+    n_requested = len(tickers) if tickers is not DEFAULT_TICKERS else len(DEFAULT_TICKERS)
+    n_returned = prices.shape[1]
+    if n_returned < n_requested:
+        print(
+            f"[data] ⚠️  SURVIVORSHIP BIAS: requested {n_requested} tickers, "
+            f"got {n_returned}. {n_requested - n_returned} ticker(s) have no data "
+            f"(likely delisted). Historical returns will be overstated."
+        )
+
     return prices
 
 

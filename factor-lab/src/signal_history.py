@@ -32,10 +32,18 @@ def calculate_momentum_history(
     lookback_days: int = None,
 ) -> dict:
     """
-    Calculate momentum scores for each day in the timeframe.
-    
-    Momentum = (Close - SMA_20) / SMA_20 * 100
-    
+    Calculate short-term price momentum scores for each day in the timeframe.
+
+    Signal definition (SMA-deviation momentum):
+        signal = (Close - SMA_20) / SMA_20 × 100
+
+    NOTE: This is a *different* metric from the Factor Score shown on the
+    Analyze page, which uses academic 12-1 month momentum (12-month return
+    excluding the most recent month).  This chart shows the short-term trend
+    of the stock price relative to its 20-day moving average.  Positive
+    values mean the price is above its 20-day average (short-term bullish);
+    negative values mean it is below (short-term bearish).
+
     Parameters
     ----------
     ticker : str
@@ -51,6 +59,7 @@ def calculate_momentum_history(
     {
         "ticker": "AAPL",
         "timeframe": "6M",
+        "signal_type": "sma_deviation",  ← always present for disambiguation
         "history": [
             {"date": "2025-10-01", "price": 150.25, "momentum": 5.2, "sma_20": 148.5},
             ...
@@ -121,6 +130,8 @@ def calculate_momentum_history(
         return {
             "ticker": ticker,
             "timeframe": timeframe,
+            "signal_type": "sma_deviation",
+            "signal_description": "(Price - SMA_20) / SMA_20 × 100. Positive = above 20-day average (short-term bullish). Different from the 12-1 month factor score on the Analyze page.",
             "lookback_days": lookback_days,
             "data_points": len(history),
             "history": history,
