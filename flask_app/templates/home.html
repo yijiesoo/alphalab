@@ -246,6 +246,10 @@
             grid-column: 1 / -1;
         }
         
+        .dashboard-grid .dashboard-card:last-child {
+            grid-column: 1 / -1;
+        }
+        
         .dashboard-card {
             background: var(--card-bg);
             padding: 32px;
@@ -1226,11 +1230,8 @@
                 
                 if (data.holdings_count > 0) {
                     const holdingsHtml = data.holdings.map(holding => {
-                        // Determine color and status based on position
+                        // Determine color based on gain/loss
                         const gainColor = holding.gain_loss >= 0 ? 'var(--success)' : 'var(--danger)';
-                        const statusEmoji = holding.gain_loss >= 0 ? '✅' : '❌';
-                        const statusText = holding.position_status === 'winning' ? 'Winning' : 
-                                          holding.position_status === 'losing' ? 'Losing' : 'Holding';
                         
                         return `
                             <div class="stock-item">
@@ -1242,9 +1243,8 @@
                                     </div>
                                 </div>
                                 <div style="text-align: right;">
-                                    <div class="stock-change ${holding.gain_loss >= 0 ? 'positive' : 'negative'}" style="color: ${gainColor};">
-                                        ${statusEmoji} ${statusText}<br>
-                                        <span style="font-size: 0.85em;">$${holding.gain_loss.toFixed(2)} (${holding.gain_loss_pct > 0 ? '+' : ''}${holding.gain_loss_pct.toFixed(2)}%)</span>
+                                    <div class="stock-change ${holding.gain_loss >= 0 ? 'positive' : 'negative'}" style="color: ${gainColor}; font-weight: 700; font-size: 1.1em;">
+                                        ${holding.gain_loss_pct > 0 ? '+' : ''}${holding.gain_loss_pct.toFixed(2)}%
                                     </div>
                                 </div>
                             </div>

@@ -899,6 +899,9 @@ def api_portfolio_summary():
             gain_loss = current_value - invested
             gain_loss_pct = (gain_loss / invested * 100) if invested > 0 else 0
             
+            # Round to 2 decimal places for all calculations
+            current_price = round(current_price, 2)
+            
             total_invested += invested
             total_current_value += current_value
             
