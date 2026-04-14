@@ -9,14 +9,20 @@ from typing import Optional, Dict, Any
 import redis
 
 # Initialize Redis connection (gracefully handle if not available)
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL")
+print(f"🔧 REDIS_URL from env: {REDIS_URL[:30] if REDIS_URL else 'Not set'}...")
+
 try:
-    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+    if REDIS_URL:
+        redis_client = redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=5)
+    else:
+        raise ValueError("REDIS_URL not set in environment")
+    
     redis_client.ping()
     REDIS_AVAILABLE = True
-    print("✅ Redis connected")
+    print("✅ Redis connected successfully")
 except Exception as e:
-    print(f"⚠️  Redis not available: {e}. Caching disabled.")
+    print(f"⚠️  Redis not available: {e}. Caching disabled (will still batch fetch).")
     redis_client = None
     REDIS_AVAILABLE = False
 
