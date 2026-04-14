@@ -15,23 +15,25 @@ print(f"🔧 REDIS_URL from env: {REDIS_URL[:40] if REDIS_URL else 'Not set'}...
 
 try:
     if REDIS_URL:
-        # Parse the URL to handle Railway's internal DNS issues
+        # Parse the URL - Railway provides both REDIS_URL and individual env vars
         parsed = urlparse(REDIS_URL)
         
-        # Use environment variables for host/port if available (more reliable on Railway)
-        redis_host = os.getenv("REDISHOST", parsed.hostname or "localhost")
-        redis_port = int(os.getenv("REDISPORT", parsed.port or 6379))
-        redis_password = os.getenv("REDISPASSWORD", parsed.password or "")
+        # Try individual env vars first (more reliable), fall back to parsed URL
+        redis_host = os.getenv("REDISHOST") or os.getenv("REDIS_HOST") or parsed.hostname or "localhost"
+        redis_port = int(os.getenv("REDISPORT") or os.getenv("REDIS_PORT") or parsed.port or 6379)
+        redis_password = os.getenv("REDISPASSWORD") or os.getenv("REDIS_PASSWORD") or parsed.password or ""
         
         print(f"🔧 Connecting to Redis: {redis_host}:{redis_port} (auth={bool(redis_password)})")
         
+        # Try connection with retry
         redis_client = redis.Redis(
             host=redis_host,
             port=redis_port,
             password=redis_password if redis_password else None,
             decode_responses=True,
-            socket_connect_timeout=5,
-            socket_keepalive=True
+            socket_connect_timeout=10,
+            socket_keepalive=True,
+            retry_on_timeout=True
         )
         redis_client.ping()
         REDIS_AVAILABLE = True
@@ -39,7 +41,10 @@ try:
     else:
         raise ValueError("REDIS_URL not set in environment")
 except Exception as e:
-    print(f"⚠️  Redis not available: {e}. Caching disabled (will still batch fetch).")
+    print(f"⚠️  Redis not available: {e}")
+    print(f"   REDISHOST={os.getenv('REDISHOST')}, REDIS_HOST={os.getenv('REDIS_HOST')}")
+    print(f"   REDISPORT={os.getenv('REDISPORT')}, REDIS_PORT={os.getenv('REDIS_PORT')}")
+    print(f"   Caching disabled (will still batch fetch).")
     redis_client = None
     REDIS_AVAILABLE = False
 
