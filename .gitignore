@@ -1,64 +1,77 @@
+# Environment
+.env
+.env.local
+.env.*.local
+
 # Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.egg-info/
-dist/
+*.py[cod]
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
 .eggs/
-
-# Virtual environment
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 venv/
-env/
-.env
-.venv
 ENV/
+env/
+.venv/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*.sublime-project
-*.sublime-workspace
-
-# Project-specific
-factor-lab/outputs/
-flask_app/outputs/
-*.log
+*~
 .DS_Store
-.DS_Store?
 
-# Node
-node_modules/
-package-lock.json
-
-# Jupyter
-.ipynb_checkpoints/
-*.ipynb
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# Setup files (use requirements.txt instead)
-setup_*.py
-supabase_*.sql
-
-# Firebase & Credentials
-alphalab-*-firebase-adminsdk-*.json
-credentials/
-*.key
-*.pem
-
-# CI/CD artifacts
-coverage.xml
+# Testing
+.pytest_cache/
 .coverage
 htmlcov/
-bandit-report.json
-DEPLOYMENT.md
+.tox/
 
-# GitHub Actions
-.github/workflows/*.log
+# Node (if using npm for frontend)
+node_modules/
+npm-debug.log
+package-lock.json
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Credentials
+credentials/
+*.pem
+*.key
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+pyrightconfig.json
+py.typed
+
+# Build
+dist/
+build/
+*.egg-info/
