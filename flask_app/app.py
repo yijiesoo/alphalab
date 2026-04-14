@@ -25,15 +25,25 @@ import pandas as pd
 # Load environment variables FIRST
 load_dotenv()
 
-# Import configuration
-from config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
+# Import configuration (handle both local and production imports)
+try:
+    from flask_app.config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
+except ImportError:
+    from config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
 
 # Initialize supabase service
-from services import init_supabase, get_supabase
+try:
+    from flask_app.services import init_supabase, get_supabase
+except ImportError:
+    from services import init_supabase, get_supabase
 
 # Import blueprints
-from routes import auth_bp, login_required
-from routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
+try:
+    from flask_app.routes import auth_bp, login_required
+    from flask_app.routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
+except ImportError:
+    from routes import auth_bp, login_required
+    from routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
 
 # =====================================================================
 # Flask App Setup
