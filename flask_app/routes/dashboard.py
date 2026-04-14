@@ -4,6 +4,13 @@ Dashboard routes: Home, Analyze, and dashboard API endpoints
 from flask import Blueprint, render_template, session, jsonify, request
 from datetime import datetime
 import yfinance as yf
+
+# Import retry wrapper from main app
+try:
+    from flask_app.app import _yf_download_with_retry
+except ImportError:
+    from app import _yf_download_with_retry
+
 try:
     from flask_app.routes import login_required
     from flask_app.config import Config
@@ -95,7 +102,7 @@ def api_portfolio():
         # Fetch prices: use 5d period so we always have at least 2 trading days
         # and can compute close-to-close daily change (not intraday open-to-close).
         try:
-            data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
+            data = _yf_download_with_retry(tickers, period="5d", progress=False, auto_adjust=True)
             if data.empty or len(data) < 2:
                 raise ValueError("Insufficient price data")
             if len(tickers) == 1:
@@ -202,7 +209,7 @@ def api_watchlist_summary():
         # Fetch prices: 5d period to guarantee at least 2 trading days for
         # close-to-close daily change calculation.
         try:
-            data = yf.download(tickers, period="5d", progress=False, auto_adjust=True)
+            data = _yf_download_with_retry(tickers, period="5d", progress=False, auto_adjust=True)
             if data.empty or len(data) < 2:
                 raise ValueError("Insufficient price data")
             current_price = data["Close"].iloc[-1]
