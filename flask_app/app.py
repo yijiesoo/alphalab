@@ -21,9 +21,15 @@ from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session
 import yfinance as yf
 import pandas as pd
+from functools import lru_cache
 
 # Load environment variables FIRST
 load_dotenv()
+
+# Simple cache for ticker data to reduce rate limiting
+_ticker_cache = {}
+_cache_timestamps = {}
+CACHE_DURATION = 300  # Cache for 5 minutes
 
 # Import configuration (handle both local and production imports)
 try:
@@ -95,10 +101,19 @@ def _yf_download_with_retry(tickers, max_retries: int = 3, **kwargs):
     times with a short sleep between attempts so callers get a result even when
     one attempt is rate-limited.
     """
+    # Check cache first to reduce API calls
+    cache_key = str(sorted(tickers if isinstance(tickers, list) else [tickers]) + list(kwargs.items()))
+    now = time.time()
+    if cache_key in _ticker_cache and (now - _cache_timestamps.get(cache_key, 0)) < CACHE_DURATION:
+        return _ticker_cache[cache_key]
+    
     for attempt in range(max_retries):
         try:
             data = yf.download(tickers, **kwargs)
             if not data.empty:
+                # Cache the result
+                _ticker_cache[cache_key] = data
+                _cache_timestamps[cache_key] = now
                 return data
         except Exception as exc:
             app.logger.warning(f"yf.download attempt {attempt + 1} failed: {exc}")
