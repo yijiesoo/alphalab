@@ -2,7 +2,10 @@
 Supabase database service
 """
 import os
-from config import Config
+try:
+    from flask_app.config import Config
+except ImportError:
+    from config import Config
 
 # Global supabase instance
 _supabase = None

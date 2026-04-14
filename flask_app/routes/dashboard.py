@@ -4,8 +4,12 @@ Dashboard routes: Home, Analyze, and dashboard API endpoints
 from flask import Blueprint, render_template, session, jsonify, request
 from datetime import datetime
 import yfinance as yf
-from routes import login_required
-from config import Config
+try:
+    from flask_app.routes import login_required
+    from flask_app.config import Config
+except ImportError:
+    from routes import login_required
+    from config import Config
 
 # Create blueprint
 dashboard_bp = Blueprint('dashboard', __name__)
