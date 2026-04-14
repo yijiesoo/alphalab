@@ -7,20 +7,37 @@ import json
 import time
 from typing import Optional, Dict, Any
 import redis
+from urllib.parse import urlparse
 
 # Initialize Redis connection (gracefully handle if not available)
 REDIS_URL = os.getenv("REDIS_URL")
-print(f"🔧 REDIS_URL from env: {REDIS_URL[:30] if REDIS_URL else 'Not set'}...")
+print(f"🔧 REDIS_URL from env: {REDIS_URL[:40] if REDIS_URL else 'Not set'}...")
 
 try:
     if REDIS_URL:
-        redis_client = redis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=5)
+        # Parse the URL to handle Railway's internal DNS issues
+        parsed = urlparse(REDIS_URL)
+        
+        # Use environment variables for host/port if available (more reliable on Railway)
+        redis_host = os.getenv("REDISHOST", parsed.hostname or "localhost")
+        redis_port = int(os.getenv("REDISPORT", parsed.port or 6379))
+        redis_password = os.getenv("REDISPASSWORD", parsed.password or "")
+        
+        print(f"🔧 Connecting to Redis: {redis_host}:{redis_port} (auth={bool(redis_password)})")
+        
+        redis_client = redis.Redis(
+            host=redis_host,
+            port=redis_port,
+            password=redis_password if redis_password else None,
+            decode_responses=True,
+            socket_connect_timeout=5,
+            socket_keepalive=True
+        )
+        redis_client.ping()
+        REDIS_AVAILABLE = True
+        print("✅ Redis connected successfully")
     else:
         raise ValueError("REDIS_URL not set in environment")
-    
-    redis_client.ping()
-    REDIS_AVAILABLE = True
-    print("✅ Redis connected successfully")
 except Exception as e:
     print(f"⚠️  Redis not available: {e}. Caching disabled (will still batch fetch).")
     redis_client = None
