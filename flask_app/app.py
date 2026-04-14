@@ -86,6 +86,31 @@ _SENTIMENT_CACHE_TTL_SECONDS = 4 * 60 * 60  # 4 hours
 _TICKER_RE = re.compile(r'^[A-Z]{1,5}([-\.][A-Z]{1,2})?$')
 _CACHE_TTL_SECONDS = Config.CACHE_TTL_SECONDS
 
+# Request tracking for diagnostics
+_request_metrics = {
+    "api_calls": 0,
+    "cache_hits": 0,
+    "cache_misses": 0,
+    "rate_limits": 0,
+    "last_reset": time.time(),
+}
+
+def _get_request_stats():
+    """Get current request statistics and reset if over 1 hour old"""
+    global _request_metrics
+    now = time.time()
+    if now - _request_metrics["last_reset"] > 3600:  # Reset every hour
+        stats = _request_metrics.copy()
+        _request_metrics = {
+            "api_calls": 0,
+            "cache_hits": 0,
+            "cache_misses": 0,
+            "rate_limits": 0,
+            "last_reset": now,
+        }
+        return stats
+    return _request_metrics
+
 
 def _valid_ticker(ticker: str) -> bool:
     """Return True if ticker looks like a valid US equity symbol (e.g. AAPL, BRK-B, BF.B)"""
@@ -101,11 +126,23 @@ def _yf_download_with_retry(tickers, max_retries: int = 3, **kwargs):
     times with a short sleep between attempts so callers get a result even when
     one attempt is rate-limited.
     """
+    global _request_metrics
+    
+    # Prepare logging info
+    ticker_str = str(tickers)
+    period = kwargs.get('period', 'unknown')
+    
     # Check cache first to reduce API calls
     cache_key = str(sorted(tickers if isinstance(tickers, list) else [tickers]) + list(kwargs.items()))
     now = time.time()
     if cache_key in _ticker_cache and (now - _cache_timestamps.get(cache_key, 0)) < CACHE_DURATION:
+        _request_metrics["cache_hits"] += 1
+        app.logger.info(f"📦 [CACHE HIT] {ticker_str} (period={period})")
         return _ticker_cache[cache_key]
+    
+    _request_metrics["cache_misses"] += 1
+    _request_metrics["api_calls"] += 1
+    app.logger.info(f"🔍 [API CALL] Fetching {ticker_str} (period={period}) - API calls this hour: {_request_metrics['api_calls']}")
     
     for attempt in range(max_retries):
         try:
@@ -114,12 +151,32 @@ def _yf_download_with_retry(tickers, max_retries: int = 3, **kwargs):
                 # Cache the result
                 _ticker_cache[cache_key] = data
                 _cache_timestamps[cache_key] = now
+                rows = len(data)
+                app.logger.info(f"✅ [SUCCESS] {ticker_str} (period={period}, rows={rows}, attempt={attempt+1}/{max_retries})")
                 return data
+            else:
+                app.logger.warning(f"⚠️  [EMPTY DATA] {ticker_str} (period={period}, attempt={attempt+1}/{max_retries})")
         except Exception as exc:
-            app.logger.warning(f"yf.download attempt {attempt + 1} failed: {exc}")
+            exc_type = type(exc).__name__
+            # Extract HTTP status code if available
+            status_code = ""
+            if "429" in str(exc):
+                status_code = " [429 RATE LIMITED]"
+                _request_metrics["rate_limits"] += 1
+            elif "403" in str(exc):
+                status_code = " [403 FORBIDDEN]"
+            elif "401" in str(exc):
+                status_code = " [401 UNAUTHORIZED]"
+            
+            app.logger.warning(f"❌ [FAILED] {ticker_str} (period={period}, attempt={attempt+1}/{max_retries}){status_code} - {exc_type}: {str(exc)[:100]}")
+        
         if attempt < max_retries - 1:
-            time.sleep(1.5 * (attempt + 1))  # 1.5s, 3s back-off
+            backoff = 1.5 * (attempt + 1)
+            app.logger.info(f"⏳ [RETRY BACKOFF] Waiting {backoff}s before retry...")
+            time.sleep(backoff)
+    
     # Return empty DataFrame on persistent failure
+    app.logger.error(f"💥 [GIVE UP] {ticker_str} failed after {max_retries} attempts")
     return pd.DataFrame()
 
 
@@ -302,6 +359,33 @@ def api_cache():
         if entry["expires_at"] > now
     }
     return jsonify({"cached_tickers": valid})
+
+
+@app.route("/api/diagnostics")
+def api_diagnostics():
+    """GET /api/diagnostics - View request metrics and cache stats"""
+    stats = _get_request_stats()
+    
+    # Cache stats
+    now = time.time()
+    ticker_cache_size = len(_ticker_cache)
+    ticker_cache_ttl = [(k, round(max(0, CACHE_DURATION - (now - _cache_timestamps.get(k, 0))))) 
+                        for k in list(_ticker_cache.keys())[:10]]  # Show first 10
+    
+    return jsonify({
+        "request_metrics": {
+            "api_calls_this_hour": stats["api_calls"],
+            "cache_hits_this_hour": stats["cache_hits"],
+            "cache_misses_this_hour": stats["cache_misses"],
+            "rate_limit_errors_this_hour": stats["rate_limits"],
+            "cache_hit_ratio": round(stats["cache_hits"] / max(1, stats["cache_hits"] + stats["cache_misses"]), 2),
+        },
+        "ticker_cache": {
+            "size": ticker_cache_size,
+            "samples": dict(ticker_cache_ttl),
+            "ttl_seconds": CACHE_DURATION,
+        }
+    })
 
 
 @app.route("/api/backtest/stream")
