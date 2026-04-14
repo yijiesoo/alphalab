@@ -1,16 +1,21 @@
 """
-Optimized ticker fetching: dedupes tickers, avoids quoteSummary, uses caching/locking.
+Optimized ticker fetching: dedupes tickers, uses AlphaVantage, with caching
 """
 import time
 from typing import List, Dict, Tuple, Optional
 import pandas as pd
-import yfinance as yf
 from datetime import datetime, timedelta
 
+# Try to use AlphaVantage, fallback to yfinance if not configured
 try:
-    from flask_app.yfinance_utils import yf_download_with_retry
-except ImportError:
-    from yfinance_utils import yf_download_with_retry
+    from flask_app.alphavantage_provider import batch_get_prices as av_batch_get_prices
+    USE_ALPHAVANTAGE = True
+except (ImportError, Exception):
+    USE_ALPHAVANTAGE = False
+    try:
+        from flask_app.yfinance_utils import yf_download_with_retry
+    except ImportError:
+        from yfinance_utils import yf_download_with_retry
 
 try:
     from flask_app.cache_utils import get_ticker_cache, set_ticker_cache, acquire_lock, release_lock
@@ -28,11 +33,11 @@ except ImportError:
 def fetch_ticker_prices(tickers: List[str], period: str = "5d", logger=None) -> Dict[str, Dict]:
     """
     Fetch prices for multiple tickers with caching and deduplication.
-    Returns current price and % change (avoids quoteSummary).
+    Uses AlphaVantage by default, fallback to yfinance.
     
     Args:
         tickers: List of ticker symbols
-        period: yfinance period (e.g., "5d", "1d")
+        period: Period (e.g., "5d", "1d")
         logger: Optional logger
     
     Returns:
@@ -43,6 +48,13 @@ def fetch_ticker_prices(tickers: List[str], period: str = "5d", logger=None) -> 
     if not tickers:
         return {}
     
+    # Use AlphaVantage if available
+    if USE_ALPHAVANTAGE:
+        if logger:
+            logger.info(f"🔍 [AlphaVantage] Fetching {tickers}")
+        return av_batch_get_prices(tickers)
+    
+    # Fallback to yfinance
     results = {}
     tickers_to_fetch = []
     
@@ -61,7 +73,7 @@ def fetch_ticker_prices(tickers: List[str], period: str = "5d", logger=None) -> 
     
     # Fetch missing tickers in one batch
     if logger:
-        logger.info(f"🔍 [FETCH] {tickers_to_fetch} - batch request")
+        logger.info(f"🔍 [yfinance] Fetching {tickers_to_fetch}")
     
     try:
         data = yf_download_with_retry(
