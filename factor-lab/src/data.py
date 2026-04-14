@@ -1,35 +1,18 @@
 """
 data.py — download, clean, and align OHLCV price data.
 
-Uses Polygon.io as primary data source (reliable, split/dividend adjusted)
-Falls back to yfinance if Polygon unavailable
-
 KEY CONCEPT: We use *adjusted close* prices, which account for dividends
 and stock splits. Using unadjusted prices would create fake signals at
 split dates (e.g. a 2-for-1 split looks like a -50% crash without adjustment).
 
-LIMITATION: Only *currently listed* tickers. If a stock
+LIMITATION: yfinance only returns *currently listed* tickers. If a stock
 was delisted between 2015 and today, it will be missing from results.
 This is called survivorship bias — we are implicitly overweighting
 companies that survived. Document this clearly in your README.
 """
 
-import os
 import pandas as pd
 import yfinance as yf
-from datetime import datetime
-
-# Try to import Polygon provider
-try:
-    from flask_app.polygon_provider import fetch_multiple_tickers, is_available as polygon_available
-except ImportError:
-    try:
-        from polygon_provider import fetch_multiple_tickers, is_available as polygon_available
-    except ImportError:
-        def fetch_multiple_tickers(*args, **kwargs):
-            return None
-        def polygon_available():
-            return False
 
 # ---------------------------------------------------------------------------
 # Default universe — S&P 500 large caps, manually curated starter list.
@@ -53,7 +36,6 @@ def download_prices(
 ) -> pd.DataFrame:
     """
     Download adjusted close prices for a list of tickers.
-    Tries Polygon.io first (recommended), falls back to yfinance.
 
     Returns a DataFrame where:
     - rows = trading days (DatetimeIndex)
@@ -65,39 +47,24 @@ def download_prices(
     tickers : list of ticker strings
     start   : ISO date string, e.g. "2015-01-01"
     end     : ISO date string or None (defaults to today)
+
+    IMPORTANT: We use auto_adjust=True so yfinance returns prices that
+    are already adjusted for splits and dividends. This means prices for
+    older dates will look "wrong" compared to historical quotes — that's
+    correct behaviour.
     """
-    prices = None
-    
-    # Try Polygon.io first
-    if polygon_available():
-        print("[data] 🔷 Trying Polygon.io for historical data...")
-        try:
-            prices = fetch_multiple_tickers(
-                tickers,
-                start_date=start,
-                end_date=end or datetime.now().strftime("%Y-%m-%d")
-            )
-            if prices is not None and not prices.empty:
-                print(f"[data] ✅ Polygon.io returned {len(prices)} days of data")
-            else:
-                print("[data] ⚠️  Polygon.io returned no data, trying yfinance...")
-                prices = None
-        except Exception as e:
-            print(f"[data] ⚠️  Polygon.io error: {str(e)[:100]}, trying yfinance...")
-            prices = None
-    
-    # Fall back to yfinance
-    if prices is None or prices.empty:
-        print("[data] 📊 Using yfinance for historical data...")
-        raw = yf.download(
-            tickers,
-            start=start,
-            end=end,
-            auto_adjust=True,
-            progress=False,
-        )
-        prices = raw["Close"].copy() if "Close" in raw.columns else raw
-    
+    raw = yf.download(
+        tickers,
+        start=start,
+        end=end,
+        auto_adjust=True,   # returns adjusted OHLCV directly
+        progress=False,
+    )
+
+    # yfinance returns a MultiIndex: (price_type, ticker)
+    # We only want the Close column
+    prices: pd.DataFrame = raw["Close"].copy()
+
     prices = _clean_prices(prices)
 
     # SURVIVORSHIP BIAS WARNING (logged once per download):

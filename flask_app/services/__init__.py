@@ -21,10 +21,10 @@ def init_supabase():
             print("✅ Supabase initialized")
             return _supabase
         else:
-            # Supabase is optional - app works without user accounts
+            print("⚠️  Supabase credentials not found")
             return None
     except ImportError:
-        # Supabase is optional - app works without user accounts
+        print("⚠️  Supabase not available")
         return None
 
 
