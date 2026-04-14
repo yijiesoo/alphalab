@@ -23,7 +23,7 @@ xgboost==3.1.3
 
 # ========== FINANCIAL DATA & TECHNICAL INDICATORS ==========
 yfinance==1.2.0  # Yahoo Finance data
-requests==2.33.0  # HTTP requests
+requests==2.33.0  # HTTP requests for API calls
 python-dateutil==2.9.0.post0  # Date utilities
 
 # ========== DATABASE & ORM ==========
@@ -43,7 +43,6 @@ kiwisolver==1.4.9
 
 # ========== AUTHENTICATION & SECURITY ==========
 python-dotenv==1.2.1  # Environment variables
-requests==2.33.0  # For Firebase auth API calls
 
 # ========== SENTIMENT ANALYSIS ==========
 beautifulsoup4==4.14.3  # HTML parsing (for news scraping)
@@ -52,14 +51,6 @@ beautifulsoup4==4.14.3  # HTML parsing (for news scraping)
 # Uncomment below to enable
 # transformers==4.35.0
 # torch>=2.0.0
-
-# ========== TESTING ==========
-pytest==9.0.2
-pytest-cov>=4.0.0  # Coverage reports
-
-# ========== CODE QUALITY ==========
-ruff==0.15.7  # Fast Python linter
-pylint>=2.17.0  # Code analysis
 
 # ========== UTILITIES ==========
 pytz==2025.2  # Timezone handling
