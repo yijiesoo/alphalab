@@ -28,8 +28,10 @@ load_dotenv()
 # Import yfinance utilities (caching, retry, metrics)
 try:
     from flask_app.yfinance_utils import get_request_stats, yf_download_with_retry
+    from flask_app.ticker_fetch import fetch_ticker_prices
 except ImportError:
     from yfinance_utils import get_request_stats, yf_download_with_retry
+    from ticker_fetch import fetch_ticker_prices
 
 # Import configuration (handle both local and production imports)
 try:
@@ -964,18 +966,23 @@ def api_portfolio_summary():
             quantity = float(holding["quantity"])
             entry_price = float(holding["entry_price"])
             
-            # Get current price using auto-adjusted close (handles splits/dividends).
-            # Strategy 1: yfinance .info for near-real-time price (delayed ~15 min).
-            # Strategy 2: fall back to the most recent adjusted close from history.
+            # Get current price using batch fetching (avoids expensive quoteSummary endpoint)
             current_price = entry_price
             try:
-                ticker_obj = yf.Ticker(ticker)
-                info = ticker_obj.info
-                rt_price = info.get('currentPrice') or info.get('regularMarketPrice')
-                if rt_price and float(rt_price) > 0:
-                    current_price = float(rt_price)
+                # Use our optimized batch fetcher instead of yf.Ticker().info
+                prices = fetch_ticker_prices([ticker], period="5d", logger=None)
+                if prices and ticker in prices:
+                    fetched_price = prices[ticker].get("current_price", 0)
+                    if fetched_price > 0:
+                        current_price = float(fetched_price)
+                    else:
+                        # Fallback: get from history
+                        hist = yf.download(ticker, period="5d", progress=False,
+                                           auto_adjust=True, show_errors=False)
+                        if not hist.empty:
+                            current_price = float(hist['Close'].iloc[-1])
                 else:
-                    # auto_adjust=True returns only "Close" (already adjusted)
+                    # If batch fetch fails, try history
                     hist = yf.download(ticker, period="5d", progress=False,
                                        auto_adjust=True, show_errors=False)
                     if not hist.empty:
