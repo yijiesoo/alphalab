@@ -5,6 +5,11 @@ import time
 import pandas as pd
 import yfinance as yf
 
+# Browser-like headers to avoid being blocked
+DEFAULT_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+}
+
 # Cache for ticker data
 _ticker_cache = {}
 _cache_timestamps = {}
@@ -81,7 +86,8 @@ def yf_download_with_retry(tickers, max_retries: int = 3, logger=None, **kwargs)
     
     for attempt in range(max_retries):
         try:
-            data = yf.download(tickers, **kwargs)
+            # Add browser headers to avoid blocking
+            data = yf.download(tickers, headers=DEFAULT_HEADERS, **kwargs)
             if not data.empty:
                 # Cache the result
                 _ticker_cache[cache_key] = data
@@ -106,7 +112,8 @@ def yf_download_with_retry(tickers, max_retries: int = 3, logger=None, **kwargs)
             log_msg(f"❌ [FAILED] {ticker_str} (period={period}, attempt={attempt+1}/{max_retries}){status_code} - {exc_type}: {str(exc)[:100]}")
         
         if attempt < max_retries - 1:
-            backoff = 1.5 * (attempt + 1)
+            # Exponential backoff with longer delays
+            backoff = 2.0 * (2 ** attempt)  # 2s, 4s, 8s
             log_msg(f"⏳ [RETRY BACKOFF] Waiting {backoff}s before retry...")
             time.sleep(backoff)
     
