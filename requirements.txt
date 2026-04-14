@@ -29,6 +29,7 @@ python-dateutil==2.9.0.post0  # Date utilities
 # ========== DATABASE & ORM ==========
 # Supabase is used as primary database (PostgreSQL)
 supabase==2.4.0  # Supabase Python client
+httpx==0.25.2  # HTTP client (pinned for supabase compatibility)
 
 # ========== PRODUCTION SERVER ==========
 gunicorn==23.0.0  # Production WSGI server for Railway/Heroku
