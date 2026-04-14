@@ -5,6 +5,12 @@ from flask import Blueprint, render_template, session, jsonify, request
 from datetime import datetime
 import yfinance as yf
 
+# Import optimized batch fetching
+try:
+    from flask_app.ticker_fetch import fetch_ticker_prices, fetch_tickers_combined
+except ImportError:
+    from ticker_fetch import fetch_ticker_prices, fetch_tickers_combined
+
 # Import retry wrapper from yfinance utilities
 try:
     from flask_app.yfinance_utils import yf_download_with_retry
@@ -96,22 +102,13 @@ def api_portfolio():
                 "bottom_performers": []
             }), 200
         
-        # Remove duplicates
-        tickers = list(set(tickers))
-        
-        # Fetch prices: use 5d period so we always have at least 2 trading days
-        # and can compute close-to-close daily change (not intraday open-to-close).
+        # Fetch prices using optimized batch function (with caching + dedup)
         try:
-            data = yf_download_with_retry(tickers, period="5d", progress=False, auto_adjust=True, logger=None)
-            if data.empty or len(data) < 2:
-                raise ValueError("Insufficient price data")
-            if len(tickers) == 1:
-                current_price = data["Close"].iloc[-1]
-                prev_close = data["Close"].iloc[-2]  # yesterday's close
-            else:
-                current_price = data["Close"].iloc[-1]
-                prev_close = data["Close"].iloc[-2]  # yesterday's close
-        except Exception:
+            prices = fetch_ticker_prices(tickers, period="5d", logger=None)
+            if not prices:
+                raise ValueError("No price data available")
+        except Exception as e:
+            print(f"❌ Price fetch error: {e}")
             return jsonify({
                 "total_value": 0,
                 "daily_change": 0,
@@ -122,46 +119,28 @@ def api_portfolio():
             }), 200
         
         # Calculate portfolio metrics
-        total_value = 0
-        total_prev_value = 0
-        performers = []
+        total_current = sum(p["current_price"] for p in prices.values())
+        total_prev = sum(p["current_price"] / (1 + p["pct_change"]/100) for p in prices.values() if p["pct_change"] != 0)
+        total_change = total_current - total_prev
+        total_change_pct = (total_change / total_prev * 100) if total_prev > 0 else 0
         
-        for ticker in tickers:
-            try:
-                if len(tickers) == 1:
-                    price = current_price
-                    prev = prev_close
-                else:
-                    price = current_price[ticker]
-                    prev = prev_close[ticker]
-                
-                change = price - prev
-                change_pct = (change / prev * 100) if prev > 0 else 0
-                
-                total_value += price
-                total_prev_value += prev
-                
-                performers.append({
-                    "ticker": ticker,
-                    "price": round(price, 2),
-                    "change": round(change, 2),
-                    "change_pct": round(change_pct, 2)
-                })
-            except Exception:
-                continue
+        performers = []
+        for ticker, price_data in prices.items():
+            performers.append({
+                "ticker": ticker,
+                "price": price_data["current_price"],
+                "change_pct": price_data["pct_change"]
+            })
         
         # Sort by change
         performers.sort(key=lambda x: x["change_pct"], reverse=True)
         top_performers = performers[:3]
         bottom_performers = performers[-3:] if len(performers) > 3 else []
         
-        daily_change = total_value - total_prev_value
-        daily_change_pct = (daily_change / total_prev_value * 100) if total_prev_value > 0 else 0
-        
         return jsonify({
-            "total_value": round(total_value, 2),
-            "daily_change": round(daily_change, 2),
-            "daily_change_pct": round(daily_change_pct, 2),
+            "total_value": round(total_current, 2),
+            "daily_change": round(total_change, 2),
+            "daily_change_pct": round(total_change_pct, 2),
             "holdings_count": len(tickers),
             "top_performers": top_performers,
             "bottom_performers": bottom_performers,
@@ -206,15 +185,13 @@ def api_watchlist_summary():
                 "last_updated": datetime.now().isoformat()
             }), 200
         
-        # Fetch prices: 5d period to guarantee at least 2 trading days for
-        # close-to-close daily change calculation.
+        # Fetch prices using optimized batch function (with caching + dedup)
         try:
-            data = yf_download_with_retry(tickers, period="5d", progress=False, auto_adjust=True, logger=None)
-            if data.empty or len(data) < 2:
-                raise ValueError("Insufficient price data")
-            current_price = data["Close"].iloc[-1]
-            prev_close = data["Close"].iloc[-2]  # yesterday's close (not today's open)
-        except Exception:
+            prices = fetch_ticker_prices(tickers, period="5d", logger=None)
+            if not prices:
+                raise ValueError("No price data available")
+        except Exception as e:
+            print(f"❌ Price fetch error: {e}")
             return jsonify({
                 "total_stocks": len(tickers),
                 "stocks": [{"ticker": t, "price": 0, "change_pct": 0, "added_at": added_at, "direction": "neutral"} for t in tickers],
@@ -222,32 +199,14 @@ def api_watchlist_summary():
             }), 200
         
         stocks = []
-        for ticker in tickers:
-            try:
-                if len(tickers) == 1:
-                    price = current_price
-                    prev = prev_close
-                else:
-                    price = current_price[ticker]
-                    prev = prev_close[ticker]
-                
-                change_pct = ((price - prev) / prev * 100) if prev > 0 else 0
-                
-                stocks.append({
-                    "ticker": ticker,
-                    "price": round(price, 2),
-                    "change_pct": round(change_pct, 2),
-                    "added_at": added_at,
-                    "direction": "up" if change_pct >= 0 else "down"
-                })
-            except Exception:
-                stocks.append({
-                    "ticker": ticker,
-                    "price": 0,
-                    "change_pct": 0,
-                    "added_at": added_at,
-                    "direction": "neutral"
-                })
+        for ticker, price_data in prices.items():
+            stocks.append({
+                "ticker": ticker,
+                "price": price_data["current_price"],
+                "change_pct": price_data["pct_change"],
+                "added_at": added_at,
+                "direction": "up" if price_data["pct_change"] >= 0 else "down"
+            })
         
         # Sort by change (best performers first)
         stocks.sort(key=lambda x: x["change_pct"], reverse=True)
@@ -272,15 +231,18 @@ def api_watchlist_summary():
 def api_market_summary():
     """Get market summary: S&P 500, VIX, market context."""
     try:
-        # Fetch market indices
-        sp500 = yf.Ticker("^GSPC")
-        vix = yf.Ticker("^VIX")
+        # Fetch market indices using our optimized function (avoids quoteSummary)
+        indices_data = fetch_ticker_prices(["^GSPC", "^VIX"], period="1d", logger=None)
         
-        # Get latest data
-        sp500_data = sp500.history(period="1d")
-        vix_data = vix.history(period="1d")
+        if not indices_data or len(indices_data) < 2:
+            raise ValueError("Could not fetch market data")
         
-        if sp500_data.empty or vix_data.empty:
+        # Extract market indices data (pre-calculated by batch fetcher)
+        sp500_price = indices_data.get("^GSPC", {}).get("current_price", 0)
+        sp500_change_pct = indices_data.get("^GSPC", {}).get("pct_change", 0)
+        vix_price = indices_data.get("^VIX", {}).get("current_price", 0)
+        
+        if sp500_price == 0 or vix_price == 0:
             return jsonify({
                 "sp500_price": 0,
                 "sp500_change_pct": 0,
@@ -288,13 +250,6 @@ def api_market_summary():
                 "market_sentiment": "unknown",
                 "trend": "neutral"
             }), 200
-        
-        sp500_price = sp500_data["Close"].iloc[-1]
-        sp500_open = sp500_data["Open"].iloc[-1]
-        sp500_change = sp500_price - sp500_open
-        sp500_change_pct = (sp500_change / sp500_open * 100) if sp500_open > 0 else 0
-        
-        vix_price = vix_data["Close"].iloc[-1]
         
         # Determine market sentiment based on VIX
         if vix_price < 15:
@@ -312,7 +267,6 @@ def api_market_summary():
         
         return jsonify({
             "sp500_price": round(sp500_price, 2),
-            "sp500_change": round(sp500_change, 2),
             "sp500_change_pct": round(sp500_change_pct, 2),
             "vix_value": round(vix_price, 2),
             "market_sentiment": sentiment,
