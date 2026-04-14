@@ -57,14 +57,14 @@ def fetch_eod_data(
         
         # Fetch aggregates from Polygon
         aggs = []
-        for agg in POLYGON_CLIENT.list_aggs(
+        for agg in POLYGON_CLIENT.get_aggs(
             ticker=ticker,
             multiplier=1,
             timespan="day",
-            start=start_date,
-            end=end_date,
+            from_=start_date,
+            to=end_date,
             sort="asc",
-            limit=50000,  # Max results per request
+            limit=50000,
         ):
             aggs.append({
                 "timestamp": pd.Timestamp(agg.timestamp, unit="ms"),
