@@ -749,6 +749,23 @@
         :root.dark-mode #portfolio-chart-container {
             background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
         }
+
+        /* ML Metrics Widget - Ensure it inherits theme colors */
+        #ml-metrics-widget {
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        #ml-metrics-widget * {
+            background-color: inherit;
+            color: var(--text-primary);
+        }
+
+        :root.dark-mode #ml-metrics-widget,
+        :root.dark-mode #ml-metrics-widget * {
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+        }
         
         /* Responsive */
         @media (max-width: 1024px) {
@@ -990,6 +1007,7 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
 
                 <!-- Sidebar -->
                 <div class="sidebar">
