@@ -1127,6 +1127,63 @@
                 <div id="verdict-score" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 0.9em; color: #666;"></div>
             </div>
 
+            <!-- AI Stock Summary Card -->
+            <div id="ai-summary-card" class="ai-summary-card" style="display: none; margin-top: 24px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
+                    <span style="font-size: 1.3em;">🤖</span>
+                    <h2 style="margin: 0; font-size: 1.3em; color: var(--text-primary);">AI Analysis Summary</h2>
+                </div>
+
+                <!-- Main insight -->
+                <div id="ai-main-insight" style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border-left: 4px solid var(--primary-blue); border-radius: 8px;">
+                    <p id="ai-insight-text" style="margin: 0; line-height: 1.6; color: var(--text-primary); font-size: 0.95em;"></p>
+                </div>
+
+                <!-- Bullish & Bearish signals -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+                    <!-- Bullish Signals -->
+                    <div style="padding: 16px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border-left: 4px solid var(--success); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <span style="font-size: 1.2em;">✅</span>
+                            <h3 style="margin: 0; color: var(--success); font-size: 0.95em;">Bullish Signals</h3>
+                        </div>
+                        <div id="ai-bullish-signals" style="font-size: 0.9em; line-height: 1.6; color: var(--text-secondary);">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Bearish Signals -->
+                    <div style="padding: 16px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%); border-left: 4px solid var(--danger); border-radius: 8px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                            <span style="font-size: 1.2em;">⚠️</span>
+                            <h3 style="margin: 0; color: var(--danger); font-size: 0.95em;">Bearish Signals</h3>
+                        </div>
+                        <div id="ai-bearish-signals" style="font-size: 0.9em; line-height: 1.6; color: var(--text-secondary);">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Key Metrics -->
+                <div style="margin-top: 16px; padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
+                    <h3 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 0.95em;">📊 Key Metrics</h3>
+                    <div id="ai-key-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; font-size: 0.9em;">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Recommendation -->
+                <div id="ai-recommendation" style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%); border-left: 4px solid var(--warning); border-radius: 8px;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px;">
+                        <span style="font-size: 1.2em; margin-top: 2px;">💡</span>
+                        <div>
+                            <h3 style="margin: 0 0 6px 0; color: var(--text-primary); font-size: 0.95em;">Recommendation</h3>
+                            <p id="ai-recommendation-text" style="margin: 0; line-height: 1.6; color: var(--text-secondary); font-size: 0.9em;"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Beginner Explanation Panel -->
             <div id="beginner-explanation" style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-left: 4px solid #2a5298; border-radius: 6px; display: none;">
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
@@ -1449,6 +1506,166 @@
             }
         }
 
+        /**
+         * Generate AI-powered stock summary based on analysis data
+         */
+        function generateAISummary(data) {
+            const ticker = data.ticker;
+            const company = data.company;
+            const factor = data.factor || {};
+            const sentiment = data.sentiment || {};
+            const macro = data.macro || {};
+            const verdict = data.verdict;
+
+            // Generate bullish signals
+            const bullishSignals = [];
+            
+            if (factor.score >= 75) {
+                bullishSignals.push("📈 Strong momentum signal");
+            }
+            if (factor.momentum > 0.05) {
+                bullishSignals.push(`🚀 Positive 12-month momentum (${(factor.momentum * 100).toFixed(1)}%)`);
+            }
+            if (factor.rsi && factor.rsi.score >= 65) {
+                bullishSignals.push("💪 Strong RSI momentum");
+            }
+            if (sentiment.positive > sentiment.negative && sentiment.positive > 0) {
+                bullishSignals.push(`📰 Positive news sentiment (${sentiment.positive} bullish articles)`);
+            }
+            if (macro.vix && macro.vix < 20) {
+                bullishSignals.push("😌 Low market fear (VIX < 20)");
+            }
+            
+            // Generate bearish signals
+            const bearishSignals = [];
+            
+            if (factor.score < 40) {
+                bearishSignals.push("📉 Weak momentum signal");
+            }
+            if (factor.momentum < -0.05) {
+                bearishSignals.push(`🔻 Negative 12-month momentum (${(factor.momentum * 100).toFixed(1)}%)`);
+            }
+            if (factor.rsi && factor.rsi.score <= 35) {
+                bearishSignals.push("😴 Weak RSI momentum");
+            }
+            if (sentiment.negative > sentiment.positive && sentiment.negative > 0) {
+                bearishSignals.push(`📰 Negative news sentiment (${sentiment.negative} bearish articles)`);
+            }
+            if (macro.vix && macro.vix > 25) {
+                bearishSignals.push("😰 High market fear (VIX > 25)");
+            }
+
+            // Generate main insight
+            let mainInsight = "";
+            if (verdict === "green") {
+                mainInsight = `${company} (${ticker}) is showing strong bullish signals. `;
+                mainInsight += factor.score >= 75 ? "The momentum score is excellent, suggesting potential upside. " : "";
+                mainInsight += sentiment.positive > 0 ? `Recent news sentiment is positive, with ${sentiment.positive} bullish articles. ` : "";
+                mainInsight += "Consider this stock as a potential buying opportunity.";
+            } else if (verdict === "yellow") {
+                mainInsight = `${company} (${ticker}) is in a neutral zone with mixed signals. `;
+                mainInsight += "Monitor the technical indicators closely before making a decision. ";
+                mainInsight += "The stock could move either direction depending on upcoming catalysts.";
+            } else {
+                mainInsight = `${company} (${ticker}) is showing bearish signals at this time. `;
+                mainInsight += factor.score < 40 ? "The momentum score is weak, suggesting potential downside. " : "";
+                mainInsight += sentiment.negative > 0 ? `Recent news sentiment is negative. ` : "";
+                mainInsight += "Consider waiting for better technical setup before entering.";
+            }
+
+            // Generate recommendation
+            let recommendation = "";
+            if (verdict === "green") {
+                recommendation = `✅ Strong Buy Signal: With a factor score of ${factor.score}/100, positive momentum, and ${sentiment.positive || 'some'} bullish articles, this stock is positioned for potential gains. `;
+                recommendation += "Consider taking a position, but always maintain proper position sizing and stop losses.";
+            } else if (verdict === "yellow") {
+                recommendation = `⏸️ Hold/Wait Signal: At a factor score of ${factor.score}/100, this stock presents a mixed picture. `;
+                recommendation += "Wait for either stronger bullish confirmation or consider smaller positions to test support levels.";
+            } else {
+                recommendation = `⚠️ Sell/Avoid Signal: With a factor score of ${factor.score}/100 and mixed to negative signals, `;
+                recommendation += "this stock appears unfavorable at current levels. Wait for a reversal in technical indicators before reconsidering.";
+            }
+
+            // Key metrics
+            const keyMetrics = [
+                {
+                    label: "Factor Score",
+                    value: `${factor.score}/100`,
+                    color: factor.score >= 75 ? "green" : factor.score >= 40 ? "yellow" : "red"
+                },
+                {
+                    label: "Momentum",
+                    value: `${(factor.momentum * 100).toFixed(1)}%`,
+                    color: factor.momentum > 0 ? "green" : "red"
+                },
+                {
+                    label: "RSI",
+                    value: factor.rsi?.rsi_value ? `${factor.rsi.rsi_value.toFixed(0)}` : "N/A",
+                    color: factor.rsi?.rsi_value > 70 ? "red" : factor.rsi?.rsi_value < 30 ? "green" : "yellow"
+                },
+                {
+                    label: "Sentiment",
+                    value: sentiment.positive > sentiment.negative ? "Positive" : sentiment.negative > sentiment.positive ? "Negative" : "Neutral",
+                    color: sentiment.positive > sentiment.negative ? "green" : sentiment.negative > sentiment.positive ? "red" : "yellow"
+                }
+            ];
+
+            return {
+                mainInsight,
+                bullishSignals: bullishSignals.length > 0 ? bullishSignals : ["No strong bullish signals at this time"],
+                bearishSignals: bearishSignals.length > 0 ? bearishSignals : ["No strong bearish signals at this time"],
+                keyMetrics,
+                recommendation
+            };
+        }
+
+        /**
+         * Display AI summary in the UI
+         */
+        function displayAISummary(data) {
+            const summary = generateAISummary(data);
+            const summaryCard = document.getElementById("ai-summary-card");
+            
+            if (!summaryCard) return;
+
+            // Main insight
+            document.getElementById("ai-insight-text").textContent = summary.mainInsight;
+
+            // Bullish signals
+            const bullishHtml = summary.bullishSignals
+                .map(signal => `<div style="margin-bottom: 8px;">• ${signal}</div>`)
+                .join("");
+            document.getElementById("ai-bullish-signals").innerHTML = bullishHtml || "<div>No strong bullish signals</div>";
+
+            // Bearish signals
+            const bearishHtml = summary.bearishSignals
+                .map(signal => `<div style="margin-bottom: 8px;">• ${signal}</div>`)
+                .join("");
+            document.getElementById("ai-bearish-signals").innerHTML = bearishHtml || "<div>No strong bearish signals</div>";
+
+            // Key metrics
+            const metricsHtml = summary.keyMetrics
+                .map(metric => {
+                    const colorMap = { green: "#10B981", yellow: "#F59E0B", red: "#EF4444" };
+                    return `
+                        <div style="padding: 12px; background: linear-gradient(135deg, rgba(${
+                            metric.color === 'green' ? '16, 185, 129' : metric.color === 'red' ? '239, 68, 68' : '245, 158, 11'
+                        }, 0.1) 0%, transparent 100%); border-left: 3px solid ${colorMap[metric.color]}; border-radius: 6px;">
+                            <div style="font-size: 0.8em; color: var(--text-secondary); margin-bottom: 4px;">${metric.label}</div>
+                            <div style="font-size: 1.1em; font-weight: 700; color: ${colorMap[metric.color]};">${metric.value}</div>
+                        </div>
+                    `;
+                })
+                .join("");
+            document.getElementById("ai-key-metrics").innerHTML = metricsHtml;
+
+            // Recommendation
+            document.getElementById("ai-recommendation-text").textContent = summary.recommendation;
+
+            // Show the card
+            summaryCard.style.display = "block";
+        }
+
         function displayResults(data) {
             // Safety check: ensure we have the required data
             if (!data || !data.verdict || !data.factor || !data.macro) {
@@ -1712,6 +1929,9 @@
             document.getElementById("add-to-watchlist").onclick = () => addToWatchlist(data.ticker);
             
             resultsEl.classList.add("show");
+
+            // Display AI summary
+            displayAISummary(data);
         }
 
         function showError(msg) {
