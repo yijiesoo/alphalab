@@ -1,0 +1,247 @@
+/* ========================================
+   GLOBAL DARK MODE & THEME SYSTEM
+   Shared across all pages
+   ======================================== */
+
+:root {
+    /* Light Mode Colors (Default) */
+    --primary-blue: #3B82F6;
+    --dark-blue: #1E40AF;
+    --light-bg: #F8FAFC;
+    --card-bg: #FFFFFF;
+    --border-color: #E2E8F0;
+    --text-primary: #1F2937;
+    --text-secondary: #6B7280;
+    --success: #10B981;
+    --danger: #EF4444;
+    --warning: #F59E0B;
+    --info: #06B6D4;
+    --glow-color: rgba(59, 130, 246, 0.3);
+}
+
+/* Dark Mode Theme */
+:root.dark-mode {
+    --light-bg: #0F172A;
+    --card-bg: #1E293B;
+    --border-color: #334155;
+    --text-primary: #F1F5F9;
+    --text-secondary: #94A3B8;
+    --glow-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Smooth theme transitions */
+body,
+html,
+.stat-card,
+.dashboard-card,
+.card,
+.auth-container,
+.btn,
+input,
+textarea,
+select {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dark Mode Toggle Button */
+.theme-toggle {
+    background: var(--border-color);
+    border: 2px solid var(--border-color);
+    border-radius: 24px;
+    padding: 4px 4px;
+    cursor: pointer;
+    display: flex;
+    gap: 4px;
+    transition: all 0.3s ease;
+    width: 60px;
+    height: 32px;
+    align-items: center;
+}
+
+.theme-toggle:hover {
+    box-shadow: 0 0 12px var(--glow-color);
+}
+
+.theme-toggle button {
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.theme-toggle button.active {
+    background: var(--text-primary);
+    color: var(--card-bg);
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Glassmorphism Effect */
+.stat-card,
+.dashboard-card,
+.card,
+.auth-container {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1.5px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+:root.dark-mode .stat-card,
+:root.dark-mode .dashboard-card,
+:root.dark-mode .card,
+:root.dark-mode .auth-container {
+    background: rgba(30, 41, 59, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1.5px solid rgba(71, 85, 105, 0.5);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Enhanced glow effects for dark mode */
+:root.dark-mode .stat-card:hover,
+:root.dark-mode .dashboard-card:hover,
+:root.dark-mode .card:hover,
+:root.dark-mode .auth-container:hover {
+    box-shadow: 0 0 20px var(--glow-color), 0 8px 32px rgba(0, 0, 0, 0.3);
+    border-color: rgba(59, 130, 246, 0.6);
+}
+
+/* Input fields in dark mode */
+:root.dark-mode input,
+:root.dark-mode textarea,
+:root.dark-mode select {
+    background: rgba(30, 41, 59, 0.5);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+:root.dark-mode input::placeholder,
+:root.dark-mode textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+:root.dark-mode input:focus,
+:root.dark-mode textarea:focus,
+:root.dark-mode select:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* Chart Container */
+#portfolio-chart-container {
+    padding: 12px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+    transition: all 0.3s ease;
+}
+
+:root.dark-mode #portfolio-chart-container {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+}
+
+/* Buttons */
+.btn {
+    transition: all 0.3s ease;
+}
+
+:root.dark-mode .btn {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+:root.dark-mode .btn:hover {
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Links */
+a {
+    color: var(--primary-blue);
+}
+
+:root.dark-mode a {
+    color: var(--primary-blue);
+}
+
+/* Tables and lists */
+table,
+.stock-item,
+.market-stat,
+.stat-mini {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+:root.dark-mode table,
+:root.dark-mode .stock-item,
+:root.dark-mode .market-stat,
+:root.dark-mode .stat-mini {
+    background: rgba(30, 41, 59, 0.5);
+}
+
+/* Code blocks */
+code,
+pre {
+    background: var(--light-bg);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+
+:root.dark-mode code,
+:root.dark-mode pre {
+    background: rgba(15, 23, 42, 0.6);
+}
+
+/* Modals and Dialogs */
+#add-holding-modal {
+    backdrop-filter: blur(4px);
+}
+
+:root.dark-mode #add-holding-modal {
+    background: rgba(0, 0, 0, 0.7) !important;
+}
+
+:root.dark-mode #add-holding-modal > div {
+    background: var(--card-bg);
+    border-color: var(--border-color);
+}
+
+/* Loading states */
+.spinner {
+    border-top-color: var(--primary-blue);
+    border-color: rgba(0, 0, 0, 0.1);
+}
+
+:root.dark-mode .spinner {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Sentiment badges */
+.sentiment-badge {
+    transition: all 0.3s ease;
+}
+
+/* Scrollbar styling for dark mode */
+:root.dark-mode ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+:root.dark-mode ::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5);
+}
+
+:root.dark-mode ::-webkit-scrollbar-thumb {
+    background: rgba(71, 85, 105, 0.7);
+    border-radius: 4px;
+}
+
+:root.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: rgba(71, 85, 105, 0.9);
+}

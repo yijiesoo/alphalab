@@ -5,23 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign Up — Portfolio Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-        }
-
-        :root {
-            --primary-blue: #3B82F6;
-            --dark-blue: #1E40AF;
-            --light-bg: #F8FAFC;
-            --card-bg: #FFFFFF;
-            --border-color: #E2E8F0;
-            --text-primary: #1F2937;
-            --text-secondary: #6B7280;
-            --success: #10B981;
-            --danger: #EF4444;
         }
 
         body {
@@ -32,6 +21,14 @@
             align-items: center;
             justify-content: center;
             padding: 20px;
+            position: relative;
+        }
+        
+        /* Theme toggle in top right */
+        .theme-toggle-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
         }
 
         .auth-container {
@@ -212,6 +209,13 @@
 </head>
 
 <body>
+    <div class="theme-toggle-wrapper">
+        <div class="theme-toggle" id="theme-toggle">
+            <button class="active" id="light-mode-btn" title="Light Mode">☀️</button>
+            <button id="dark-mode-btn" title="Dark Mode">🌙</button>
+        </div>
+    </div>
+    
     <div class="auth-container">
         <div class="auth-header">
             <div class="logo-container">
@@ -265,6 +269,8 @@
             </ul>
         </div>
     </div>
+
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
 </body>
 
 </html>

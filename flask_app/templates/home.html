@@ -4,10 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portfolio Analyzer — alphalab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
         :root {
+            /* Light mode colors */
             --primary-blue: #3B82F6;
             --dark-blue: #1E40AF;
             --light-bg: #F8FAFC;
@@ -18,6 +20,17 @@
             --success: #10B981;
             --danger: #EF4444;
             --warning: #F59E0B;
+            --glow-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Dark mode */
+        :root.dark-mode {
+            --light-bg: #0F172A;
+            --card-bg: #1E293B;
+            --border-color: #334155;
+            --text-primary: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --glow-color: rgba(59, 130, 246, 0.5);
         }
         
         body {
@@ -76,6 +89,7 @@
             align-items: center;
         }
         
+        /* Page-specific styles (home.html only) */
         .user-info {
             background: var(--card-bg);
             padding: 12px 18px;
@@ -724,6 +738,18 @@
             transform: translateY(-2px);
         }
         
+        /* Chart Container Styling */
+        #portfolio-chart-container {
+            padding: 12px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+            transition: all 0.3s ease;
+        }
+        
+        :root.dark-mode #portfolio-chart-container {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+        }
+        
         /* Responsive */
         @media (max-width: 1024px) {
             .content-wrapper {
@@ -828,6 +854,10 @@
             <div class="header-right">
                 <div class="user-info" id="user-info" style="display:none;">
                     <span id="user-email-display"></span>
+                </div>
+                <div class="theme-toggle" id="theme-toggle">
+                    <button class="active" id="light-mode-btn" title="Light Mode">☀️</button>
+                    <button id="dark-mode-btn" title="Dark Mode">🌙</button>
                 </div>
                 <a href="/analyze" class="btn btn-analyze">Factor Analysis</a>
                 <button class="btn btn-logout" id="logout-btn">Logout</button>
@@ -1033,7 +1063,9 @@
         });
 
         // Load all dashboards
+        // Load all dashboards
         window.addEventListener('load', () => {
+            initThemeToggle();
             checkAuth();
             loadAllDashboards();
             setInterval(loadAllDashboards, 5 * 60 * 1000);
@@ -1312,6 +1344,20 @@
                     portfolioChartInstance.destroy();
                 }
 
+                // Determine if dark mode is active
+                const isDarkMode = document.documentElement.classList.contains('dark-mode');
+                
+                // Chart colors with glassmorphism
+                const investedColor = isDarkMode 
+                    ? 'rgba(59, 130, 246, 0.8)' 
+                    : 'rgba(59, 130, 246, 0.6)';
+                const currentColor = isDarkMode 
+                    ? 'rgba(16, 185, 129, 0.8)' 
+                    : 'rgba(16, 185, 129, 0.6)';
+                const textColor = isDarkMode ? '#F1F5F9' : '#1F2937';
+                const secondaryTextColor = isDarkMode ? '#94A3B8' : '#6B7280';
+                const gridColor = isDarkMode ? 'rgba(71, 85, 105, 0.2)' : 'rgba(0, 0, 0, 0.05)';
+
                 portfolioChartInstance = new Chart(ctx, {
                     type: 'bar',
                     data: {
@@ -1320,33 +1366,86 @@
                             {
                                 label: 'Invested Value',
                                 data: investedValues,
-                                backgroundColor: 'rgba(59, 130, 246, 0.6)',
-                                borderColor: 'rgba(59, 130, 246, 1)',
-                                borderWidth: 1,
-                                borderRadius: 4,
+                                backgroundColor: investedColor,
+                                borderColor: isDarkMode ? 'rgba(59, 130, 246, 1)' : 'rgba(59, 130, 246, 0.8)',
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                borderSkipped: false,
+                                hoverBackgroundColor: 'rgba(59, 130, 246, 1)',
+                                hoverBorderWidth: 3,
                             },
                             {
                                 label: 'Current Value',
                                 data: currentValues,
-                                backgroundColor: 'rgba(16, 185, 129, 0.6)',
-                                borderColor: 'rgba(16, 185, 129, 1)',
-                                borderWidth: 1,
-                                borderRadius: 4,
+                                backgroundColor: currentColor,
+                                borderColor: isDarkMode ? 'rgba(16, 185, 129, 1)' : 'rgba(16, 185, 129, 0.8)',
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                borderSkipped: false,
+                                hoverBackgroundColor: 'rgba(16, 185, 129, 1)',
+                                hoverBorderWidth: 3,
                             }
                         ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        animation: {
+                            duration: 750,
+                            easing: 'easeInOutQuart',
+                            delay: (ctx) => {
+                                let delay = 0;
+                                if (ctx.type === 'data') {
+                                    if (ctx.mode === 'default' && !ctx.dropped) {
+                                        delay = ctx.dataIndex * 50 + ctx.datasetIndex * 100;
+                                    }
+                                }
+                                return delay;
+                            }
+                        },
                         plugins: {
                             legend: {
                                 display: true,
                                 position: 'top',
                                 labels: {
-                                    color: 'var(--text-primary)',
+                                    color: textColor,
+                                    padding: 16,
                                     font: {
                                         family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                                        size: 12,
+                                        size: 13,
+                                        weight: '600'
+                                    },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                enabled: true,
+                                backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+                                titleColor: textColor,
+                                bodyColor: textColor,
+                                borderColor: isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.3)',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += '$' + context.parsed.y.toFixed(2);
+                                        }
+                                        return label;
+                                    },
+                                    afterLabel: function(context) {
+                                        if (context.datasetIndex === 1) {
+                                            const gain = gainLoss[context.dataIndex];
+                                            const gainSign = gain >= 0 ? '+' : '';
+                                            return `Gain/Loss: ${gainSign}$${gain.toFixed(2)}`;
+                                        }
+                                        return '';
                                     }
                                 }
                             }
@@ -1355,28 +1454,38 @@
                             y: {
                                 beginAtZero: true,
                                 ticks: {
-                                    color: 'var(--text-secondary)',
+                                    color: secondaryTextColor,
                                     callback: function(value) {
                                         return '$' + value.toFixed(0);
+                                    },
+                                    font: {
+                                        size: 11,
+                                        weight: '500'
                                     }
                                 },
                                 grid: {
-                                    color: 'rgba(0, 0, 0, 0.05)'
+                                    color: gridColor,
+                                    drawBorder: false
                                 }
                             },
                             x: {
                                 ticks: {
-                                    color: 'var(--text-secondary)'
+                                    color: secondaryTextColor,
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    }
                                 },
                                 grid: {
-                                    display: false
+                                    display: false,
+                                    drawBorder: false
                                 }
                             }
                         }
                     }
                 });
 
-                console.log('✅ Portfolio chart rendered');
+                console.log('✅ Enhanced portfolio chart rendered with animations');
             } catch (e) {
                 console.error('Portfolio chart error:', e);
             }
@@ -1456,6 +1565,7 @@
 
         // Load holdings on page load
         window.addEventListener('load', () => {
+            initThemeToggle();
             checkAuth();
             loadAllDashboards();
             loadPortfolioHoldings();
@@ -1497,6 +1607,7 @@
 
     <!-- ML Metrics Widget -->
     <script src="/static/ml_metrics_widget.js"></script>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', initMLMetricsWidget);
     </script>
