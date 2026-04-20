@@ -393,6 +393,46 @@ def api_ml_scores(ticker):
         return jsonify({"ticker": ticker.upper(), "scores": {}, "status": "error", "message": str(e)}), 503
 
 
+@app.route("/api/top-ml-picks")
+@login_required
+def api_top_ml_picks():
+    """GET /api/top-ml-picks?limit=10
+    
+    Return top ML-scored stocks from cached analysis data.
+    """
+    try:
+        limit = request.args.get("limit", 10, type=int)
+        
+        # Get all cached tickers and their factor scores
+        top_picks = []
+        now = time.time()
+        
+        for ticker, entry in _cache.items():
+            if entry["expires_at"] > now:  # Only use valid cache entries
+                data = entry["data"]
+                if data and data.get("factor") and data.get("factor", {}).get("score"):
+                    top_picks.append({
+                        "ticker": ticker,
+                        "company": data.get("company", ticker),
+                        "score": data.get("factor", {}).get("score", 0),
+                        "verdict": data.get("verdict", "yellow"),
+                        "latest_price": data.get("latest_price", 0),
+                    })
+        
+        # Sort by score (descending) and take top N
+        top_picks.sort(key=lambda x: x["score"], reverse=True)
+        top_picks = top_picks[:limit]
+        
+        return jsonify({
+            "top_picks": top_picks,
+            "count": len(top_picks),
+            "timestamp": datetime.now().isoformat(),
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting top ML picks: {e}")
+        return jsonify({"top_picks": [], "count": 0, "error": str(e)}), 503
+
+
 # =====================================================================
 # Price Chart & Historical Data Routes
 # =====================================================================
