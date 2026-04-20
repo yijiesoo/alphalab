@@ -1,6 +1,7 @@
 /* ========================================
    GLOBAL DARK MODE & THEME SYSTEM
    Shared across all pages
+   Premium Glassmorphism Design
    ======================================== */
 
 :root {
@@ -17,16 +18,22 @@
     --warning: #F59E0B;
     --info: #06B6D4;
     --glow-color: rgba(59, 130, 246, 0.3);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.15);
 }
 
-/* Dark Mode Theme */
+/* Dark Mode Theme - Premium Glassmorphism */
 :root.dark-mode {
     --light-bg: #0F172A;
     --card-bg: #1E293B;
-    --border-color: #334155;
+    --border-color: #475569;
     --text-primary: #F1F5F9;
-    --text-secondary: #94A3B8;
-    --glow-color: rgba(59, 130, 246, 0.5);
+    --text-secondary: #CBD5E1;
+    --glow-color: rgba(59, 130, 246, 0.8);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* Smooth theme transitions */
@@ -39,8 +46,13 @@ html,
 .btn,
 input,
 textarea,
-select {
-    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+select,
+.panel,
+.verdict-card,
+.watchlist-panel,
+.modal-content,
+.auth-modal-content {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 /* Dark Mode Toggle Button */
@@ -59,7 +71,8 @@ select {
 }
 
 .theme-toggle:hover {
-    box-shadow: 0 0 12px var(--glow-color);
+    box-shadow: 0 0 16px var(--glow-color);
+    border-color: var(--primary-blue);
 }
 
 .theme-toggle button {
@@ -79,14 +92,26 @@ select {
 .theme-toggle button.active {
     background: var(--text-primary);
     color: var(--card-bg);
-    box-shadow: 0 0 8px rgba(59, 130, 246, 0.4);
+    box-shadow: 0 0 12px var(--glow-color);
 }
 
-/* Glassmorphism Effect */
+/* ========================================
+   GLASSMORPHISM EFFECTS
+   ======================================== */
+
 .stat-card,
 .dashboard-card,
 .card,
-.auth-container {
+.auth-container,
+.panel,
+.verdict-card,
+.watchlist-panel,
+.modal-content,
+.auth-modal-content,
+.chart-container,
+.tabs,
+.auth-btn,
+.user-profile {
     background: var(--card-bg);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -94,45 +119,76 @@ select {
     transition: all 0.3s ease;
 }
 
+/* DARK MODE GLASSMORPHISM - Premium Effect */
 :root.dark-mode .stat-card,
 :root.dark-mode .dashboard-card,
 :root.dark-mode .card,
-:root.dark-mode .auth-container {
-    background: rgba(30, 41, 59, 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1.5px solid rgba(71, 85, 105, 0.5);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+:root.dark-mode .auth-container,
+:root.dark-mode .panel,
+:root.dark-mode .verdict-card,
+:root.dark-mode .watchlist-panel,
+:root.dark-mode .modal-content,
+:root.dark-mode .auth-modal-content,
+:root.dark-mode .chart-container,
+:root.dark-mode .tabs,
+:root.dark-mode .auth-btn,
+:root.dark-mode .user-profile {
+    background: linear-gradient(
+        135deg,
+        rgba(30, 41, 59, 0.85) 0%,
+        rgba(30, 41, 59, 0.75) 100%
+    );
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1.5px solid rgba(71, 85, 105, 0.6);
+    box-shadow: 
+        0 0 20px rgba(59, 130, 246, 0.1),
+        inset 1px 1px 0 rgba(255, 255, 255, 0.05),
+        0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-/* Enhanced glow effects for dark mode */
+/* Glow Effects on Hover */
 :root.dark-mode .stat-card:hover,
 :root.dark-mode .dashboard-card:hover,
 :root.dark-mode .card:hover,
-:root.dark-mode .auth-container:hover {
-    box-shadow: 0 0 20px var(--glow-color), 0 8px 32px rgba(0, 0, 0, 0.3);
-    border-color: rgba(59, 130, 246, 0.6);
+:root.dark-mode .panel:hover,
+:root.dark-mode .verdict-card:hover,
+:root.dark-mode .watchlist-panel:hover,
+:root.dark-mode .chart-container:hover {
+    box-shadow: 
+        0 0 30px var(--glow-color),
+        inset 1px 1px 0 rgba(255, 255, 255, 0.1),
+        0 8px 32px rgba(0, 0, 0, 0.4);
+    border-color: rgba(59, 130, 246, 0.8);
+    transform: translateY(-2px);
 }
 
-/* Input fields in dark mode */
+/* Input Fields Glassmorphism */
 :root.dark-mode input,
 :root.dark-mode textarea,
 :root.dark-mode select {
-    background: rgba(30, 41, 59, 0.5);
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     color: var(--text-primary);
-    border-color: var(--border-color);
+    border-color: rgba(71, 85, 105, 0.4);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 :root.dark-mode input::placeholder,
 :root.dark-mode textarea::placeholder {
     color: var(--text-secondary);
+    opacity: 0.7;
 }
 
 :root.dark-mode input:focus,
 :root.dark-mode textarea:focus,
 :root.dark-mode select:focus {
     border-color: var(--primary-blue);
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    box-shadow: 
+        inset 0 2px 4px rgba(0, 0, 0, 0.2),
+        0 0 0 3px rgba(59, 130, 246, 0.2);
+    outline: none;
 }
 
 /* Chart Container */
@@ -144,20 +200,25 @@ select {
 }
 
 :root.dark-mode #portfolio-chart-container {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
+    box-shadow: inset 0 0 20px rgba(59, 130, 246, 0.05);
 }
 
-/* Buttons */
+/* Buttons - Glassmorphic Style */
 .btn {
     transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
 }
 
 :root.dark-mode .btn {
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 :root.dark-mode .btn:hover {
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.3);
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+    border-color: rgba(59, 130, 246, 0.6);
+    transform: translateY(-2px);
 }
 
 /* Links */
@@ -182,7 +243,10 @@ table,
 :root.dark-mode .stock-item,
 :root.dark-mode .market-stat,
 :root.dark-mode .stat-mini {
-    background: rgba(30, 41, 59, 0.5);
+    background: rgba(30, 41, 59, 0.6);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-color: rgba(71, 85, 105, 0.5);
 }
 
 /* Code blocks */
@@ -195,21 +259,30 @@ pre {
 
 :root.dark-mode code,
 :root.dark-mode pre {
-    background: rgba(15, 23, 42, 0.6);
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-color: rgba(71, 85, 105, 0.4);
 }
 
 /* Modals and Dialogs */
 #add-holding-modal {
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
 }
 
 :root.dark-mode #add-holding-modal {
-    background: rgba(0, 0, 0, 0.7) !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
 :root.dark-mode #add-holding-modal > div {
-    background: var(--card-bg);
-    border-color: var(--border-color);
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(30, 41, 59, 0.85) 100%);
+    border-color: rgba(71, 85, 105, 0.6);
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.2), 0 8px 32px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 /* Loading states */
@@ -225,23 +298,87 @@ pre {
 /* Sentiment badges */
 .sentiment-badge {
     transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+:root.dark-mode .sentiment-badge {
+    box-shadow: 0 0 16px var(--glow-color);
 }
 
 /* Scrollbar styling for dark mode */
 :root.dark-mode ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
 }
 
 :root.dark-mode ::-webkit-scrollbar-track {
     background: rgba(30, 41, 59, 0.5);
+    border-radius: 10px;
 }
 
 :root.dark-mode ::-webkit-scrollbar-thumb {
-    background: rgba(71, 85, 105, 0.7);
-    border-radius: 4px;
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.6), rgba(59, 130, 246, 0.3));
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
 }
 
 :root.dark-mode ::-webkit-scrollbar-thumb:hover {
-    background: rgba(71, 85, 105, 0.9);
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.9), rgba(59, 130, 246, 0.6));
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.5);
+}
+
+/* Text Selection */
+:root.dark-mode ::selection {
+    background: rgba(59, 130, 246, 0.4);
+    color: var(--text-primary);
+}
+
+/* ========================================
+   PREMIUM EFFECTS
+   ======================================== */
+
+/* Subtle gradient overlays */
+:root.dark-mode .stat-card::before,
+:root.dark-mode .dashboard-card::before,
+:root.dark-mode .card::before,
+:root.dark-mode .panel::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, transparent 100%);
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+/* Glowing borders animation */
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 10px rgba(59, 130, 246, 0.3);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+    }
+}
+
+:root.dark-mode .stat-card:hover,
+:root.dark-mode .dashboard-card:hover,
+:root.dark-mode .card:hover {
+    animation: glow 2s ease-in-out infinite;
+}
+
+/* Color accent for better contrast in dark mode */
+:root.dark-mode .verdict-label.green { 
+    color: #34D399; 
+    text-shadow: 0 0 10px rgba(52, 211, 153, 0.3);
+}
+:root.dark-mode .verdict-label.yellow { 
+    color: #FBBF24; 
+    text-shadow: 0 0 10px rgba(251, 191, 36, 0.3);
+}
+:root.dark-mode .verdict-label.red { 
+    color: #F87171; 
+    text-shadow: 0 0 10px rgba(248, 113, 113, 0.3);
 }
