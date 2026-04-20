@@ -11,6 +11,7 @@ import threading
 import time
 import shutil
 import re
+import traceback
 from pathlib import Path
 from datetime import datetime, timedelta
 import smtplib
@@ -25,6 +26,16 @@ import pandas as pd
 # Load environment variables FIRST
 load_dotenv()
 
+# Add parent directory and factor-lab to Python path BEFORE imports
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+FACTORLAB_ROOT = PROJECT_ROOT / "factor-lab"
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+if str(FACTORLAB_ROOT) not in sys.path:
+    sys.path.insert(0, str(FACTORLAB_ROOT))
+
 # Import configuration
 from config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
 
@@ -34,6 +45,21 @@ from services import init_supabase, get_supabase
 # Import blueprints
 from routes import auth_bp, login_required
 from routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
+
+# Import ML metrics
+try:
+    from alphalab_ml import get_latest_ml_metrics, get_all_ml_backtests, get_ml_scores_for_ticker
+    print("✅ Successfully imported from alphalab_ml")
+except ImportError as e:
+    print(f"❌ Failed to import from alphalab_ml: {e}")
+    print(f"   sys.path: {sys.path[:3]}")
+    # Fallback stubs
+    def get_latest_ml_metrics():
+        return {"status": "error", "message": "alphalab_ml not found"}
+    def get_all_ml_backtests(limit=50):
+        return {"status": "error", "backtests": [], "limit": limit}
+    def get_ml_scores_for_ticker(ticker):
+        return {"status": "error", "ticker": ticker}
 
 # =====================================================================
 # Flask App Setup
@@ -48,10 +74,6 @@ app.config['PERMANENT_SESSION_LIFETIME'] = Config.PERMANENT_SESSION_LIFETIME
 # Initialize Supabase
 supabase = init_supabase()
 init_dashboard_supabase(supabase)
-
-# Add factor-lab to Python path
-if str(FACTORLAB_ROOT) not in sys.path:
-    sys.path.insert(0, str(FACTORLAB_ROOT))
 
 # =====================================================================
 # Register Blueprints
@@ -338,14 +360,37 @@ def api_health():
 @app.route("/api/latest-metrics")
 def api_latest_metrics():
     """GET /api/latest-metrics"""
-    return jsonify({"metrics": [], "message": "No backtest metrics available"})
-
+    try:
+        result = get_latest_ml_metrics()
+        app.logger.info(f"✅ ML metrics loaded: {result.get('status')}")
+        return jsonify(result)
+    except Exception as e:
+        app.logger.error(f"❌ Error getting ML metrics: {e}", exc_info=True)
+        return jsonify({
+            "status": "error",
+            "message": str(e),
+            "metrics": {}
+        }), 500
 
 @app.route("/api/all-backtests")
 def api_all_backtests():
     """GET /api/all-backtests?limit=50"""
-    limit = request.args.get("limit", 50, type=int)
-    return jsonify({"backtests": [], "total": 0, "limit": limit})
+    try:
+        limit = request.args.get("limit", 50, type=int)
+        return jsonify(get_all_ml_backtests(limit=limit))
+    except Exception as e:
+        app.logger.error(f"Error getting backtests: {e}")
+        return jsonify({"backtests": [], "total": 0, "limit": limit}), 503
+
+
+@app.route("/api/ml-scores/<ticker>")
+def api_ml_scores(ticker):
+    """GET /api/ml-scores/<ticker> - Get ML scores for a specific ticker"""
+    try:
+        return jsonify(get_ml_scores_for_ticker(ticker))
+    except Exception as e:
+        app.logger.error(f"Error getting ML scores for {ticker}: {e}")
+        return jsonify({"ticker": ticker.upper(), "scores": {}, "status": "error", "message": str(e)}), 503
 
 
 # =====================================================================

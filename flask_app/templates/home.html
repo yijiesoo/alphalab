@@ -947,6 +947,9 @@
                                 <div id="vix-sentiment" style="margin-top: 12px;"></div>
                             </div>
                         </div>
+
+                        <!-- ML Metrics Widget -->
+                        <div id="ml-metrics-widget"></div>
                     </div>
                 </div>
 
@@ -1491,5 +1494,11 @@
             </form>
         </div>
     </div>
+
+    <!-- ML Metrics Widget -->
+    <script src="/static/ml_metrics_widget.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', initMLMetricsWidget);
+    </script>
 </body>
 </html>
