@@ -389,7 +389,7 @@ const ML_WIDGET_CSS = `
     font-size: 11px;
     font-weight: 600;
     color: #6B7280;
-    text-transform: uppercase;
+    text-transform: none;
     margin-bottom: 8px;
 }
 
@@ -426,13 +426,14 @@ const ML_WIDGET_CSS = `
 }
 
 .ml-section-title {
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    color: #374151;
-    text-transform: uppercase;
-    margin: 16px 0 12px 0;
+    color: #6B7280;
+    text-transform: none;
+    margin: 20px 0 12px 0;
     padding: 8px 0;
-    border-bottom: 1px solid #E5E7EB;
+    border-bottom: 2px solid #E5E7EB;
+    letter-spacing: 0.3px;
 }
 
 .ml-widget-warning {

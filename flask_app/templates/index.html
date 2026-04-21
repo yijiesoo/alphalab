@@ -85,30 +85,42 @@
         }
         
         .btn-logout {
-            background: var(--danger);
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border-color);
         }
         
         .btn-logout:hover {
-            background: #DC2626;
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
         }
         
         .btn-home {
-            background: var(--primary-blue);
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border-color);
         }
         
         .btn-home:hover {
-            background: var(--dark-blue);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
         }
         
         .btn-watchlist {
-            background: var(--success);
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border-color);
         }
         
         .btn-watchlist:hover {
-            background: #059669;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
         }
 
         /* Search box */
@@ -1043,7 +1055,7 @@
             <input 
                 type="text" 
                 id="ticker-input" 
-                placeholder="Enter ticker symbol (e.g., NVDA, AAPL, TSLA)" 
+                placeholder="Search ticker (e.g., NVDA, AAPL, TSLA)" 
                 autocomplete="off"
                 style="text-transform: uppercase;"
             >
@@ -2544,12 +2556,16 @@
                     document.getElementById("portfolio-count").textContent = data.holdings_count;
                     
                     // Top performers
-                    const topHtml = data.top_performers.slice(0, 3).map(stock => `
+                    const topHtml = data.top_performers.slice(0, 3).map(stock => {
+                        const sign = stock.change_pct >= 0 ? '+' : '';
+                        const color = stock.change_pct >= 0 ? '#27ae60' : '#e74c3c';
+                        return `
                         <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.8em;">
                             <span>${stock.ticker}</span>
-                            <span style="color: #27ae60; font-weight: 600;">+${stock.change_pct.toFixed(2)}%</span>
+                            <span style="color: ${color}; font-weight: 600;">${sign}${stock.change_pct.toFixed(2)}%</span>
                         </div>
-                    `).join("");
+                    `;
+                    }).join("");
                     document.getElementById("top-performers").innerHTML = topHtml || "<p style='color: #999; font-size: 0.85em;'>No data</p>";
                 } else {
                     dashboardGrid.style.display = "none";
