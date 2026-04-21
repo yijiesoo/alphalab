@@ -311,8 +311,8 @@ function downloadMLMetrics() {
 const ML_WIDGET_CSS = `
 /* ML Metrics Widget Container */
 .ml-widget-card {
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 20px;
     margin-bottom: 16px;
@@ -321,8 +321,8 @@ const ML_WIDGET_CSS = `
 
 .ml-widget-card.ml-widget-empty,
 .ml-widget-card.ml-widget-error {
-    background: #F8FAFC;
-    border-color: #CBD5E0;
+    background: var(--light-bg);
+    border-color: var(--border-color);
 }
 
 .ml-widget-header {
@@ -331,14 +331,14 @@ const ML_WIDGET_CSS = `
     align-items: center;
     margin-bottom: 16px;
     padding-bottom: 12px;
-    border-bottom: 2px solid #F0F4F8;
+    border-bottom: 2px solid var(--border-color);
 }
 
 .ml-widget-header h3 {
     margin: 0;
     font-size: 18px;
     font-weight: 600;
-    color: #1F2937;
+    color: var(--text-primary);
 }
 
 .ml-widget-meta {
@@ -348,15 +348,15 @@ const ML_WIDGET_CSS = `
 }
 
 .ml-widget-version {
-    background: #DBEAFE;
-    color: #1E40AF;
+    background: rgba(59, 130, 246, 0.2);
+    color: var(--primary-blue);
     padding: 4px 8px;
     border-radius: 4px;
     font-weight: 600;
 }
 
 .ml-widget-date {
-    color: #6B7280;
+    color: var(--text-secondary);
     padding: 4px 8px;
 }
 
@@ -378,8 +378,8 @@ const ML_WIDGET_CSS = `
 }
 
 .ml-metric-card {
-    background: #F8FAFC;
-    border: 1px solid #E2E8F0;
+    background: var(--light-bg);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     padding: 12px;
     text-align: center;
@@ -388,7 +388,7 @@ const ML_WIDGET_CSS = `
 .ml-metric-label {
     font-size: 11px;
     font-weight: 600;
-    color: #6B7280;
+    color: var(--text-secondary);
     text-transform: none;
     margin-bottom: 8px;
 }
@@ -396,50 +396,51 @@ const ML_WIDGET_CSS = `
 .ml-metric-value {
     font-size: 20px;
     font-weight: 700;
-    color: #1F2937;
+    color: var(--text-primary);
     margin-bottom: 4px;
 }
 
 .ml-metric-value.good {
-    color: #10B981;
+    color: var(--success);
 }
 
 .ml-metric-value.neutral {
-    color: #F59E0B;
+    color: var(--warning);
 }
 
 .ml-metric-value.bad {
-    color: #EF4444;
+    color: var(--danger);
 }
 
 .ml-metric-value.positive {
-    color: #10B981;
+    color: var(--success);
 }
 
 .ml-metric-value.negative {
-    color: #EF4444;
+    color: var(--danger);
 }
 
 .ml-metric-hint {
     font-size: 10px;
-    color: #9CA3AF;
+    color: var(--text-secondary);
+    opacity: 0.7;
 }
 
 .ml-section-title {
     font-size: 12px;
     font-weight: 700;
-    color: #6B7280;
+    color: var(--text-secondary);
     text-transform: none;
     margin: 20px 0 12px 0;
     padding: 8px 0;
-    border-bottom: 2px solid #E5E7EB;
+    border-bottom: 2px solid var(--border-color);
     letter-spacing: 0.3px;
 }
 
 .ml-widget-warning {
-    background: #FEF3C7;
-    border-left: 4px solid #F59E0B;
-    color: #92400E;
+    background: rgba(245, 158, 11, 0.1);
+    border-left: 4px solid var(--warning);
+    color: var(--warning);
     padding: 12px;
     border-radius: 4px;
     margin-bottom: 16px;
@@ -450,17 +451,18 @@ const ML_WIDGET_CSS = `
 .ml-widget-error .ml-widget-content {
     text-align: center;
     padding: 20px;
-    color: #6B7280;
+    color: var(--text-secondary);
 }
 
 .ml-widget-help {
     font-size: 12px;
-    color: #9CA3AF;
+    color: var(--text-secondary);
     margin-top: 8px;
+    opacity: 0.8;
 }
 
 .ml-widget-error-text {
-    color: #EF4444;
+    color: var(--danger);
     font-weight: 600;
 }
 
@@ -470,16 +472,16 @@ const ML_WIDGET_CSS = `
     gap: 8px;
     margin-top: 20px;
     padding-top: 12px;
-    border-top: 1px solid #E5E7EB;
+    border-top: 1px solid var(--border-color);
 }
 
 .btn {
     flex: 1;
     padding: 10px 12px;
-    border: 1px solid #D1D5DB;
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    background: #FFFFFF;
-    color: #374151;
+    background: var(--card-bg);
+    color: var(--text-primary);
     font-size: 12px;
     font-weight: 600;
     cursor: pointer;
@@ -487,14 +489,15 @@ const ML_WIDGET_CSS = `
 }
 
 .btn:hover {
-    background: #F3F4F6;
-    border-color: #9CA3AF;
+    background: var(--light-bg);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
 }
 
 .btn.btn-secondary {
-    background: #F0F4F8;
-    border-color: #CBD5E0;
-    color: #1F2937;
+    background: var(--light-bg);
+    border-color: var(--border-color);
+    color: var(--text-primary);
 }
 
 /* Modal */
@@ -512,13 +515,14 @@ const ML_WIDGET_CSS = `
 }
 
 .ml-modal-content {
-    background: #FFFFFF;
+    background: var(--card-bg);
     border-radius: 8px;
     max-width: 900px;
     width: 90%;
     max-height: 80vh;
     overflow-y: auto;
     box-shadow: 0 20px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid var(--border-color);
 }
 
 .ml-modal-header {
@@ -526,28 +530,28 @@ const ML_WIDGET_CSS = `
     justify-content: space-between;
     align-items: center;
     padding: 20px;
-    border-bottom: 1px solid #E2E8F0;
+    border-bottom: 1px solid var(--border-color);
     position: sticky;
     top: 0;
-    background: #FFFFFF;
+    background: var(--card-bg);
 }
 
 .ml-modal-header h2 {
     margin: 0;
     font-size: 18px;
-    color: #1F2937;
+    color: var(--text-primary);
 }
 
 .ml-modal-close {
     background: none;
     border: none;
     font-size: 24px;
-    color: #9CA3AF;
+    color: var(--text-secondary);
     cursor: pointer;
 }
 
 .ml-modal-close:hover {
-    color: #1F2937;
+    color: var(--text-primary);
 }
 
 .ml-modal-body {
@@ -561,27 +565,27 @@ const ML_WIDGET_CSS = `
 }
 
 .ml-history-table thead {
-    background: #F3F4F6;
-    border-bottom: 2px solid #E5E7EB;
+    background: var(--light-bg);
+    border-bottom: 2px solid var(--border-color);
 }
 
 .ml-history-table th {
     padding: 12px;
     text-align: left;
     font-weight: 600;
-    color: #374151;
-    text-transform: uppercase;
+    color: var(--text-primary);
+    text-transform: none;
     font-size: 11px;
 }
 
 .ml-history-table td {
     padding: 12px;
-    border-bottom: 1px solid #E5E7EB;
-    color: #1F2937;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 
 .ml-history-table tbody tr:hover {
-    background: #F8FAFC;
+    background: var(--light-bg);
 }
 
 /* Responsive */
@@ -603,8 +607,7 @@ const ML_WIDGET_CSS = `
     .ml-modal-content {
         width: 95%;
     }
-}
-`;
+}`;
 
 // Inject CSS on page load
 if (document.readyState === "loading") {
