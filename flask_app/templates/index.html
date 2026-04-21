@@ -1464,48 +1464,8 @@
                 <div id="verdict-metrics-grid" class="verdict-metrics" style="display: none;"></div>
             </div>
 
-            <!-- AI Stock Summary Card -->
-            <div id="ai-summary-card" class="ai-summary-card" style="display: none; margin-top: 24px;">
-                <h2 style="margin: 0 0 20px 0; font-size: 1.3em; color: var(--text-primary);">Analysis summary</h2>
-
-                <!-- Main insight -->
-                <div id="ai-main-insight" style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border-left: 4px solid var(--primary-blue); border-radius: 8px;">
-                    <p id="ai-insight-text" style="margin: 0; line-height: 1.6; color: var(--text-primary); font-size: 0.95em;"></p>
-                </div>
-
-                <!-- Bullish & Bearish signals -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
-                    <!-- Bullish Signals -->
-                    <div style="padding: 16px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border-left: 4px solid var(--success); border-radius: 8px;">
-                        <h3 style="margin: 0 0 12px 0; color: var(--success); font-size: 0.95em; font-weight: 700;">Bullish factors</h3>
-                        <div id="ai-bullish-signals" style="font-size: 0.9em; line-height: 1.6; color: var(--text-secondary);">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                    </div>
-
-                    <!-- Bearish Signals -->
-                    <div style="padding: 16px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%); border-left: 4px solid var(--danger); border-radius: 8px;">
-                        <h3 style="margin: 0 0 12px 0; color: var(--danger); font-size: 0.95em; font-weight: 700;">Bearish factors</h3>
-                        <div id="ai-bearish-signals" style="font-size: 0.9em; line-height: 1.6; color: var(--text-secondary);">
-                            <!-- Populated by JavaScript -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Key Metrics -->
-                <div style="margin-top: 16px; padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <h3 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 0.95em; font-weight: 700;">Key metrics</h3>
-                    <div id="ai-key-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; font-size: 0.9em;">
-                        <!-- Populated by JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Recommendation -->
-                <div id="ai-recommendation" style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%); border-left: 4px solid var(--warning); border-radius: 8px;">
-                    <h3 style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 0.95em; font-weight: 700;">Recommendation</h3>
-                    <p id="ai-recommendation-text" style="margin: 0; line-height: 1.6; color: var(--text-secondary); font-size: 0.9em;"></p>
-                </div>
-            </div>
+            <!-- AI Stock Summary Card - HIDDEN, content moved to Overview tab -->
+            <div id="ai-summary-card" style="display: none !important;"></div>
 
             <!-- Tab Navigation -->
             <div class="tabs-container">
@@ -1517,22 +1477,35 @@
 
             <!-- OVERVIEW TAB -->
             <div id="tab-overview" class="tab-content active">
-                <div class="panels-grid">
-                    <!-- Bullish/Bearish Signals in 2-column layout -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px;">
-                        <div class="panel">
-                            <div class="panel-title">Bullish signals</div>
-                            <div class="panel-content" id="bullish-signals-overview">
-                                <!-- Populated by JavaScript -->
-                            </div>
-                        </div>
-                        <div class="panel">
-                            <div class="panel-title">Bearish signals</div>
-                            <div class="panel-content" id="bearish-signals-overview">
-                                <!-- Populated by JavaScript -->
-                            </div>
+                <!-- Analysis summary heading -->
+                <h3 style="margin: 0 0 16px 0; font-size: 1em; color: var(--text-primary); font-weight: 600;">Analysis summary</h3>
+
+                <!-- AI insight -->
+                <div id="ai-insight-section-overview" class="ai-insight-box" style="display: none; margin-bottom: 16px;">
+                    <div class="ai-insight-title">Summary</div>
+                    <div class="ai-insight-text" id="ai-insight-text-overview"></div>
+                </div>
+
+                <!-- Bullish/Bearish Signals in 2-column layout -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                    <div class="panel">
+                        <div class="panel-title">Bullish signals</div>
+                        <div class="panel-content" id="bullish-signals-overview">
+                            <!-- Populated by JavaScript -->
                         </div>
                     </div>
+                    <div class="panel">
+                        <div class="panel-title">Bearish signals</div>
+                        <div class="panel-content" id="bearish-signals-overview">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recommendation -->
+                <div id="recommendation-section-overview" class="recommendation-box" style="display: none;">
+                    <div class="recommendation-label">Recommendation</div>
+                    <div class="recommendation-text" id="recommendation-text-overview"></div>
                 </div>
             </div>
 
@@ -2266,6 +2239,12 @@
             // Populate Overview tab with bullish/bearish signals
             const summary = generateAISummary(data);
             
+            // Show AI insight in Overview tab
+            if (summary.mainInsight) {
+                document.getElementById("ai-insight-text-overview").textContent = summary.mainInsight;
+                document.getElementById("ai-insight-section-overview").style.display = 'block';
+            }
+            
             // Bullish signals (remove emoji for cleaner display)
             const bullishHtml = summary.bullishSignals
                 .map(signal => {
@@ -2291,6 +2270,12 @@
                 })
                 .join("");
             document.getElementById("bearish-signals-overview").innerHTML = bearishHtml || "<div>No strong bearish signals at this time</div>";
+            
+            // Show recommendation in Overview tab
+            if (summary.recommendation) {
+                document.getElementById("recommendation-text-overview").textContent = summary.recommendation;
+                document.getElementById("recommendation-section-overview").style.display = 'block';
+            }
         }
 
         function showError(msg) {
