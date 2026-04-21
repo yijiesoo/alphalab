@@ -1874,47 +1874,10 @@
          * Display AI summary in the UI
          */
         function displayAISummary(data) {
-            const summary = generateAISummary(data);
-            const summaryCard = document.getElementById("ai-summary-card");
-            
-            if (!summaryCard) return;
-
-            // Main insight
-            document.getElementById("ai-insight-text").textContent = summary.mainInsight;
-
-            // Bullish signals
-            const bullishHtml = summary.bullishSignals
-                .map(signal => `<div style="margin-bottom: 8px;">• ${signal}</div>`)
-                .join("");
-            document.getElementById("ai-bullish-signals").innerHTML = bullishHtml || "<div>No strong bullish signals</div>";
-
-            // Bearish signals
-            const bearishHtml = summary.bearishSignals
-                .map(signal => `<div style="margin-bottom: 8px;">• ${signal}</div>`)
-                .join("");
-            document.getElementById("ai-bearish-signals").innerHTML = bearishHtml || "<div>No strong bearish signals</div>";
-
-            // Key metrics
-            const metricsHtml = summary.keyMetrics
-                .map(metric => {
-                    const colorMap = { green: "#10B981", yellow: "#F59E0B", red: "#EF4444" };
-                    return `
-                        <div style="padding: 12px; background: linear-gradient(135deg, rgba(${
-                            metric.color === 'green' ? '16, 185, 129' : metric.color === 'red' ? '239, 68, 68' : '245, 158, 11'
-                        }, 0.1) 0%, transparent 100%); border-left: 3px solid ${colorMap[metric.color]}; border-radius: 6px;">
-                            <div style="font-size: 0.8em; color: var(--text-secondary); margin-bottom: 4px;">${metric.label}</div>
-                            <div style="font-size: 1.1em; font-weight: 700; color: ${colorMap[metric.color]};">${metric.value}</div>
-                        </div>
-                    `;
-                })
-                .join("");
-            document.getElementById("ai-key-metrics").innerHTML = metricsHtml;
-
-            // Recommendation
-            document.getElementById("ai-recommendation-text").textContent = summary.recommendation;
-
-            // Show the card
-            summaryCard.style.display = "block";
+            // This function is now deprecated. All AI summary content is populated
+            // directly in the Overview tab via displayResults().
+            // Keeping this stub for backward compatibility.
+            return;
         }
 
         function displayResults(data) {
