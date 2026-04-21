@@ -28,10 +28,12 @@ async function initMLMetricsWidget() {
     container.innerHTML = `
         <div class="ml-widget-card">
             <div class="ml-widget-header">
-                <h3>🤖 ML Model Metrics</h3>
-                <span class="loading-spinner">⟳</span>
+                <h3>ML Model Performance</h3>
             </div>
-            <div class="ml-widget-content">Loading...</div>
+            <div class="ml-widget-content" style="text-align: center; padding: 40px 20px;">
+                <div class="loading-spinner" style="display: inline-block; font-size: 32px;">⟳</div>
+                <p style="margin-top: 16px; color: var(--text-secondary);">Loading metrics...</p>
+            </div>
         </div>
     `;
     
@@ -105,10 +107,22 @@ function renderMLMetrics(container, data) {
     const validScores = coverage.valid_scores || 0;
     const coverage_pct = universeSize > 0 ? ((validScores / universeSize) * 100).toFixed(1) : "N/A";
     
-    // Color coding for metrics
-    const icColor = ic > 0.05 ? "good" : ic > 0 ? "neutral" : ic < 0 ? "bad" : "neutral";
-    const hitRateColor = hitRate > 55 ? "good" : hitRate > 50 ? "neutral" : "bad";
-    const sharpeColor = sharpe > 1.0 ? "good" : sharpe > 0.5 ? "neutral" : "bad";
+    // Status indicators for KPIs
+    const getStatusDot = (value, target, isHigherBetter = true) => {
+        if (value === "N/A" || target === undefined) return '<span class="ml-status-none">—</span>';
+        const numValue = parseFloat(value);
+        const passed = isHigherBetter ? numValue >= target : numValue <= target;
+        if (passed) return '<span class="ml-status ml-status-good">●</span>';
+        if (isHigherBetter) {
+            return numValue > (target * 0.8) ? '<span class="ml-status ml-status-neutral">●</span>' : '<span class="ml-status ml-status-bad">●</span>';
+        }
+        return '<span class="ml-status ml-status-bad">●</span>';
+    };
+    
+    const icStatus = getStatusDot(ic, 0.05, true);
+    const hitRateStatus = getStatusDot(hitRate.replace('%', ''), 55, true);
+    const sharpeStatus = getStatusDot(sharpe, 1.0, true);
+    const maxDDStatus = getStatusDot(maxDD.replace('%', ''), -15, false);
     
     const warningHtml = data.warning 
         ? `<div class="ml-widget-warning">⚠️ ${data.warning}</div>` 
@@ -117,7 +131,7 @@ function renderMLMetrics(container, data) {
     const html = `
         <div class="ml-widget-card">
             <div class="ml-widget-header">
-                <h3>🤖 ML Model Metrics</h3>
+                <h3>ML Model Performance</h3>
                 <div class="ml-widget-meta">
                     <span class="ml-widget-version">v${data.model_version}</span>
                     <span class="ml-widget-date">${data.as_of_date}</span>
@@ -127,74 +141,83 @@ function renderMLMetrics(container, data) {
             ${warningHtml}
             
             <div class="ml-widget-content">
-                <!-- Performance Metrics -->
-                <div class="ml-metrics-grid">
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">IC (Rank Correlation)</div>
-                        <div class="ml-metric-value ${icColor}">${ic}</div>
-                        <div class="ml-metric-hint">Target: > 0.05</div>
-                    </div>
-                    
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">Hit Rate</div>
-                        <div class="ml-metric-value ${hitRateColor}">${hitRate}%</div>
-                        <div class="ml-metric-hint">Target: > 55%</div>
-                    </div>
-                    
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">Sharpe Ratio</div>
-                        <div class="ml-metric-value ${sharpeColor}">${sharpe}</div>
-                        <div class="ml-metric-hint">Annualized</div>
-                    </div>
-                    
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">Max Drawdown</div>
-                        <div class="ml-metric-value">${maxDD}%</div>
-                        <div class="ml-metric-hint">Worst period</div>
-                    </div>
-                </div>
-                
-                <!-- Portfolio Exposure -->
-                <div class="ml-section-title">Portfolio Exposure</div>
-                <div class="ml-metrics-grid">
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">Long Exposure</div>
-                        <div class="ml-metric-value positive">${longExp}%</div>
-                    </div>
-                    
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">Short Exposure</div>
-                        <div class="ml-metric-value negative">${shortExp}%</div>
-                    </div>
-                    
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">Gross Leverage</div>
-                        <div class="ml-metric-value">${grossLev}%</div>
-                    </div>
-                    
-                    <div class="ml-metric-card">
-                        <div class="ml-metric-label">Avg Turnover</div>
-                        <div class="ml-metric-value">${turnover}%</div>
-                        <div class="ml-metric-hint">Per rebalance</div>
+                <!-- Key Performance Indicators (Primary) -->
+                <div class="ml-kpi-section">
+                    <div class="ml-kpi-grid">
+                        <div class="ml-kpi-card">
+                            <div class="ml-kpi-header">
+                                <span class="ml-kpi-label">Information coefficient</span>
+                                ${icStatus}
+                            </div>
+                            <div class="ml-kpi-value">${ic}</div>
+                            <div class="ml-kpi-target">Target: &gt; 0.05</div>
+                        </div>
+                        
+                        <div class="ml-kpi-card">
+                            <div class="ml-kpi-header">
+                                <span class="ml-kpi-label">Hit rate</span>
+                                ${hitRateStatus}
+                            </div>
+                            <div class="ml-kpi-value">${hitRate}%</div>
+                            <div class="ml-kpi-target">Target: &gt; 55%</div>
+                        </div>
+                        
+                        <div class="ml-kpi-card">
+                            <div class="ml-kpi-header">
+                                <span class="ml-kpi-label">Sharpe ratio</span>
+                                ${sharpeStatus}
+                            </div>
+                            <div class="ml-kpi-value">${sharpe}</div>
+                            <div class="ml-kpi-target">Target: &gt; 1.00</div>
+                        </div>
+                        
+                        <div class="ml-kpi-card">
+                            <div class="ml-kpi-header">
+                                <span class="ml-kpi-label">Max drawdown</span>
+                                ${maxDDStatus}
+                            </div>
+                            <div class="ml-kpi-value">${maxDD}%</div>
+                            <div class="ml-kpi-target">Worst: ${maxDD}%</div>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Coverage -->
-                <div class="ml-section-title">Coverage</div>
-                <div class="ml-metric-card">
-                    <div class="ml-metric-label">Stocks Scored</div>
-                    <div class="ml-metric-value">${validScores} / ${universeSize}</div>
-                    <div class="ml-metric-hint">${coverage_pct}% of universe</div>
+                <!-- Portfolio Exposure (Secondary) -->
+                <div class="ml-secondary-section">
+                    <div class="ml-section-title">Portfolio exposure</div>
+                    <div class="ml-exposure-grid">
+                        <div class="ml-exposure-item">
+                            <div class="ml-exposure-label">Long</div>
+                            <div class="ml-exposure-value positive">${longExp}%</div>
+                        </div>
+                        <div class="ml-exposure-item">
+                            <div class="ml-exposure-label">Short</div>
+                            <div class="ml-exposure-value negative">${shortExp}%</div>
+                        </div>
+                        <div class="ml-exposure-item">
+                            <div class="ml-exposure-label">Gross leverage</div>
+                            <div class="ml-exposure-value">${grossLev}%</div>
+                        </div>
+                        <div class="ml-exposure-item">
+                            <div class="ml-exposure-label">Avg turnover</div>
+                            <div class="ml-exposure-value">${turnover}%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Coverage (Tertiary) -->
+                <div class="ml-tertiary-section">
+                    <div class="ml-section-title">Universe coverage</div>
+                    <div class="ml-coverage-stat">
+                        <div class="ml-coverage-label">Stocks scored</div>
+                        <div class="ml-coverage-value">${validScores} / ${universeSize} (${coverage_pct}%)</div>
+                    </div>
                 </div>
                 
                 <!-- Action Buttons -->
                 <div class="ml-widget-actions">
-                    <button class="btn btn-secondary" onclick="showMLMetricsHistory()">
-                        📈 View History
-                    </button>
-                    <button class="btn btn-secondary" onclick="downloadMLMetrics()">
-                        📥 Download
-                    </button>
+                    <button class="btn btn-secondary" onclick="showMLMetricsHistory()">View history</button>
+                    <button class="btn btn-secondary" onclick="downloadMLMetrics()">Export</button>
                 </div>
             </div>
         </div>
@@ -224,7 +247,7 @@ async function showMLMetricsHistory() {
         let html = `
             <div class="ml-modal-content">
                 <div class="ml-modal-header">
-                    <h2>📊 ML Backtest History</h2>
+                    <h2>Model performance history</h2>
                     <button class="ml-modal-close" onclick="this.parentElement.parentElement.remove()">✕</button>
                 </div>
                 <div class="ml-modal-body">
@@ -329,9 +352,8 @@ const ML_WIDGET_CSS = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
-    padding-bottom: 12px;
-    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 24px;
+    padding-bottom: 0;
 }
 
 .ml-widget-header h3 {
@@ -369,72 +391,154 @@ const ML_WIDGET_CSS = `
     to { transform: rotate(360deg); }
 }
 
-/* Metrics Grid */
-.ml-metrics-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
+/* KPI Section (Primary Metrics with Hierarchy) */
+.ml-kpi-section {
+    margin-bottom: 32px;
 }
 
-.ml-metric-card {
+.ml-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 16px;
+}
+
+.ml-kpi-card {
+    background: var(--light-bg);
+    border: 2px solid var(--border-color);
+    border-radius: 8px;
+    padding: 16px;
+    transition: all 0.2s ease;
+}
+
+.ml-kpi-card:hover {
+    border-color: var(--primary-blue);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.ml-kpi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.ml-kpi-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: none;
+    letter-spacing: 0.3px;
+}
+
+.ml-kpi-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+    line-height: 1;
+}
+
+.ml-kpi-target {
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+/* Status Indicators */
+.ml-status {
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.ml-status-good {
+    color: var(--success);
+}
+
+.ml-status-neutral {
+    color: var(--warning);
+}
+
+.ml-status-bad {
+    color: var(--danger);
+}
+
+.ml-status-none {
+    color: var(--border-color);
+}
+
+/* Secondary Section - Portfolio Exposure */
+.ml-secondary-section {
+    margin-bottom: 28px;
+    padding: 16px;
     background: var(--light-bg);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    padding: 12px;
+    border-radius: 8px;
+}
+
+.ml-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-primary);
+    text-transform: none;
+    margin: 0 0 12px 0;
+    padding: 0;
+    letter-spacing: 0.3px;
+}
+
+.ml-exposure-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+}
+
+.ml-exposure-item {
     text-align: center;
 }
 
-.ml-metric-label {
+.ml-exposure-label {
     font-size: 11px;
     font-weight: 600;
     color: var(--text-secondary);
     text-transform: none;
-    margin-bottom: 8px;
-}
-
-.ml-metric-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--text-primary);
     margin-bottom: 4px;
 }
 
-.ml-metric-value.good {
-    color: var(--success);
-}
-
-.ml-metric-value.neutral {
-    color: var(--warning);
-}
-
-.ml-metric-value.bad {
-    color: var(--danger);
-}
-
-.ml-metric-value.positive {
-    color: var(--success);
-}
-
-.ml-metric-value.negative {
-    color: var(--danger);
-}
-
-.ml-metric-hint {
-    font-size: 10px;
-    color: var(--text-secondary);
-    opacity: 0.7;
-}
-
-.ml-section-title {
-    font-size: 12px;
+.ml-exposure-value {
+    font-size: 18px;
     font-weight: 700;
+    color: var(--text-primary);
+}
+
+.ml-exposure-value.positive {
+    color: var(--success);
+}
+
+.ml-exposure-value.negative {
+    color: var(--danger);
+}
+
+/* Tertiary Section - Coverage */
+.ml-tertiary-section {
+    padding: 12px;
+    background: transparent;
+}
+
+.ml-coverage-stat {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.ml-coverage-label {
+    font-size: 12px;
+    font-weight: 600;
     color: var(--text-secondary);
-    text-transform: none;
-    margin: 20px 0 12px 0;
-    padding: 8px 0;
-    border-bottom: 2px solid var(--border-color);
-    letter-spacing: 0.3px;
+}
+
+.ml-coverage-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-primary);
 }
 
 .ml-widget-warning {
@@ -590,8 +694,16 @@ const ML_WIDGET_CSS = `
 
 /* Responsive */
 @media (max-width: 768px) {
-    .ml-metrics-grid {
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    .ml-kpi-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    }
+    
+    .ml-exposure-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .ml-kpi-value {
+        font-size: 22px;
     }
     
     .ml-widget-header {
