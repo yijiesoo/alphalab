@@ -172,7 +172,7 @@
         
         .stat-card {
             background: var(--card-bg);
-            padding: 28px;
+            padding: 36px;
             border-radius: 14px;
             border: 1.5px solid var(--border-color);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -189,35 +189,36 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 18px;
+            margin-bottom: 20px;
         }
         
         .stat-card-title {
             color: var(--text-secondary);
-            font-size: 0.8em;
+            font-size: 0.75em;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
+            opacity: 0.8;
         }
         
         .stat-card-icon {
             font-size: 1.8em;
-            opacity: 0.8;
+            opacity: 0.7;
         }
         
         .stat-card-value {
-            font-size: 2.2em;
-            font-weight: 800;
+            font-size: 2.4em;
+            font-weight: 900;
             color: var(--text-primary);
-            margin-bottom: 12px;
-            letter-spacing: -1px;
+            margin-bottom: 4px;
+            letter-spacing: -1.5px;
         }
         
         .stat-card-detail {
             display: flex;
-            gap: 16px;
-            margin-top: 16px;
-            padding-top: 16px;
+            gap: 24px;
+            margin-top: 20px;
+            padding-top: 20px;
             border-top: 1.5px solid var(--border-color);
             font-size: 0.85em;
         }
@@ -228,17 +229,18 @@
         
         .stat-detail-label {
             color: var(--text-secondary);
-            font-size: 0.75em;
+            font-size: 0.7em;
             text-transform: uppercase;
-            margin-bottom: 6px;
+            margin-bottom: 8px;
             font-weight: 600;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
+            opacity: 0.75;
         }
         
         .stat-detail-value {
-            font-weight: 700;
+            font-weight: 800;
             color: var(--text-primary);
-            font-size: 1.1em;
+            font-size: 1.2em;
         }
         
         .stat-detail-value.positive {
@@ -262,7 +264,7 @@
         
         .dashboard-card {
             background: var(--card-bg);
-            padding: 32px;
+            padding: 40px;
             border-radius: 14px;
             border: 1.5px solid var(--border-color);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -275,14 +277,14 @@
         
         .dashboard-card h3 {
             color: var(--text-primary);
-            font-size: 1.25em;
+            font-size: 1.15em;
             font-weight: 700;
-            margin-bottom: 24px;
+            margin-bottom: 28px;
             display: flex;
             align-items: center;
             gap: 12px;
             border-bottom: 2.5px solid var(--border-color);
-            padding-bottom: 18px;
+            padding-bottom: 20px;
             letter-spacing: -0.3px;
         }
         
@@ -437,7 +439,7 @@
         
         .card {
             background: var(--card-bg);
-            padding: 32px;
+            padding: 36px;
             border-radius: 14px;
             border: 1.5px solid var(--border-color);
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
@@ -450,11 +452,11 @@
         
         .card h3 {
             color: var(--text-primary);
-            font-size: 1.1em;
+            font-size: 1.05em;
             font-weight: 800;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             border-bottom: 2.5px solid var(--border-color);
-            padding-bottom: 14px;
+            padding-bottom: 16px;
             letter-spacing: -0.3px;
         }
         
@@ -462,26 +464,45 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 12px;
-            background: var(--light-bg);
-            border: 1.5px solid transparent;
+            padding: 14px;
+            background: transparent;
+            border: 1.5px solid var(--border-color);
             border-radius: 10px;
             text-decoration: none;
-            color: var(--primary-blue);
-            font-weight: 700;
+            color: var(--text-primary);
+            font-weight: 600;
             margin-bottom: 10px;
             transition: all 0.3s ease;
             text-align: center;
             font-size: 0.9em;
-            box-shadow: 0 2px 6px rgba(59, 130, 246, 0.08);
+            box-shadow: none;
         }
         
-        .quick-action:hover {
+        .quick-action:first-child {
             background: var(--primary-blue);
             color: white;
-            transform: translateY(-4px);
-            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.25);
             border-color: var(--primary-blue);
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
+        .quick-action:first-child:hover {
+            background: var(--dark-blue);
+            border-color: var(--dark-blue);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+            transform: translateY(-3px);
+        }
+        
+        .quick-action:not(:first-child) {
+            color: var(--text-secondary);
+        }
+        
+        .quick-action:not(:first-child):hover {
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
         }
         
         .quick-action:last-child {
@@ -768,11 +789,7 @@
         }
         
         /* Responsive */
-        @media (max-width: 1024px) {
-            .content-wrapper {
-                grid-template-columns: 1fr;
-            }
-            
+        @media (max-width: 1400px) {
             .stat-cards-grid {
                 grid-template-columns: repeat(2, 1fr);
             }
@@ -783,6 +800,12 @@
             
             .dashboard-grid .dashboard-card:first-child {
                 grid-column: 1;
+            }
+        }
+        
+        @media (max-width: 1024px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
             }
             
             .sidebar {
@@ -997,17 +1020,8 @@
 
                         <!-- ML Metrics Widget -->
                         <div id="ml-metrics-widget"></div>
-
-                        <!-- Top ML Picks Leaderboard -->
-                        <div class="dashboard-card" id="top-ml-picks-card" style="display:none;">
-                            <h3>🏆 Top ML Picks</h3>
-                            <div id="top-ml-picks-list" style="margin-top: 16px;">
-                                <div class="loading">
-                                    <div class="spinner"></div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
+                </div>
 
                 <!-- Sidebar -->
                 <div class="sidebar">
@@ -1046,6 +1060,14 @@
                             <div style="font-size: 3.5em; margin: 16px 0;" id="market-emoji">😐</div>
                             <div style="color: var(--text-secondary); font-size: 0.95em; margin-bottom: 12px;" id="market-text">Analyzing...</div>
                             <div class="sentiment-badge" id="sentiment-badge">Loading</div>
+                        </div>
+                    </div>
+
+                    <!-- Top ML Picks Leaderboard -->
+                    <div class="card" id="top-ml-picks-card" style="display:none;">
+                        <h3 style="margin-bottom: 16px;">🏆 Top Picks</h3>
+                        <div id="top-ml-picks-list" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">
+                            <div style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading...</div>
                         </div>
                     </div>
                 </div>
