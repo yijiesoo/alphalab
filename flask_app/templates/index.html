@@ -626,6 +626,56 @@
             color: #555;
         }
 
+        /* Tab Navigation */
+        .tabs-container {
+            display: flex;
+            gap: 24px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.95em;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 0;
+            position: relative;
+            transition: color 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-button:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-button.active {
+            color: var(--primary-blue);
+        }
+
+        .tab-button.active::after {
+            content: '';
+            position: absolute;
+            bottom: -16px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--primary-blue);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
         /* Analysis panels grid */
         .panels-grid {
             display: grid;
@@ -1436,14 +1486,143 @@
                 </div>
             </div>
 
-            <!-- Tabs for different views -->
-            <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab(event, 'analysis')">Analysis</button>
-                <button class="tab-btn" onclick="switchTab(event, 'chart')">📈 Chart</button>
-                <button class="tab-btn" onclick="switchTab(event, 'watchlist')">⭐ Watchlist</button>
+            <!-- Tab Navigation -->
+            <div class="tabs-container">
+                <button class="tab-button active" onclick="switchAnalysisTab(event, 'overview')">Overview</button>
+                <button class="tab-button" onclick="switchAnalysisTab(event, 'deep-dive')">Deep dive</button>
+                <button class="tab-button" onclick="switchAnalysisTab(event, 'levels')">Levels</button>
+                <button class="tab-button" onclick="switchAnalysisTab(event, 'watchlist')">Watchlist</button>
             </div>
 
-            <!-- Price chart -->
+            <!-- OVERVIEW TAB -->
+            <div id="tab-overview" class="tab-content active">
+                <div class="panels-grid">
+                    <!-- Bullish/Bearish Signals in 2-column layout -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 32px;">
+                        <div class="panel">
+                            <div class="panel-title">Bullish signals</div>
+                            <div class="panel-content" id="bullish-signals-overview">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-title">Bearish signals</div>
+                            <div class="panel-content" id="bearish-signals-overview">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- DEEP DIVE TAB -->
+            <div id="tab-deep-dive" class="tab-content" style="display: none;">
+                <div class="panels-grid">
+                    <!-- Factor Score Panel -->
+                    <div class="panel">
+                        <div class="panel-title">Factor score</div>
+                        <div class="panel-content">
+                            <div class="score-display">
+                                <div class="score-circle" id="score-circle"></div>
+                                <div class="score-info">
+                                    <h3 id="score-label"></h3>
+                                    <p id="score-momentum"></p>
+                                    <p id="score-explanation" style="font-size: 0.85rem; color: #666; margin-top: 8px; font-style: italic;"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Macro + Sentiment side-by-side -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
+                        <!-- Macro Context Panel -->
+                        <div class="panel">
+                            <div class="panel-title">Macro context</div>
+                            <div class="panel-content">
+                                <div class="macro-row">
+                                    <span class="macro-label">VIX (Fear Index):</span>
+                                    <span class="macro-value" id="vix-value"></span>
+                                </div>
+                                <div class="macro-row">
+                                    <span class="macro-label">10Y Yield:</span>
+                                    <span class="macro-value" id="yield-value"></span>
+                                </div>
+                                <div class="macro-row">
+                                    <span class="macro-label">Sector:</span>
+                                    <span class="macro-value" id="sector-value"></span>
+                                </div>
+                                <div class="macro-summary" id="macro-summary"></div>
+                            </div>
+                        </div>
+
+                        <!-- Sentiment Panel -->
+                        <div class="panel">
+                            <div class="panel-title">News sentiment</div>
+                            <div class="panel-content">
+                                <div id="sentiment-badges"></div>
+                                <div class="sentiment-summary" id="sentiment-summary"></div>
+                                <div class="headlines" id="headlines"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Factor Delay Panel - full width -->
+                    <div class="panel">
+                        <div class="panel-title">Signal timing</div>
+                        <div class="panel-content">
+                            <p style="font-size: 0.9em; color: #666; margin-bottom: 12px;">If you had acted N days ago at this signal, what would you make today?</p>
+                            <div id="factor-delay-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LEVELS TAB -->
+            <div id="tab-levels" class="tab-content" style="display: none;">
+                <div class="panels-grid">
+                    <!-- Entry/Exit Price Recommendations - full width -->
+                    <div class="panel">
+                        <div class="panel-title">Entry & exit zones</div>
+                        <div class="panel-content">
+                            <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">Technical price levels for entering or exiting positions</p>
+                            <div id="entry-exit-content"></div>
+                        </div>
+                    </div>
+
+                    <!-- Stock Correlation Analysis - full width -->
+                    <div class="panel">
+                        <div class="panel-title">Market correlation</div>
+                        <div class="panel-content">
+                            <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">How this stock moves with market indices</p>
+                            <div id="correlation-content"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- WATCHLIST TAB -->
+            <div id="tab-watchlist" class="tab-content" style="display: none;">
+                <div class="panel">
+                    <h3 style="margin-bottom: 16px; color: var(--text-primary);">My watchlist</h3>
+                    
+                    <!-- Watchlist selector and controls -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                        <select id="watchlist-selector" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; flex: 1; min-width: 200px; background: var(--card-bg); color: var(--text-primary);">
+                            <option value="">Select a watchlist...</option>
+                        </select>
+                        <button id="new-watchlist-btn" style="padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer;">+ New</button>
+                        <button id="delete-watchlist-btn" style="padding: 8px 16px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; display: none;">Delete</button>
+                    </div>
+
+                    <!-- Add ticker to watchlist -->
+                    <button class="add-watchlist-btn" id="add-to-watchlist" style="display: none; margin-bottom: 16px;">+ Add to watchlist</button>
+                    
+                    <!-- Watchlist items -->
+                    <div id="watchlist-items" style="margin-top: 16px;"></div>
+                </div>
+            </div>
+
+            <!-- Chart Tab - separate from main tabs, in old location for backward compatibility -->
             <div id="chart-tab" class="chart-container" style="display:none;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h3 style="margin: 0; color: #2a5298;">Price Chart</h3>
@@ -1456,104 +1635,6 @@
                     </div>
                 </div>
                 <canvas id="priceChart"></canvas>
-            </div>
-
-            <!-- Watchlist section with multiple watchlists support -->
-            <div id="watchlist-tab" class="watchlist-panel" style="display:none;">
-                <h3 style="margin-bottom: 16px; color: #2a5298;">📋 My Watchlists</h3>
-                
-                <!-- Watchlist selector and controls -->
-                <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
-                    <select id="watchlist-selector" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; flex: 1; min-width: 200px;">
-                        <option value="">Select a watchlist...</option>
-                    </select>
-                    <button id="new-watchlist-btn" style="padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer;">➕ New</button>
-                    <button id="delete-watchlist-btn" style="padding: 8px 16px; background: #e74c3c; color: white; border: none; border-radius: 6px; cursor: pointer; display: none;">🗑️ Delete</button>
-                </div>
-
-                <!-- Add ticker to watchlist -->
-                <button class="add-watchlist-btn" id="add-to-watchlist" style="display: none;">⭐ Add Current Ticker to Watchlist</button>
-                
-                <!-- Watchlist items -->
-                <div id="watchlist-items" style="margin-top: 16px;"></div>
-                
-                <!-- Portfolio tracking section -->
-            </div>
-
-            <!-- Analysis panels -->
-            <div class="panels-grid">
-                <!-- Factor Score Panel -->
-                <div class="panel">
-                    <div class="panel-title">Factor score</div>
-                    <div class="panel-content">
-                        <div class="score-display">
-                            <div class="score-circle" id="score-circle"></div>
-                            <div class="score-info">
-                                <h3 id="score-label"></h3>
-                                <p id="score-momentum"></p>
-                                <p id="score-explanation" style="font-size: 0.85rem; color: #666; margin-top: 8px; font-style: italic;"></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Macro Context Panel -->
-                <div class="panel">
-                    <div class="panel-title">Macro context</div>
-                    <div class="panel-content">
-                        <div class="macro-row">
-                            <span class="macro-label">VIX (Fear Index):</span>
-                            <span class="macro-value" id="vix-value"></span>
-                        </div>
-                        <div class="macro-row">
-                            <span class="macro-label">10Y Yield:</span>
-                            <span class="macro-value" id="yield-value"></span>
-                        </div>
-                        <div class="macro-row">
-                            <span class="macro-label">Sector:</span>
-                            <span class="macro-value" id="sector-value"></span>
-                        </div>
-                        <div class="macro-summary" id="macro-summary"></div>
-                    </div>
-                </div>
-
-                <!-- Sentiment Panel -->
-                <div class="panel">
-                    <div class="panel-title">News sentiment</div>
-                    <div class="panel-content">
-                        <div id="sentiment-badges"></div>
-                        <div class="sentiment-summary" id="sentiment-summary"></div>
-                        <div class="headlines" id="headlines"></div>
-                    </div>
-                </div>
-
-                <!-- Factor Delay Panel -->
-                <div class="panel">
-                    <div class="panel-title">Signal timing</div>
-                    <div class="panel-content">
-                        <p style="font-size: 0.9em; color: #666; margin-bottom: 12px;">If you had acted N days ago at this signal, what would you make today?</p>
-                        <div id="factor-delay-content"></div>
-                    </div>
-                </div>
-
-                <!-- Entry/Exit Price Recommendations -->
-                <div class="panel">
-                    <div class="panel-title">Entry & exit zones</div>
-                    <div class="panel-content">
-                        <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">Technical price levels for entering or exiting positions</p>
-                        <div id="entry-exit-content"></div>
-                    </div>
-                </div>
-
-                <!-- Stock Correlation Analysis -->
-                <div class="panel">
-                    <div class="panel-title">Market correlation</div>
-                    <div class="panel-content">
-                        <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">How this stock moves with market indices</p>
-                        <div id="correlation-content"></div>
-                    </div>
-                </div>
-
             </div>
         </div>
     </div>
@@ -2160,6 +2241,35 @@
 
             // Display AI summary
             displayAISummary(data);
+            
+            // Populate Overview tab with bullish/bearish signals
+            const summary = generateAISummary(data);
+            
+            // Bullish signals (remove emoji for cleaner display)
+            const bullishHtml = summary.bullishSignals
+                .map(signal => {
+                    // Remove emoji, keep just the text
+                    const text = signal.replace(/^[^\w]+ /, '');
+                    return `<div style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+                        <span style="position: absolute; left: 0; color: var(--success); font-weight: 700;">●</span>
+                        ${text}
+                    </div>`;
+                })
+                .join("");
+            document.getElementById("bullish-signals-overview").innerHTML = bullishHtml || "<div>No strong bullish signals at this time</div>";
+            
+            // Bearish signals (remove emoji for cleaner display)
+            const bearishHtml = summary.bearishSignals
+                .map(signal => {
+                    // Remove emoji, keep just the text
+                    const text = signal.replace(/^[^\w]+ /, '');
+                    return `<div style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+                        <span style="position: absolute; left: 0; color: var(--danger); font-weight: 700;">●</span>
+                        ${text}
+                    </div>`;
+                })
+                .join("");
+            document.getElementById("bearish-signals-overview").innerHTML = bearishHtml || "<div>No strong bearish signals at this time</div>";
         }
 
         function showError(msg) {
@@ -2181,6 +2291,31 @@
         // Local watchlist storage (fallback when Supabase not available)
         const getLocalWatchlist = () => JSON.parse(localStorage.getItem('watchlist') || '[]');
         const setLocalWatchlist = (items) => localStorage.setItem('watchlist', JSON.stringify(items));
+
+        // New tab switching for analysis tabs (Overview, Deep Dive, Levels, Watchlist)
+        function switchAnalysisTab(evt, tab) {
+            // Hide all tabs
+            document.getElementById("tab-overview").style.display = "none";
+            document.getElementById("tab-deep-dive").style.display = "none";
+            document.getElementById("tab-levels").style.display = "none";
+            document.getElementById("tab-watchlist").style.display = "none";
+            
+            // Show selected tab
+            if (tab === "overview") {
+                document.getElementById("tab-overview").style.display = "block";
+            } else if (tab === "deep-dive") {
+                document.getElementById("tab-deep-dive").style.display = "block";
+            } else if (tab === "levels") {
+                document.getElementById("tab-levels").style.display = "block";
+            } else if (tab === "watchlist") {
+                document.getElementById("tab-watchlist").style.display = "block";
+                loadWatchlist(); // Load watchlist when tab is clicked
+            }
+
+            // Update button states
+            document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
+            evt.target.classList.add("active");
+        }
 
         function switchTab(evt, tab) {
             // Hide all tabs
