@@ -387,100 +387,229 @@
 
         /* Verdict card (traffic light) */
         .verdict-card {
-            background: linear-gradient(135deg, var(--card-bg) 0%, var(--light-bg) 100%);
-            padding: 40px;
-            border-radius: 14px;
+            background: var(--card-bg);
+            padding: 32px;
+            border-radius: 12px;
             margin-bottom: 24px;
             border: 1.5px solid var(--border-color);
-            display: grid;
-            grid-template-columns: 160px 1fr;
-            gap: 32px;
-            align-items: start;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
         }
 
-        .verdict-card:hover {
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-        }
-
-        .verdict-icon {
-            width: 160px;
-            height: 160px;
-            border-radius: 12px;
-            display: flex;
+        /* Signal badge at top */
+        .signal-badge {
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
-            font-size: 3.5em;
-            font-weight: 700;
-            text-align: center;
-        }
-
-        .verdict-icon.green {
-            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
-            border: 2px solid rgba(16, 185, 129, 0.3);
-        }
-
-        .verdict-icon.yellow {
-            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
-            border: 2px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .verdict-icon.red {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
-            border: 2px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .verdict-label {
-            font-size: 1.35em;
-            font-weight: 700;
+            gap: 8px;
+            padding: 10px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.95em;
             margin-bottom: 16px;
-            text-transform: none;
-            letter-spacing: 0;
-            display: flex;
+        }
+
+        .signal-badge.green {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success);
+            border: 1.5px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .signal-badge.yellow {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+            border: 1.5px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .signal-badge.red {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+            border: 1.5px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .signal-badge::before {
+            content: '●';
+            font-size: 0.7em;
+        }
+
+        /* Signal description text */
+        .signal-description {
+            font-size: 0.95em;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        /* Signal strength section */
+        .signal-strength {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
             align-items: center;
+            padding: 20px;
+            background: var(--light-bg);
+            border-radius: 10px;
+            margin-bottom: 24px;
+        }
+
+        .strength-bar {
+            display: flex;
+            flex-direction: column;
             gap: 8px;
         }
 
-        .verdict-label.green { color: var(--success); }
-        .verdict-label.yellow { color: var(--warning); }
-        .verdict-label.red { color: var(--danger); }
-
-        .verdict-text {
-            font-size: 0.95em;
-            line-height: 1.6;
+        .strength-bar-label {
+            font-size: 0.75em;
+            font-weight: 700;
             color: var(--text-secondary);
-            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .verdict-metrics {
+        .strength-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .strength-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--warning));
+            transition: width 0.6s ease;
+        }
+
+        .strength-value {
+            text-align: right;
+        }
+
+        .strength-value-main {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1;
+        }
+
+        .strength-value-sub {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Key metrics grid below signal */
+        .key-metrics-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 16px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
         }
 
-        .verdict-metric-item {
-            padding: 12px;
+        .metric-box {
+            padding: 14px;
             background: var(--light-bg);
-            border-radius: 8px;
             border: 1px solid var(--border-color);
+            border-radius: 8px;
             text-align: center;
         }
 
-        .verdict-metric-label {
+        .metric-label {
             font-size: 0.75em;
-            color: var(--text-secondary);
             font-weight: 600;
-            text-transform: none;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
             margin-bottom: 6px;
-            letter-spacing: 0.3px;
         }
 
-        .verdict-metric-value {
+        .metric-value {
             font-size: 1.3em;
             font-weight: 700;
             color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .metric-detail {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+
+        /* AI Insight box */
+        .ai-insight-box {
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-left: 3px solid var(--primary-blue);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .ai-insight-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            font-weight: 700;
+            color: var(--primary-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .ai-insight-title::before {
+            content: 'ℹ';
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-blue);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        .ai-insight-text {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        /* Recommendations box */
+        .recommendation-box {
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-left: 3px solid var(--success);
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .recommendation-label {
+            font-size: 0.75em;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .recommendation-text {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        /* Old verdict icon/label - keeping for backward compat but will be hidden */
+        .verdict-icon {
+            display: none;
+        }
+
+        .verdict-label {
+            display: none;
+        }
+
+        .verdict-text {
+            display: none;
         }
 
         /* Beginner explanation styling */
@@ -1202,13 +1331,53 @@
 
             <!-- Verdict card -->
             <div class="verdict-card">
-                <div class="verdict-icon" id="verdict-icon"></div>
-                <div>
-                    <div class="verdict-label" id="verdict-label"></div>
-                    <div class="verdict-text" id="verdict-text"></div>
-                    <div id="verdict-score" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); font-size: 0.9em; color: var(--text-secondary);"></div>
-                    <div id="verdict-metrics-grid" class="verdict-metrics" style="display: none; margin-top: 20px;"></div>
+                <!-- Signal badge -->
+                <div id="signal-badge" class="signal-badge green">
+                    Buy signal
                 </div>
+
+                <!-- Signal description -->
+                <div class="signal-description" id="signal-description">
+                    Based on momentum, macro conditions, and sentiment, this stock is showing a buy signal.
+                </div>
+
+                <!-- Signal strength metric -->
+                <div class="signal-strength">
+                    <div class="strength-bar">
+                        <div class="strength-bar-label">Signal strength</div>
+                        <div class="strength-bar-container">
+                            <div id="strength-bar-fill" class="strength-bar-fill" style="width: 52%;"></div>
+                        </div>
+                    </div>
+                    <div class="strength-value">
+                        <div class="strength-value-main" id="signal-score">52</div>
+                        <div class="strength-value-sub">/100</div>
+                    </div>
+                </div>
+
+                <!-- Key metrics grid -->
+                <div id="key-metrics-container" class="key-metrics-grid" style="display: none;">
+                    <!-- Populated by JavaScript -->
+                </div>
+
+                <!-- AI insight -->
+                <div id="ai-insight-section" class="ai-insight-box" style="display: none;">
+                    <div class="ai-insight-title">AI analysis summary</div>
+                    <div class="ai-insight-text" id="ai-insight-text-content"></div>
+                </div>
+
+                <!-- Recommendation -->
+                <div id="recommendation-section" class="recommendation-box" style="display: none;">
+                    <div class="recommendation-label">Recommendation</div>
+                    <div class="recommendation-text" id="recommendation-text"></div>
+                </div>
+
+                <!-- Hidden legacy fields for backward compat -->
+                <div class="verdict-icon" id="verdict-icon"></div>
+                <div class="verdict-label" id="verdict-label"></div>
+                <div class="verdict-text" id="verdict-text"></div>
+                <div id="verdict-score" style="display:none;"></div>
+                <div id="verdict-metrics-grid" class="verdict-metrics" style="display: none;"></div>
             </div>
 
             <!-- AI Stock Summary Card -->
@@ -1747,14 +1916,96 @@
             document.getElementById("company-name").textContent = data.company;
             document.getElementById("company-ticker").textContent = `${data.ticker}`;
 
-            // Verdict
-            const verdictIcon = {"green": "🟢", "yellow": "🟡", "red": "🔴"}[data.verdict];
-            const verdictLabel = {"green": "Buy Signal", "yellow": "Hold", "red": "Sell Signal"}[data.verdict];
-            document.getElementById("verdict-icon").textContent = verdictIcon;
+            // Verdict - Update new professional layout
+            const verdictLabel = {"green": "Buy signal", "yellow": "Hold", "red": "Sell signal"}[data.verdict];
+            const signalBadge = document.getElementById("signal-badge");
+            signalBadge.textContent = verdictLabel;
+            signalBadge.className = `signal-badge ${data.verdict}`;
+            signalBadge.innerHTML = `<span style="margin-right: 4px;">●</span>${verdictLabel}`;
+            
+            // Update signal description
+            const descriptionText = `Based on momentum, macro conditions, and sentiment, this stock is showing a ${verdictLabel.toLowerCase()}.`;
+            document.getElementById("signal-description").textContent = descriptionText;
+            
+            // Update signal strength score
+            if (data.factor && data.factor.score !== undefined) {
+                const score = data.factor.score;
+                document.getElementById("signal-score").textContent = score;
+                const fillPercent = Math.min(score, 100);
+                document.getElementById("strength-bar-fill").style.width = fillPercent + "%";
+                
+                // Populate key metrics grid
+                const metricsContainer = document.getElementById("key-metrics-container");
+                let metricsHtml = '';
+                
+                // Factor Score
+                metricsHtml += `
+                    <div class="metric-box">
+                        <div class="metric-label">Factor score</div>
+                        <div class="metric-value">${score}/100</div>
+                        <div class="metric-detail">${data.factor.label || 'Momentum'}</div>
+                    </div>
+                `;
+                
+                // Momentum
+                if (data.factor.momentum !== undefined) {
+                    metricsHtml += `
+                        <div class="metric-box">
+                            <div class="metric-label">Momentum</div>
+                            <div class="metric-value" style="color: ${data.factor.momentum > 0 ? 'var(--success)' : 'var(--danger)'};">
+                                ${data.factor.momentum > 0 ? '+' : ''}${data.factor.momentum}%
+                            </div>
+                            <div class="metric-detail">12-month return</div>
+                        </div>
+                    `;
+                }
+                
+                // RSI
+                if (data.technical && data.technical.rsi !== undefined) {
+                    const rsiValue = data.technical.rsi;
+                    const rsiLabel = rsiValue > 70 ? 'Overbought' : rsiValue < 30 ? 'Oversold' : 'Neutral';
+                    metricsHtml += `
+                        <div class="metric-box">
+                            <div class="metric-label">RSI</div>
+                            <div class="metric-value">${rsiValue}</div>
+                            <div class="metric-detail">${rsiLabel}</div>
+                        </div>
+                    `;
+                }
+                
+                // Sentiment
+                if (data.sentiment && data.sentiment.overall !== undefined) {
+                    const sentiment = data.sentiment.overall;
+                    const sentimentLabel = sentiment > 0.5 ? 'Positive' : sentiment < -0.5 ? 'Negative' : 'Mixed';
+                    const bullishCount = data.sentiment.positive_articles || 0;
+                    metricsHtml += `
+                        <div class="metric-box">
+                            <div class="metric-label">Sentiment</div>
+                            <div class="metric-value" style="color: ${sentiment > 0 ? 'var(--success)' : 'var(--danger)'};">${sentimentLabel}</div>
+                            <div class="metric-detail">${bullishCount} bullish articles</div>
+                        </div>
+                    `;
+                }
+                
+                metricsContainer.innerHTML = metricsHtml;
+                metricsContainer.style.display = 'grid';
+                
+                // Show AI insight
+                if (data.explanation && data.explanation.summary) {
+                    document.getElementById("ai-insight-text-content").textContent = data.explanation.summary;
+                    document.getElementById("ai-insight-section").style.display = 'block';
+                }
+                
+                // Show recommendation if available
+                if (data.explanation && data.explanation.recommendation) {
+                    document.getElementById("recommendation-text").textContent = data.explanation.recommendation;
+                    document.getElementById("recommendation-section").style.display = 'block';
+                }
+            }
+            
+            // Keep legacy fields for backward compatibility (hidden)
             document.getElementById("verdict-label").textContent = verdictLabel;
             document.getElementById("verdict-label").className = `verdict-label ${data.verdict}`;
-            document.getElementById("verdict-text").textContent = 
-                `Based on momentum, macro conditions, and sentiment, this stock is showing a ${verdictLabel.toLowerCase()}.`;
             
             // Add score and confidence to verdict card
             if (data.factor && data.factor.score !== undefined) {
