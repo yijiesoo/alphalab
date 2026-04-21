@@ -112,75 +112,128 @@ def _calculate_rsi_score(rsi_value):
 
 def _calculate_entry_exit_levels(prices_series: pd.Series, current_price: float) -> dict:
     """
-    Calculate technical price levels as reference zones for entries and exits.
+    Calculate technical entry/exit watch *zones* rather than single-point levels.
 
-    These levels are based on moving averages and 52-week range.  They are
-    *not* buy or sell recommendations — they are reference points to help you
-    understand where the stock has historically found support (buyers stepped
-    in) and resistance (sellers stepped in).
+    The zones are still heuristic and educational, but they are more honest than
+    returning one exact price.  Each zone is centered around a technical anchor
+    (moving averages, current price, or 52-week high) with an adaptive width
+    based on recent realised volatility.
 
-    Entry watch zones (potential support / where price may stabilise):
-    - Conservative : 200-day moving average (long-term trend baseline)
-    - Moderate     : 50-day moving average  (medium-term trend support)
-    - Aggressive   : current price (momentum entry — buying at current levels)
+    Entry watch zones (potential support / accumulation areas):
+    - Conservative : around 200-day moving average
+    - Moderate     : around 50-day moving average
+    - Aggressive   : around current price (momentum entry)
 
-    Exit watch zones (potential resistance / where price may face selling):
-    - Conservative : 10% above 200-day MA (modest target)
-    - Moderate     : 50-day MA if above current price (near-term resistance)
-    - Ambitious    : 52-week high (historical ceiling for this period)
+    Exit watch zones (potential resistance / profit-taking areas):
+    - Conservative : modest upside from current price / 50-day MA
+    - Moderate     : stronger upside extension
+    - Ambitious    : prior 52-week high or stronger upside extension
 
-    WARNING: These are mechanical price levels only.  A stock hitting its
-    52-week low may be in freefall, not a buying opportunity.  Always check
-    the fundamental reason behind price moves before acting.
-    
-    Parameters
-    ----------
-    prices_series : pd.Series
-        Historical adjusted close prices
-    current_price : float
-        Most recent price
-    
-    Returns
-    -------
-    dict with entry_watch_zones, exit_watch_zones, and 52w range
+    These are still reference zones, not trade signals.
     """
     try:
-        high_52w = prices_series.tail(252).max()
-        low_52w = prices_series.tail(252).min()
-        ma_50 = prices_series.tail(50).mean()
-        ma_200 = prices_series.tail(200).mean()
+        history_252 = prices_series.tail(252)
+        history_50 = prices_series.tail(50)
+        history_200 = prices_series.tail(200)
 
-        # Entry watch zones — moving average support levels are more meaningful
-        # than the 52w low (which could reflect a crash, not genuine support).
-        entry_conservative = round(ma_200, 2)    # Long-term trend support
-        entry_moderate = round(ma_50, 2)         # Medium-term trend support
-        entry_aggressive = round(current_price, 2)  # Current price (momentum entry)
+        high_52w = history_252.max()
+        low_52w = history_252.min()
+        ma_50 = history_50.mean()
+        ma_200 = history_200.mean()
 
-        # Exit watch zones — resistance levels above current price
-        exit_conservative = round(ma_200 * 1.10, 2)  # 10% above 200-day MA
-        exit_moderate = round(max(ma_50, current_price * 1.05), 2)  # 50-day MA or +5%
-        exit_ambitious = round(high_52w, 2)      # 52-week high (historical ceiling)
+        recent_returns = prices_series.pct_change().dropna().tail(20)
+        recent_volatility = float(recent_returns.std()) if not recent_returns.empty else 0.02
+        zone_width_pct = min(0.06, max(0.015, recent_volatility * 2.5))
+
+        def make_zone(anchor: float, label: str, basis: str, zone_type: str, cap_to_current: bool = False) -> dict:
+            low = anchor * (1 - zone_width_pct)
+            high = anchor * (1 + zone_width_pct)
+
+            if zone_type == "entry" and cap_to_current:
+                high = min(high, current_price)
+                low = min(low, high)
+
+            if zone_type == "exit":
+                low = max(low, current_price)
+                high = max(high, low)
+
+            return {
+                "label": label,
+                "basis": basis,
+                "anchor": round(anchor, 2),
+                "low": round(low, 2),
+                "high": round(high, 2),
+                "range_label": f"${low:.2f} - ${high:.2f}",
+            }
+
+        trend = "uptrend" if current_price >= ma_50 >= ma_200 else "downtrend" if current_price <= ma_50 <= ma_200 else "mixed"
+
+        entry_conservative_anchor = min(ma_200, current_price)
+        entry_moderate_anchor = min(ma_50, current_price)
+        entry_aggressive_anchor = current_price
+
+        exit_conservative_anchor = max(current_price * 1.03, ma_50)
+        exit_moderate_anchor = max(exit_conservative_anchor * 1.03, current_price * 1.08, ma_200 * 1.05)
+        exit_ambitious_anchor = max(exit_moderate_anchor * 1.03, high_52w, current_price * 1.15)
 
         return {
             "current": round(current_price, 2),
+            "zone_width_pct": round(zone_width_pct * 100, 2),
+            "trend_context": trend,
             "entry_watch_zones": {
-                "conservative": entry_conservative,
-                "moderate": entry_moderate,
-                "aggressive": entry_aggressive,
+                "conservative": make_zone(
+                    anchor=entry_conservative_anchor,
+                    label="Conservative",
+                    basis="200-day moving average support",
+                    zone_type="entry",
+                    cap_to_current=True,
+                ),
+                "moderate": make_zone(
+                    anchor=entry_moderate_anchor,
+                    label="Moderate",
+                    basis="50-day moving average support",
+                    zone_type="entry",
+                    cap_to_current=True,
+                ),
+                "aggressive": make_zone(
+                    anchor=entry_aggressive_anchor,
+                    label="Aggressive",
+                    basis="Current price / momentum continuation",
+                    zone_type="entry",
+                    cap_to_current=False,
+                ),
             },
             "exit_watch_zones": {
-                "conservative": exit_conservative,
-                "moderate": exit_moderate,
-                "ambitious": exit_ambitious,
+                "conservative": make_zone(
+                    anchor=exit_conservative_anchor,
+                    label="Conservative",
+                    basis="Initial upside objective above current price",
+                    zone_type="exit",
+                ),
+                "moderate": make_zone(
+                    anchor=exit_moderate_anchor,
+                    label="Moderate",
+                    basis="Extended upside objective",
+                    zone_type="exit",
+                ),
+                "ambitious": make_zone(
+                    anchor=exit_ambitious_anchor,
+                    label="Ambitious",
+                    basis="52-week high / breakout resistance",
+                    zone_type="exit",
+                ),
             },
             "week_52_high": round(high_52w, 2),
             "week_52_low": round(low_52w, 2),
             "ma_50": round(ma_50, 2),
             "ma_200": round(ma_200, 2),
+            "summary": (
+                f"These watch zones are centered on moving averages and recent price structure, "
+                f"with a volatility buffer of {round(zone_width_pct * 100, 2)}%."
+            ),
             "disclaimer": (
-                "These are mechanical reference levels, not buy/sell recommendations. "
-                "A stock near its 52-week low may be declining for fundamental reasons. "
-                "Always research the underlying business before acting."
+                "These are technical watch zones for context, not buy/sell recommendations. "
+                "Use them with trend, fundamentals, and risk management."
             ),
         }
     except Exception as e:

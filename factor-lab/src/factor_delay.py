@@ -120,13 +120,13 @@ def calculate_factor_delay_returns(
 
             # Create human-readable label for delay period
             if delay_days == 1:
-                label = "1D"
+                label = "1 Day"
             elif delay_days == 5:
-                label = "1W"
+                label = "1 Week"
             elif delay_days == 21:
-                label = "1M"
+                label = "1 Month"
             elif delay_days == 63:
-                label = "3M"
+                label = "3 Month"
             else:
                 label = f"{delay_days}d"
             

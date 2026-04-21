@@ -1564,7 +1564,6 @@
                     <div class="panel">
                         <div class="panel-title">Signal timing</div>
                         <div class="panel-content">
-                            <p style="font-size: 0.9em; color: #666; margin-bottom: 12px;">If you had acted N days ago at this signal, what would you make today?</p>
                             <div id="factor-delay-content"></div>
                         </div>
                     </div>
@@ -1576,9 +1575,9 @@
                 <div class="panels-grid">
                     <!-- Entry/Exit Price Recommendations - full width -->
                     <div class="panel">
-                        <div class="panel-title">Entry & exit zones</div>
+                        <div class="panel-title">Technical watch zones</div>
                         <div class="panel-content">
-                            <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">Technical price levels for entering or exiting positions</p>
+                            <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">Support and resistance ranges built from moving averages, recent volatility, and prior price structure</p>
                             <div id="entry-exit-content"></div>
                         </div>
                     </div>
@@ -2107,49 +2106,67 @@
                 }
             }
 
-            // Display Entry/Exit Price Levels
+            // Display technical watch zones
             if (data.entry_exit && !data.entry_exit.error) {
                 const ee = data.entry_exit;
+                const renderZoneBlock = (zone, color) => `
+                    <div style="padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">${zone.label}</small>
+                        <div style="font-size: 1.15em; font-weight: 700; color: ${color}; margin-bottom: 4px;">${zone.range_label}</div>
+                        <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.5;">
+                            ${zone.basis}<br>
+                            Anchor: $${zone.anchor}
+                        </div>
+                    </div>
+                `;
+
                 const entryExitHtml = `
                     <div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
                             <div>
-                                <h4 style="color: var(--success); margin-bottom: 12px; font-size: 0.9em; font-weight: 600;">Buy zones</h4>
-                                <div style="display: flex; flex-direction: column; gap: 12px;">
-                                    <div>
-                                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Conservative</small>
-                                        <div style="font-size: 1.2em; font-weight: 700; color: var(--success);">$${ee.entry_watch_zones.conservative}</div>
-                                    </div>
-                                    <div>
-                                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Moderate</small>
-                                        <div style="font-size: 1.2em; font-weight: 700; color: var(--success);">$${ee.entry_watch_zones.moderate}</div>
-                                    </div>
-                                    <div>
-                                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Aggressive</small>
-                                        <div style="font-size: 1.2em; font-weight: 700; color: var(--success);">$${ee.entry_watch_zones.aggressive}</div>
+                                <h4 style="color: var(--success); margin-bottom: 12px; font-size: 0.9em; font-weight: 600;">Entry watch zones</h4>
+                                ${renderZoneBlock(ee.entry_watch_zones.conservative, 'var(--success)')}
+                                ${renderZoneBlock(ee.entry_watch_zones.moderate, 'var(--success)')}
+                                <div style="padding-top: 12px;">
+                                    <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">${ee.entry_watch_zones.aggressive.label}</small>
+                                    <div style="font-size: 1.15em; font-weight: 700; color: var(--success); margin-bottom: 4px;">${ee.entry_watch_zones.aggressive.range_label}</div>
+                                    <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.5;">
+                                        ${ee.entry_watch_zones.aggressive.basis}<br>
+                                        Anchor: $${ee.entry_watch_zones.aggressive.anchor}
                                     </div>
                                 </div>
                             </div>
                             <div>
-                                <h4 style="color: var(--danger); margin-bottom: 12px; font-size: 0.9em; font-weight: 600;">Sell zones</h4>
-                                <div style="display: flex; flex-direction: column; gap: 12px;">
-                                    <div>
-                                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Conservative</small>
-                                        <div style="font-size: 1.2em; font-weight: 700; color: var(--danger);">$${ee.exit_watch_zones.conservative}</div>
-                                    </div>
-                                    <div>
-                                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Moderate</small>
-                                        <div style="font-size: 1.2em; font-weight: 700; color: var(--danger);">$${ee.exit_watch_zones.moderate}</div>
-                                    </div>
-                                    <div>
-                                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Ambitious</small>
-                                        <div style="font-size: 1.2em; font-weight: 700; color: var(--danger);">$${ee.exit_watch_zones.ambitious}</div>
+                                <h4 style="color: var(--danger); margin-bottom: 12px; font-size: 0.9em; font-weight: 600;">Exit watch zones</h4>
+                                ${renderZoneBlock(ee.exit_watch_zones.conservative, 'var(--danger)')}
+                                ${renderZoneBlock(ee.exit_watch_zones.moderate, 'var(--danger)')}
+                                <div style="padding-top: 12px;">
+                                    <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">${ee.exit_watch_zones.ambitious.label}</small>
+                                    <div style="font-size: 1.15em; font-weight: 700; color: var(--danger); margin-bottom: 4px;">${ee.exit_watch_zones.ambitious.range_label}</div>
+                                    <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.5;">
+                                        ${ee.exit_watch_zones.ambitious.basis}<br>
+                                        Anchor: $${ee.exit_watch_zones.ambitious.anchor}
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div style="border-top: 1px solid var(--border-color); padding-top: 16px; text-align: center;">
-                            <small style="color: var(--text-secondary);">Current price: <span style="color: var(--text-primary); font-size: 1.1em; font-weight: 700;">$${ee.current}</span></small>
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Current price</small>
+                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 700;">$${ee.current}</div>
+                            </div>
+                            <div>
+                                <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Trend context</small>
+                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 700; text-transform: capitalize;">${ee.trend_context}</div>
+                            </div>
+                            <div>
+                                <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Volatility buffer</small>
+                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 700;">${ee.zone_width_pct}%</div>
+                            </div>
+                        </div>
+                        <div style="padding-top: 12px; border-top: 1px solid var(--border-color);">
+                            <div style="font-size: 0.85em; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px;">${ee.summary}</div>
+                            <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.6;">${ee.disclaimer}</div>
                         </div>
                     </div>
                 `;
