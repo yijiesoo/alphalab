@@ -1,0 +1,286 @@
+
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  .page{font-family:var(--font-sans);background:var(--color-background-tertiary);min-height:500px}
+  .nav{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary)}
+  .nav-left{display:flex;align-items:center;gap:10px}
+  .logo{width:30px;height:30px;background:#4F7EF7;border-radius:7px;display:flex;align-items:center;justify-content:center;color:white;font-size:13px;font-weight:500}
+  .nav-title{font-size:14px;font-weight:500;color:var(--color-text-primary)}
+  .nav-right{display:flex;gap:8px}
+  .nbtn{font-size:12px;padding:5px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);cursor:pointer;font-family:var(--font-sans)}
+  .nbtn:hover{background:var(--color-background-secondary)}
+  .stock-bar{padding:14px 20px 0;background:var(--color-background-primary);border-bottom:0.5px solid var(--color-border-tertiary)}
+  .stock-name{font-size:17px;font-weight:500;color:var(--color-text-primary)}
+  .stock-sub{font-size:12px;color:var(--color-text-tertiary);margin-top:1px;margin-bottom:12px}
+  .tabs{display:flex;gap:0}
+  .tab{font-size:13px;padding:8px 16px;cursor:pointer;color:var(--color-text-secondary);border-bottom:2px solid transparent;background:transparent;border-top:none;border-left:none;border-right:none;font-family:var(--font-sans);transition:color 0.15s}
+  .tab:hover{color:var(--color-text-primary)}
+  .tab.active{color:#4F7EF7;border-bottom-color:#4F7EF7;font-weight:500}
+  .content{padding:18px 20px}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+  .card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px 18px}
+  .card-title{font-size:12px;font-weight:500;color:var(--color-text-primary);margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--color-border-tertiary)}
+  .hero-card{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:18px 20px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:20px}
+  .sig-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--border-radius-md);background:#EAF3DE;border:0.5px solid #97C459;margin-bottom:8px}
+  .sig-dot{width:8px;height:8px;border-radius:50%;background:#639922}
+  .sig-text{font-size:13px;font-weight:500;color:#27500A}
+  .sig-desc{font-size:12px;color:var(--color-text-secondary);line-height:1.5;max-width:340px}
+  .score-right{text-align:right;flex-shrink:0}
+  .score-lbl{font-size:10px;font-weight:500;letter-spacing:.05em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:4px}
+  .score-num{font-size:26px;font-weight:500;color:var(--color-text-primary);line-height:1}
+  .score-bar-w{width:110px;height:4px;background:var(--color-border-tertiary);border-radius:99px;overflow:hidden;margin:6px 0 3px auto}
+  .score-bar-f{height:100%;border-radius:99px;background:#639922}
+  .score-hint{font-size:11px;color:var(--color-text-tertiary)}
+  .metrics-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}
+  .mc{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:12px 14px}
+  .mc-lbl{font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-tertiary);margin-bottom:5px}
+  .mc-val{font-size:18px;font-weight:500;line-height:1}
+  .mc-sub{font-size:11px;color:var(--color-text-tertiary);margin-top:2px}
+  .v-green{color:#3B6D11}.v-red{color:#A32D2D}.v-amber{color:#BA7517}
+  .sum-box{background:var(--color-background-primary);border:0.5px solid var(--color-border-tertiary);border-radius:var(--border-radius-lg);padding:16px 18px;margin-bottom:12px}
+  .sum-text{font-size:13px;color:var(--color-text-secondary);line-height:1.6;border-left:2px solid #4F7EF7;padding-left:12px;margin-bottom:12px}
+  .rec-box{background:#EAF3DE;border-radius:var(--border-radius-md);padding:10px 12px}
+  .rec-lbl{font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;color:#3B6D11;margin-bottom:3px}
+  .rec-text{font-size:12px;color:#27500A;line-height:1.5}
+  .sig-list{list-style:none}
+  .sig-list li{display:flex;align-items:flex-start;gap:7px;font-size:12px;color:var(--color-text-secondary);padding:6px 0;border-bottom:0.5px solid var(--color-border-tertiary);line-height:1.4}
+  .sig-list li:last-child{border-bottom:none;padding-bottom:0}
+  .sdot{width:6px;height:6px;border-radius:50%;margin-top:3px;flex-shrink:0}
+  .sdot-g{background:#639922}.sdot-r{background:#E24B4A}
+  .stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+  .stat-row:last-child{border-bottom:none}
+  .stat-lbl{font-size:12px;color:var(--color-text-secondary)}
+  .stat-val{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+  .formula-box{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 11px;font-size:11px;color:var(--color-text-secondary);line-height:1.5;margin-top:10px}
+  .formula-box span{color:var(--color-text-primary);font-weight:500}
+  .score-ring-row{display:flex;align-items:center;gap:14px;margin-bottom:10px}
+  .score-ring{width:50px;height:50px;border-radius:50%;border:3px solid #BA7517;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .sr-num{font-size:18px;font-weight:500;color:#BA7517}
+  .news-pills{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+  .pill{font-size:11px;font-weight:500;padding:3px 9px;border-radius:99px}
+  .pill-g{background:#EAF3DE;color:#27500A}
+  .pill-r{background:#FCEBEB;color:#791F1F}
+  .pill-n{background:var(--color-background-secondary);color:var(--color-text-secondary);border:0.5px solid var(--color-border-secondary)}
+  .hl{display:flex;align-items:flex-start;gap:7px;padding:7px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+  .hl:last-child{border-bottom:none}
+  .hl-dot{width:4px;height:4px;border-radius:50%;background:var(--color-text-tertiary);margin-top:5px;flex-shrink:0}
+  .hl-text{font-size:12px;color:var(--color-text-secondary);line-height:1.5}
+  .timing-row{display:flex;align-items:center;justify-content:space-between;padding:9px 11px;background:var(--color-background-secondary);border-radius:var(--border-radius-md);margin-bottom:7px}
+  .timing-row:last-child{margin-bottom:0}
+  .tp{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+  .tpr{font-size:11px;color:var(--color-text-tertiary);margin-top:1px}
+  .tbadge{font-size:12px;font-weight:500;padding:3px 9px;border-radius:var(--border-radius-md)}
+  .tbg{background:#EAF3DE;color:#27500A}
+  .tbr{background:#FCEBEB;color:#791F1F}
+  .zones-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+  .zcl{font-size:10px;font-weight:500;letter-spacing:.04em;text-transform:uppercase;margin-bottom:7px}
+  .zcl-g{color:#3B6D11}.zcl-r{color:#A32D2D}
+  .zi{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 11px;margin-bottom:7px;border-left:2px solid transparent}
+  .zi:last-child{margin-bottom:0}
+  .zi-g{border-left-color:#639922}.zi-r{border-left-color:#E24B4A}
+  .zi-tier{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.04em;color:var(--color-text-tertiary);margin-bottom:3px}
+  .zi-price{font-size:15px;font-weight:500;color:var(--color-text-primary);margin-bottom:1px}
+  .zi-sub{font-size:11px;color:var(--color-text-tertiary)}
+  .cp-bar{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:9px 13px;display:flex;justify-content:space-between;align-items:center;border:0.5px solid var(--color-border-secondary)}
+  .cp-lbl{font-size:12px;color:var(--color-text-secondary)}
+  .cp-val{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+  .corr-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+  .cc{background:var(--color-background-secondary);border-radius:var(--border-radius-md);padding:11px 13px}
+  .cc-tick{font-size:11px;font-weight:500;color:var(--color-text-primary);margin-bottom:3px}
+  .cc-val{font-size:18px;font-weight:500;margin-bottom:2px}
+  .cc-lbl{font-size:11px;color:var(--color-text-tertiary)}
+  .cc-desc{font-size:11px;color:var(--color-text-secondary);margin-top:2px}
+  .tip-box{background:#FAEEDA;border-radius:var(--border-radius-md);padding:9px 11px;font-size:12px;color:#633806;line-height:1.5}
+  .tip-box strong{font-weight:500;color:#412402}
+  .wl-row{display:flex;gap:8px;margin-bottom:12px}
+  .wl-sel{flex:1;padding:7px 11px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:var(--color-background-secondary);color:var(--color-text-primary);font-size:12px;font-family:var(--font-sans)}
+  .wl-new{padding:7px 12px;border-radius:var(--border-radius-md);border:0.5px solid var(--color-border-secondary);background:transparent;color:var(--color-text-secondary);font-size:12px;cursor:pointer;font-family:var(--font-sans)}
+  .add-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:var(--border-radius-md);background:#EAF3DE;border:0.5px solid #97C459;color:#27500A;font-size:12px;font-weight:500;cursor:pointer;margin-bottom:12px;font-family:var(--font-sans)}
+  .wl-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--color-border-tertiary)}
+  .wl-item:last-child{border-bottom:none}
+  .wl-tick{font-size:13px;font-weight:500;color:var(--color-text-primary)}
+  .rm-btn{font-size:11px;color:var(--color-text-tertiary);background:transparent;border:0.5px solid var(--color-border-tertiary);padding:3px 9px;border-radius:var(--border-radius-md);cursor:pointer;font-family:var(--font-sans)}
+  .rm-btn:hover{color:#A32D2D;border-color:#F09595;background:#FCEBEB}
+  .hidden{display:none}
+</style>
+
+<div class="page">
+  <div class="nav">
+    <div class="nav-left">
+      <div class="logo">a</div>
+      <span class="nav-title">Factor Analysis</span>
+    </div>
+    <div class="nav-right">
+      <button class="nbtn">Back to home</button>
+      <button class="nbtn">View watchlist</button>
+      <button class="nbtn">Logout</button>
+    </div>
+  </div>
+
+  <div class="stock-bar">
+    <div class="stock-name">Tesla, Inc.</div>
+    <div class="stock-sub">TSLA · $392.50</div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('overview',this)">Overview</button>
+      <button class="tab" onclick="switchTab('deepdive',this)">Deep dive</button>
+      <button class="tab" onclick="switchTab('levels',this)">Levels</button>
+      <button class="tab" onclick="switchTab('watchlist',this)">Watchlist</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div id="tab-overview">
+      <div class="hero-card">
+        <div>
+          <div class="sig-badge"><div class="sig-dot"></div><span class="sig-text">Buy signal</span></div>
+          <div class="sig-desc">Based on momentum, macro conditions, and sentiment, this stock is showing a buy signal.</div>
+        </div>
+        <div class="score-right">
+          <div class="score-lbl">Signal strength</div>
+          <div class="score-num">60<span style="font-size:14px;color:var(--color-text-tertiary);font-weight:400">/100</span></div>
+          <div class="score-bar-w"><div class="score-bar-f" style="width:60%"></div></div>
+          <div class="score-hint">Compare across stocks</div>
+        </div>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="mc"><div class="mc-lbl">Factor score</div><div class="mc-val v-amber">60/100</div><div class="mc-sub">Strong momentum</div></div>
+        <div class="mc"><div class="mc-lbl">Momentum</div><div class="mc-val v-green">57.0%</div><div class="mc-sub">12-month return</div></div>
+        <div class="mc"><div class="mc-lbl">RSI</div><div class="mc-val v-amber">64</div><div class="mc-sub">Approaching high</div></div>
+        <div class="mc"><div class="mc-lbl">Sentiment</div><div class="mc-val v-red" style="font-size:15px;padding-top:2px">Negative</div><div class="mc-sub">5 bearish articles</div></div>
+      </div>
+
+      <div class="sum-box">
+        <div class="sum-text">Tesla, Inc. (TSLA) is showing strong bullish signals. Recent news sentiment is positive, with 4 bullish articles. Consider this stock as a potential buying opportunity.</div>
+        <div class="rec-box">
+          <div class="rec-lbl">Recommendation</div>
+          <div class="rec-text">Strong buy signal: Factor score 60/100, positive momentum, 4 bullish articles — positioned for potential gains. Maintain proper position sizing and stop losses.</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Bullish signals</div>
+          <ul class="sig-list">
+            <li><span class="sdot sdot-g"></span>Positive 12-month momentum (57.0%)</li>
+            <li><span class="sdot sdot-g"></span>Low market fear (VIX &lt; 20)</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-title">Bearish signals</div>
+          <ul class="sig-list">
+            <li><span class="sdot sdot-r"></span>Negative news sentiment (5 bearish articles)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-deepdive" class="hidden">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Factor score breakdown</div>
+          <div class="score-ring-row">
+            <div class="score-ring"><span class="sr-num">60</span></div>
+            <div>
+              <div style="font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:2px">Strong — good buy signal</div>
+              <div style="font-size:12px;color:var(--color-text-secondary)">Momentum: +0.57</div>
+            </div>
+          </div>
+          <div class="formula-box"><span>12-month momentum (78/100)</span> + <span>14-day RSI (43/100)</span> = <span>60/100</span>. Higher = more bullish.</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Macro context</div>
+          <div class="stat-row"><span class="stat-lbl">VIX (fear index)</span><span class="stat-val v-amber">18.87 — moderate</span></div>
+          <div class="stat-row"><span class="stat-lbl">10Y yield</span><span class="stat-val v-amber">4.25% — neutral</span></div>
+          <div class="stat-row"><span class="stat-lbl">Sector</span><span class="stat-val">Consumer</span></div>
+          <div style="margin-top:10px;font-size:12px;color:var(--color-text-secondary);background:var(--color-background-secondary);padding:9px 11px;border-radius:var(--border-radius-md);line-height:1.5">10Y yield at 4.25% — neutral environment. Consumer sector trend unavailable (3-mo). Use alongside momentum and sentiment.</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">News sentiment</div>
+          <div class="news-pills">
+            <span class="pill pill-g">4 positive</span>
+            <span class="pill pill-r">5 negative</span>
+            <span class="pill pill-n">1 neutral</span>
+          </div>
+          <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px">10 headlines — slightly negative overall.</div>
+          <div class="hl"><span class="hl-dot"></span><span class="hl-text">Here's what RBC Capital has to say about Tesla (TSLA)</span></div>
+          <div class="hl"><span class="hl-dot"></span><span class="hl-text">Tesla stock rockets 4.7% to $407 as AI chip hopes and autonomy bets ignite investor optimism</span></div>
+          <div class="hl"><span class="hl-dot"></span><span class="hl-text">Big Tech's $4 trillion boomerang powers S&P 500 to new heights</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Signal timing</div>
+          <div style="font-size:12px;color:var(--color-text-secondary);margin-bottom:10px">If you had acted N days ago, what would you make today?</div>
+          <div class="timing-row"><div><div class="tp">1 day ago</div><div class="tpr">$400.62 → $392.50</div></div><span class="tbadge tbr">-2.03%</span></div>
+          <div class="timing-row"><div><div class="tp">1 week ago</div><div class="tpr">$352.10 → $392.50</div></div><span class="tbadge tbg">+11.47%</span></div>
+          <div class="timing-row"><div><div class="tp">1 month ago</div><div class="tpr">$380.30 → $392.50</div></div><span class="tbadge tbg">+3.21%</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-levels" class="hidden">
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">Entry &amp; exit zones</div>
+          <div class="zones-grid">
+            <div>
+              <div class="zcl zcl-g">Buy zones</div>
+              <div class="zi zi-g"><div class="zi-tier">Conservative</div><div class="zi-price">$399.25</div><div class="zi-sub">200-day avg</div></div>
+              <div class="zi zi-g"><div class="zi-tier">Moderate</div><div class="zi-price">$390.24</div><div class="zi-sub">50-day avg</div></div>
+              <div class="zi zi-g"><div class="zi-tier">Aggressive</div><div class="zi-price">$392.50</div><div class="zi-sub">Current price</div></div>
+            </div>
+            <div>
+              <div class="zcl zcl-r">Sell zones</div>
+              <div class="zi zi-r"><div class="zi-tier">Conservative</div><div class="zi-price">$439.18</div><div class="zi-sub">10% above 200-day</div></div>
+              <div class="zi zi-r"><div class="zi-tier">Moderate</div><div class="zi-price">$412.12</div><div class="zi-sub">50-day or 5% above</div></div>
+              <div class="zi zi-r"><div class="zi-tier">Ambitious</div><div class="zi-price">$489.88</div><div class="zi-sub">52-week high</div></div>
+            </div>
+          </div>
+          <div class="cp-bar"><span class="cp-lbl">Current price</span><span class="cp-val">$392.50</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Market correlation</div>
+          <div class="corr-grid">
+            <div class="cc"><div class="cc-tick">IWM</div><div class="cc-val v-amber">0.49</div><div class="cc-lbl">Moderate link</div><div class="cc-desc">Somewhat follows small caps</div></div>
+            <div class="cc"><div class="cc-tick">QQQ</div><div class="cc-val v-amber">0.62</div><div class="cc-lbl">Moves with market</div><div class="cc-desc">Tracks tech sector</div></div>
+            <div class="cc"><div class="cc-tick">VOO</div><div class="cc-val v-amber">0.59</div><div class="cc-lbl">Somewhat follows</div><div class="cc-desc">Moderate S&amp;P 500 tracking</div></div>
+          </div>
+          <div class="tip-box"><strong>Portfolio tip:</strong> Mix stocks with different correlations to reduce risk. Adding low-correlation stocks alongside VOO can smooth returns.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-watchlist" class="hidden">
+      <div class="card">
+        <div class="card-title">My watchlist</div>
+        <div class="wl-row">
+          <select class="wl-sel"><option>Select a watchlist...</option></select>
+          <button class="wl-new">+ New</button>
+        </div>
+        <button class="add-btn">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none" style="width:11px;height:11px"><line x1="5.5" y1="1" x2="5.5" y2="10" stroke="#27500A" stroke-width="1.5" stroke-linecap="round"/><line x1="1" y1="5.5" x2="10" y2="5.5" stroke="#27500A" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Add TSLA to watchlist
+        </button>
+        <div class="wl-item"><span class="wl-tick">AAPL</span><button class="rm-btn">Remove</button></div>
+        <div class="wl-item"><span class="wl-tick">NVDA</span><button class="rm-btn">Remove</button></div>
+        <div class="wl-item"><span class="wl-tick">GOOG</span><button class="rm-btn">Remove</button></div>
+        <div class="wl-item"><span class="wl-tick">TSM</span><button class="rm-btn">Remove</button></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchTab(name, el) {
+  ['overview','deepdive','levels','watchlist'].forEach(t => {
+    document.getElementById('tab-'+t).classList.add('hidden');
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.remove('hidden');
+  el.classList.add('active');
+}
+</script>
