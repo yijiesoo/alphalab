@@ -1065,7 +1065,7 @@
 
                     <!-- Top ML Picks Leaderboard -->
                     <div class="card" id="top-ml-picks-card" style="display:none;">
-                        <h3 style="margin-bottom: 16px;">🏆 Top Picks</h3>
+                        <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Top picks</h3>
                         <div id="top-ml-picks-list" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">
                             <div style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading...</div>
                         </div>
@@ -1318,45 +1318,41 @@
                     
                     // Determine color based on score and verdict
                     let barColor = '#10B981'; // green
-                    let verdictEmoji = '🟢';
-                    let verdictLabel = 'BUY';
+                    let verdictLabel = 'Buy';
+                    let verdictClass = 'positive';
                     
                     if (pick.verdict === 'yellow') {
                         barColor = '#F59E0B';
-                        verdictEmoji = '🟡';
-                        verdictLabel = 'HOLD';
+                        verdictLabel = 'Hold';
+                        verdictClass = 'neutral';
                     } else if (pick.verdict === 'red') {
                         barColor = '#EF4444';
-                        verdictEmoji = '🔴';
-                        verdictLabel = 'SELL';
+                        verdictLabel = 'Sell';
+                        verdictClass = 'negative';
                     }
 
-                    const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+                    const rankLabel = rank === 1 ? '#1' : rank === 2 ? '#2' : rank === 3 ? '#3' : `#${rank}`;
 
                     return `
-                        <div class="leaderboard-item" style="margin-bottom: 16px; padding: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, transparent 100%); border-left: 3px solid ${barColor}; border-radius: 8px;">
-                            <div style="display: grid; grid-template-columns: 40px 1fr 80px 80px; gap: 12px; align-items: center;">
+                        <div class="leaderboard-item" style="margin-bottom: 12px; padding: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, transparent 100%); border-left: 3px solid ${barColor}; border-radius: 8px;">
+                            <div style="display: grid; grid-template-columns: 35px 1fr 60px auto; gap: 12px; align-items: center;">
                                 <!-- Rank -->
-                                <div style="font-size: 1.3em; text-align: center; font-weight: 700;">${rankEmoji}</div>
+                                <div style="font-size: 0.9em; font-weight: 700; color: var(--text-secondary); text-align: center;">${rankLabel}</div>
                                 
                                 <!-- Ticker & Company -->
                                 <div style="min-width: 0;">
                                     <div style="font-weight: 700; color: var(--text-primary); font-size: 0.95em;">${pick.ticker}</div>
-                                    <div style="font-size: 0.8em; color: var(--text-secondary);">${pick.company}</div>
+                                    <div style="font-size: 0.75em; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${pick.company}</div>
                                 </div>
                                 
-                                <!-- Score Bar -->
-                                <div style="text-align: center;">
-                                    <div style="font-weight: 700; color: var(--text-primary); margin-bottom: 4px;">${pick.score}/100</div>
-                                    <div style="width: 100%; height: 6px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden;">
-                                        <div style="width: ${progressPercent}%; height: 100%; background: ${barColor}; transition: width 0.3s ease;"></div>
-                                    </div>
+                                <!-- Score -->
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9em;">${pick.score}/100</div>
                                 </div>
                                 
                                 <!-- Verdict -->
-                                <div style="text-align: center;">
-                                    <div style="font-size: 1.2em; margin-bottom: 4px;">${verdictEmoji}</div>
-                                    <div style="font-size: 0.75em; font-weight: 600; color: var(--text-secondary);">${verdictLabel}</div>
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.75em; font-weight: 700; color: ${barColor}; letter-spacing: 0.3px;">${verdictLabel}</div>
                                 </div>
                             </div>
                         </div>

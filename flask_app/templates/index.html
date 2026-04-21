@@ -387,31 +387,100 @@
 
         /* Verdict card (traffic light) */
         .verdict-card {
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            background: linear-gradient(135deg, var(--card-bg) 0%, var(--light-bg) 100%);
+            padding: 40px;
+            border-radius: 14px;
+            margin-bottom: 24px;
+            border: 1.5px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 160px 1fr;
+            gap: 32px;
+            align-items: start;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
         }
+
+        .verdict-card:hover {
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        }
+
         .verdict-icon {
-            font-size: 4em;
-            margin-bottom: 16px;
-        }
-        .verdict-label {
-            font-size: 1.4em;
+            width: 160px;
+            height: 160px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5em;
             font-weight: 700;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            text-align: center;
         }
-        .verdict-label.green { color: #27ae60; }
-        .verdict-label.yellow { color: #f39c12; }
-        .verdict-label.red { color: #e74c3c; }
+
+        .verdict-icon.green {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border: 2px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .verdict-icon.yellow {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(245, 158, 11, 0.05) 100%);
+            border: 2px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .verdict-icon.red {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.05) 100%);
+            border: 2px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .verdict-label {
+            font-size: 1.35em;
+            font-weight: 700;
+            margin-bottom: 16px;
+            text-transform: none;
+            letter-spacing: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .verdict-label.green { color: var(--success); }
+        .verdict-label.yellow { color: var(--warning); }
+        .verdict-label.red { color: var(--danger); }
+
         .verdict-text {
             font-size: 0.95em;
             line-height: 1.6;
-            color: #666;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .verdict-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .verdict-metric-item {
+            padding: 12px;
+            background: var(--light-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .verdict-metric-label {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: none;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+        }
+
+        .verdict-metric-value {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: var(--text-primary);
         }
 
         /* Beginner explanation styling */
@@ -1091,7 +1160,7 @@
 
             <!-- Option B: Watchlist Summary -->
             <div class="dashboard-card">
-                <h3>⭐ Watchlist</h3>
+                <h3>Watchlist</h3>
                 <div id="watchlist-summary" style="max-height: 250px; overflow-y: auto;">
                     <p style="color: #999; text-align: center; padding: 20px;">Loading...</p>
                 </div>
@@ -1099,7 +1168,7 @@
 
             <!-- Option C: Market Summary -->
             <div class="dashboard-card">
-                <h3>🌍 Market</h3>
+                <h3>Market conditions</h3>
                 <div class="market-stat">
                     <div class="market-stat-label">S&P 500</div>
                     <div class="market-stat-value" id="sp500-price">-</div>
@@ -1134,17 +1203,17 @@
             <!-- Verdict card -->
             <div class="verdict-card">
                 <div class="verdict-icon" id="verdict-icon"></div>
-                <div class="verdict-label" id="verdict-label"></div>
-                <div class="verdict-text" id="verdict-text"></div>
-                <div id="verdict-score" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; font-size: 0.9em; color: #666;"></div>
+                <div>
+                    <div class="verdict-label" id="verdict-label"></div>
+                    <div class="verdict-text" id="verdict-text"></div>
+                    <div id="verdict-score" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color); font-size: 0.9em; color: var(--text-secondary);"></div>
+                    <div id="verdict-metrics-grid" class="verdict-metrics" style="display: none; margin-top: 20px;"></div>
+                </div>
             </div>
 
             <!-- AI Stock Summary Card -->
             <div id="ai-summary-card" class="ai-summary-card" style="display: none; margin-top: 24px;">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 16px;">
-                    <span style="font-size: 1.3em;">🤖</span>
-                    <h2 style="margin: 0; font-size: 1.3em; color: var(--text-primary);">AI Analysis Summary</h2>
-                </div>
+                <h2 style="margin: 0 0 20px 0; font-size: 1.3em; color: var(--text-primary);">Analysis summary</h2>
 
                 <!-- Main insight -->
                 <div id="ai-main-insight" style="margin-bottom: 20px; padding: 16px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border-left: 4px solid var(--primary-blue); border-radius: 8px;">
@@ -1155,10 +1224,7 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
                     <!-- Bullish Signals -->
                     <div style="padding: 16px; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%); border-left: 4px solid var(--success); border-radius: 8px;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                            <span style="font-size: 1.2em;">✅</span>
-                            <h3 style="margin: 0; color: var(--success); font-size: 0.95em;">Bullish Signals</h3>
-                        </div>
+                        <h3 style="margin: 0 0 12px 0; color: var(--success); font-size: 0.95em; font-weight: 700;">Bullish factors</h3>
                         <div id="ai-bullish-signals" style="font-size: 0.9em; line-height: 1.6; color: var(--text-secondary);">
                             <!-- Populated by JavaScript -->
                         </div>
@@ -1166,10 +1232,7 @@
 
                     <!-- Bearish Signals -->
                     <div style="padding: 16px; background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%); border-left: 4px solid var(--danger); border-radius: 8px;">
-                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                            <span style="font-size: 1.2em;">⚠️</span>
-                            <h3 style="margin: 0; color: var(--danger); font-size: 0.95em;">Bearish Signals</h3>
-                        </div>
+                        <h3 style="margin: 0 0 12px 0; color: var(--danger); font-size: 0.95em; font-weight: 700;">Bearish factors</h3>
                         <div id="ai-bearish-signals" style="font-size: 0.9em; line-height: 1.6; color: var(--text-secondary);">
                             <!-- Populated by JavaScript -->
                         </div>
@@ -1178,7 +1241,7 @@
 
                 <!-- Key Metrics -->
                 <div style="margin-top: 16px; padding: 16px; background: var(--card-bg); border-radius: 8px; border: 1px solid var(--border-color);">
-                    <h3 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 0.95em;">📊 Key Metrics</h3>
+                    <h3 style="margin: 0 0 12px 0; color: var(--text-primary); font-size: 0.95em; font-weight: 700;">Key metrics</h3>
                     <div id="ai-key-metrics" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; font-size: 0.9em;">
                         <!-- Populated by JavaScript -->
                     </div>
@@ -1186,13 +1249,8 @@
 
                 <!-- Recommendation -->
                 <div id="ai-recommendation" style="margin-top: 16px; padding: 16px; background: linear-gradient(135deg, rgba(251, 146, 60, 0.1) 0%, rgba(251, 146, 60, 0.05) 100%); border-left: 4px solid var(--warning); border-radius: 8px;">
-                    <div style="display: flex; align-items: flex-start; gap: 12px;">
-                        <span style="font-size: 1.2em; margin-top: 2px;">💡</span>
-                        <div>
-                            <h3 style="margin: 0 0 6px 0; color: var(--text-primary); font-size: 0.95em;">Recommendation</h3>
-                            <p id="ai-recommendation-text" style="margin: 0; line-height: 1.6; color: var(--text-secondary); font-size: 0.9em;"></p>
-                        </div>
-                    </div>
+                    <h3 style="margin: 0 0 8px 0; color: var(--text-primary); font-size: 0.95em; font-weight: 700;">Recommendation</h3>
+                    <p id="ai-recommendation-text" style="margin: 0; line-height: 1.6; color: var(--text-secondary); font-size: 0.9em;"></p>
                 </div>
             </div>
 
