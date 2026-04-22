@@ -1468,8 +1468,10 @@
             <div id="ai-summary-card" style="display: none !important;"></div>
 
             <!-- Tab Navigation -->
+
             <div class="tabs-container">
                 <button class="tab-button active" onclick="switchAnalysisTab(event, 'overview')">Overview</button>
+                <button class="tab-button" onclick="switchAnalysisTab(event, 'chart')">Chart</button>
                 <button class="tab-button" onclick="switchAnalysisTab(event, 'deep-dive')">Deep dive</button>
                 <button class="tab-button" onclick="switchAnalysisTab(event, 'levels')">Levels</button>
                 <button class="tab-button" onclick="switchAnalysisTab(event, 'watchlist')">Watchlist</button>
@@ -1506,6 +1508,23 @@
                 <div id="recommendation-section-overview" class="recommendation-box" style="display: none;">
                     <div class="recommendation-label">Recommendation</div>
                     <div class="recommendation-text" id="recommendation-text-overview"></div>
+                </div>
+            </div>
+
+            <!-- CHART TAB -->
+            <div id="tab-chart" class="tab-content" style="display: none;">
+                <div class="chart-container">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: #2a5298;">Price Chart</h3>
+                        <div id="timeframe-buttons" style="display: flex; gap: 8px;">
+                            <button class="timeframe-btn active" onclick="changeTimeframe(event, '1M')">1M</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe(event, '3M')">3M</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe(event, '6M')">6M</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe(event, '1Y')">1Y</button>
+                            <button class="timeframe-btn" onclick="changeTimeframe(event, 'ALL')">ALL</button>
+                        </div>
+                    </div>
+                    <canvas id="priceChart"></canvas>
                 </div>
             </div>
 
@@ -1615,20 +1634,6 @@
                 </div>
             </div>
 
-            <!-- Chart Tab - separate from main tabs, in old location for backward compatibility -->
-            <div id="chart-tab" class="chart-container" style="display:none;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3 style="margin: 0; color: #2a5298;">Price Chart</h3>
-                    <div id="timeframe-buttons" style="display: flex; gap: 8px;">
-                        <button class="timeframe-btn active" onclick="changeTimeframe(event, '1M')">1M</button>
-                        <button class="timeframe-btn" onclick="changeTimeframe(event, '3M')">3M</button>
-                        <button class="timeframe-btn" onclick="changeTimeframe(event, '6M')">6M</button>
-                        <button class="timeframe-btn" onclick="changeTimeframe(event, '1Y')">1Y</button>
-                        <button class="timeframe-btn" onclick="changeTimeframe(event, 'ALL')">ALL</button>
-                    </div>
-                </div>
-                <canvas id="priceChart"></canvas>
-            </div>
         </div>
     </div>
 
@@ -2074,10 +2079,11 @@
             if (data.factor_delay && !data.factor_delay.error) {
                 const delays = data.factor_delay.delays || {};
                 let delayHtml = '';
+                const sortedDelays = Object.values(delays).sort((a, b) => (a.days_ago || 0) - (b.days_ago || 0));
                 
-                for (const [key, delayData] of Object.entries(delays)) {
+                for (const delayData of sortedDelays) {
                     const returnClass = delayData.return_pct > 0 ? 'positive' : delayData.return_pct < 0 ? 'negative' : 'neutral';
-                    const label = delayData.label || `${delayData.days_ago} days`;  // Use label if available (1D, 1W, 1M, 3M)
+                    const label = delayData.label || `${delayData.days_ago} days`;
                     delayHtml += `
                         <div class="factor-delay-row">
                             <div>
@@ -2282,13 +2288,21 @@
         function switchAnalysisTab(evt, tab) {
             // Hide all tabs
             document.getElementById("tab-overview").style.display = "none";
+            document.getElementById("tab-chart").style.display = "none";
             document.getElementById("tab-deep-dive").style.display = "none";
             document.getElementById("tab-levels").style.display = "none";
             document.getElementById("tab-watchlist").style.display = "none";
-            
+
             // Show selected tab
             if (tab === "overview") {
                 document.getElementById("tab-overview").style.display = "block";
+            } else if (tab === "chart") {
+                document.getElementById("tab-chart").style.display = "block";
+                // Load chart with current ticker
+                const ticker = document.getElementById("company-ticker")?.textContent || "";
+                if (ticker) {
+                    loadPriceChart(ticker, typeof currentTimeframe !== 'undefined' ? currentTimeframe : "6M");
+                }
             } else if (tab === "deep-dive") {
                 document.getElementById("tab-deep-dive").style.display = "block";
             } else if (tab === "levels") {

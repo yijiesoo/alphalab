@@ -141,6 +141,56 @@ _sentiment_result_cache: dict = {}
 _SENTIMENT_CACHE_TTL = 4 * 60 * 60  # 4 hours in seconds
 
 
+def _build_sentiment_result(
+    pos: int,
+    neg: int,
+    neu: int,
+    headlines: list,
+    method: str,
+) -> dict:
+    """
+    Build a backward-compatible sentiment payload.
+
+    Existing consumers use count fields (`positive`, `negative`, `neutral`,
+    `summary`, `headlines`). Beginner-facing code also expects score-style
+    fields such as `score` and `overall_sentiment`.
+    """
+    total = pos + neg + neu
+
+    if total == 0:
+        score = 0.0
+        confidence = 0.0
+    else:
+        # Average headline polarity on a -1..1 scale
+        score = (pos - neg) / total
+
+        # Confidence increases when sentiment is both directional and supported
+        # by more headlines, capped once we have a modest sample size.
+        coverage_factor = min(total / 5, 1.0)
+        confidence = abs(score) * coverage_factor
+
+    if score > 0.15:
+        sentiment_label = "positive"
+    elif score < -0.15:
+        sentiment_label = "negative"
+    else:
+        sentiment_label = "neutral"
+
+    return {
+        "positive": pos,
+        "negative": neg,
+        "neutral": neu,
+        "summary": _plain_summary(pos, neg, neu, total),
+        "headlines": headlines[:5],  # cap at 5 for display
+        "score": round(score, 2),
+        "overall_sentiment": round(score, 2),
+        "confidence": round(confidence, 2),
+        "method": method,
+        "sentiment_label": sentiment_label,
+        "headline_count": total,
+    }
+
+
 def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool = True) -> dict:
     """
     Fetches recent headlines for a ticker and scores sentiment.
@@ -173,13 +223,14 @@ def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool 
 
     if not headlines:
         print(f"[sentiment] No headlines found for {query}")
-        result = {
-            "positive": 0,
-            "negative": 0,
-            "neutral": 0,
-            "summary": "No recent news found.",
-            "headlines": [],
-        }
+        result = _build_sentiment_result(
+            pos=0,
+            neg=0,
+            neu=0,
+            headlines=[],
+            method="no_news",
+        )
+        result["summary"] = "No recent news found."
         _sentiment_result_cache[cache_key] = {"data": result, "expires_at": now + _SENTIMENT_CACHE_TTL}
         return result
 
@@ -187,22 +238,24 @@ def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool 
     if use_finbert and FINBERT_AVAILABLE:
         print(f"[sentiment] Using FinBERT to score {len(headlines)} headlines")
         score_fn = _score_headline_finbert
+        method = "finbert"
     else:
         print(f"[sentiment] Using keyword matching to score {len(headlines)} headlines")
         score_fn = _score_headline_keyword
+        method = "keyword"
 
     scored = [score_fn(h) for h in headlines]
     pos = sum(1 for s in scored if s == "positive")
     neg = sum(1 for s in scored if s == "negative")
     neu = sum(1 for s in scored if s == "neutral")
 
-    result = {
-        "positive": pos,
-        "negative": neg,
-        "neutral": neu,
-        "summary": _plain_summary(pos, neg, neu, len(headlines)),
-        "headlines": headlines[:5],  # cap at 5 for display
-    }
+    result = _build_sentiment_result(
+        pos=pos,
+        neg=neg,
+        neu=neu,
+        headlines=headlines,
+        method=method,
+    )
     _sentiment_result_cache[cache_key] = {"data": result, "expires_at": now + _SENTIMENT_CACHE_TTL}
     return result
 
