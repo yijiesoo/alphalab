@@ -37,14 +37,14 @@ if str(FACTORLAB_ROOT) not in sys.path:
     sys.path.insert(0, str(FACTORLAB_ROOT))
 
 # Import configuration
-from config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
+from .config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
 
 # Initialize supabase service
-from services import init_supabase, get_supabase
+from .services import init_supabase, get_supabase
 
 # Import blueprints
-from routes import auth_bp, login_required
-from routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
+from .routes import auth_bp, login_required
+from .routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
 
 # Import ML metrics
 try:

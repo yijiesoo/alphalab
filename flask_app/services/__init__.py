@@ -2,7 +2,7 @@
 Supabase database service
 """
 import os
-from config import Config
+from ..config import Config
 
 # Global supabase instance
 _supabase = None

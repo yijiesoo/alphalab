@@ -1,63 +1,71 @@
-# AlphaLab
+# AlphaLab: Professional Flask-Based Stock Analysis Platform
 
-A stock analysis and portfolio tracking app built with Flask, yfinance, and a local Python analysis engine.
+AlphaLab is a robust, production-ready Flask web application for advanced stock analysis, portfolio management, and machine learning-powered insights. Designed for both individual investors and professionals, AlphaLab delivers a seamless, modern user experience with a comprehensive suite of features.
 
-> For learning and research only. Not financial advice.
+## Features
 
----
+- **Secure User Authentication**: Modern login system with session management and Supabase integration.
+- **Stock Analysis API**: Analyze any US equity ticker with factor-based scoring, macro context, and sentiment analysis.
+- **ML-Driven Insights**: Access the latest machine learning metrics, backtests, and top stock picks, powered by the `alphalab_ml` module.
+- **Portfolio Management**: Track holdings, entry prices, quantities, and real-time P&L with accurate calculations and visualizations.
+- **Watchlists**: Create, update, and manage multiple watchlists for different strategies or portfolios.
+- **Backtesting Engine**: Run and monitor backtests in the background, with real-time log streaming and output image management.
+- **Beginner-Friendly Explanations**: Get clear, accessible explanations of signals and analysis for any ticker.
+- **Comprehensive API**: RESTful endpoints for all major features, including analysis history, feedback, and portfolio summaries.
+- **Modern UI/UX**: Designed for clarity, speed, and ease of use, with robust error handling and user feedback.
 
-## What it does
+## Technology Stack
 
-- Analyze any ticker with a factor score based on momentum and RSI
-- Layer in macro context (VIX, 10Y yield, sector trend)
-- Pull and score recent news sentiment using FinBERT or keyword fallback
-- Track portfolio holdings with entry price and P&L
-- Manage watchlists
-- View price charts and signal history
-- Run backtests against the local factor-lab pipeline
+- **Backend**: Python 3, Flask, Supabase, yfinance, pandas, dotenv
+- **Machine Learning**: Integrates with custom `alphalab_ml` module for advanced analytics
+- **Testing**: Full test suite with pytest for reliability and maintainability
+- **Deployment**: Ready for production with environment variable support and secure configuration
 
----
+## Quick Start
 
-## Tech stack
+1. **Clone the repository:**
+	```bash
+	git clone https://github.com/yijiesoo/alphalab.git
+	cd alphalab
+	```
+2. **Install dependencies:**
+	```bash
+	pip install -r requirements.txt
+	```
+3. **Set up environment variables:**
+	- Copy `.env.example` to `.env` and fill in your configuration (Supabase, Gmail, etc.)
+4. **Run the Flask app:**
+	```bash
+	cd flask_app
+	python app.py
+	```
+5. **Access the app:**
+	- Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser.
 
-| Layer | Tools |
-|---|---|
-| Backend | Python 3.13, Flask 3.1.3 |
-| Data | yfinance, pandas, numpy, scipy |
-| ML | scikit-learn, xgboost |
-| NLP (optional) | transformers, torch, ProsusAI/finbert |
-| Auth / DB | Firebase, Supabase |
-| News | NewsAPI |
-| Dev | pytest, ruff, pylint, Docker |
+## Testing
 
----
-
-## Project structure
-
-```
-alphalab/
-├── flask_app/
-│   ├── app.py           # Main Flask server and API routes
-│   ├── config.py        # Environment config
-│   ├── routes/          # Auth and dashboard blueprints
-│   ├── services/        # Service layer
-│   ├── static/          # Frontend assets
-│   └── templates/       # Server-rendered HTML
-├── factor-lab/
-│   └── src/
-│       ├── scorer.py        # Per-ticker analysis and scoring
-│       ├── sentiment.py     # News fetching and sentiment classification
-│       ├── beginner_guide.py # Plain-English signal explanations
-│       ├── macro.py         # VIX, yield, sector context
-│       ├── factor_delay.py  # Signal timing analysis
-│       ├── backtest.py      # Backtest execution
-│       └── ...
-├── tests/
-├── requirements.txt
-└── docker-compose.yml
+Run the full test suite to ensure everything works as expected:
+```bash
+PYTHONPATH=. pytest tests/
 ```
 
+## Folder Structure
+
+- `flask_app/` — Main Flask application (routes, services, config)
+- `factor-lab/` — Quantitative research modules and scripts
+- `tests/` — Automated test suite
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request for improvements or new features.
+
+## License
+
+This project is licensed under the MIT License.
+
 ---
+
+**AlphaLab** — Professional-grade stock analysis, made simple.
 
 ## Local setup
 

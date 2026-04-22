@@ -5,7 +5,7 @@ import os
 import requests
 from flask import Blueprint, render_template, request, session, redirect, url_for
 from functools import wraps
-from config import Config
+from ..config import Config
 
 # Create blueprint
 auth_bp = Blueprint('auth', __name__)
