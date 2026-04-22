@@ -203,6 +203,8 @@ pytest --cov=. --cov-report=html
 - [ ] Align Docker setup with actual dependencies
 
 ---
+## Badges 
+![CI/CD](https://github.com/yijiesoo/alphalab/actions/workflows/ci-cd.yml/badge.svg)
 
 ## License
 
