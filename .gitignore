@@ -1,13 +1,12 @@
-# Environment
-.env
-.env.local
-.env.*.local
-
-# Python
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+
+# C extensions
 *.so
+
+# Distribution / packaging
 .Python
 build/
 develop-eggs/
@@ -20,58 +19,44 @@ lib64/
 parts/
 sdist/
 var/
-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
+
+# Virtual environments
 venv/
 ENV/
 env/
 .venv/
 
-# IDE
+# Flask stuff
+instance/
+.webassets-cache
+
+# Pytest
+.cache
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# VS Code
 .vscode/
-.idea/
-*.swp
-*.swo
-*~
+
+# Mac
 .DS_Store
 
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
-.tox/
-
-# Node (if using npm for frontend)
-node_modules/
-npm-debug.log
-package-lock.json
+# Environment variables
+.env
+.env.*
 
 # Logs
 *.log
-logs/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# Output
+outputs/
 
-# Credentials
-credentials/
-*.pem
-*.key
+# Supabase
+.supabase/
 
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-pyrightconfig.json
-py.typed
-
-# Build
-dist/
-build/
-*.egg-info/
+# Firebase credentials
+credentials/firebase-key.json
