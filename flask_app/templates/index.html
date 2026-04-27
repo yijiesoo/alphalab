@@ -1,0 +1,3171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Factor Analysis — alphalab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+    <!-- Chart.js for price charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Roboto, sans-serif;
+            background: var(--light-bg);
+            min-height: 100vh;
+            padding: 24px 20px;
+            color: var(--text-primary);
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 1px solid var(--border-color);
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .logo {
+            width: 44px;
+            height: 44px;
+            background: var(--primary-blue);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.4em;
+        }
+        
+        .header h1 {
+            font-size: 1.75em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 10px 18px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 0.9em;
+        }
+        
+        .btn:hover {
+            background: var(--dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-logout {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border-color);
+        }
+        
+        .btn-logout:hover {
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn-home {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border-color);
+        }
+        
+        .btn-home:hover {
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+        
+        .btn-watchlist {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1.5px solid var(--border-color);
+        }
+        
+        .btn-watchlist:hover {
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Search box */
+        .search-box {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 32px;
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-box input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 1em;
+            transition: all 0.2s;
+        }
+        
+        .search-box input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .search-box button {
+            padding: 12px 28px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .search-box button:hover {
+            background: var(--dark-blue);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .search-box button:disabled {
+            background: var(--border-color);
+            cursor: not-allowed;
+        }
+
+        /* Dashboard Widgets */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .dashboard-card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .dashboard-card h3 {
+            margin: 0 0 18px 0;
+            color: var(--text-primary);
+            font-size: 1.05em;
+            font-weight: 700;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 12px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            font-size: 0.9em;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .stat-value.positive {
+            color: var(--success);
+        }
+        
+        .stat-value.negative {
+            color: var(--danger);
+        }
+        
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9em;
+            border-radius: 6px;
+            transition: background 0.2s;
+        }
+        
+        .stock-item:hover {
+            background: var(--light-bg);
+        }
+        
+        .stock-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stock-info {
+            flex: 1;
+        }
+        
+        .stock-ticker {
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .stock-price {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            margin-top: 2px;
+        }
+        
+        .stock-change {
+            min-width: 80px;
+            text-align: right;
+            font-weight: 700;
+            padding-left: 16px;
+        }
+        
+        .stock-change.positive {
+            color: var(--success);
+        }
+        
+        .stock-change.negative {
+            color: var(--danger);
+        }
+        
+        .market-stat {
+            text-align: center;
+            padding: 16px;
+            background: var(--light-bg);
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .market-stat-label {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        
+        .market-stat-value {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .market-stat-change {
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+        
+        .market-stat-change.positive {
+            color: var(--success);
+        }
+        
+        .market-stat-change.negative {
+            color: var(--danger);
+        }
+        .market-stat-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .market-stat-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            color: #2a5298;
+        }
+        .vix-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        .vix-calm {
+            background: #d4edda;
+            color: #155724;
+        }
+        .vix-normal {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+        .vix-nervous {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .vix-fearful {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Loading state */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #000;
+        }
+        .spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0,0,0,0.2);
+            border-top: 4px solid #000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Error state */
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        /* Results section */
+        .results {
+            display: none;
+        }
+        .results.show {
+            display: block;
+        }
+
+        /* Verdict card (hero section) */
+        .verdict-card {
+            background: var(--card-bg);
+            padding: 18px 20px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 0.5px solid var(--border-color);
+            box-shadow: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        /* Signal badge at top */
+        .signal-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            border: 0.5px solid;
+        }
+
+        .signal-badge.green {
+            background: #EAF3DE;
+            color: #27500A;
+            border-color: #97C459;
+        }
+
+        .signal-badge.yellow {
+            background: #FEF3C7;
+            color: #92400E;
+            border-color: #FDE047;
+        }
+
+        .signal-badge.red {
+            background: #FCEBEB;
+            color: #791F1F;
+            border-color: #F59595;
+        }
+
+        .signal-badge::before {
+            content: '●';
+            font-size: 0.7em;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            background: currentColor;
+            margin-right: -2px;
+        }
+
+        /* Signal description text */
+        .signal-description {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            max-width: 340px;
+        }
+
+        /* Signal strength section */
+        .signal-strength {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 24px;
+            align-items: center;
+            padding: 20px;
+            background: var(--light-bg);
+            border-radius: 10px;
+            margin-bottom: 24px;
+        }
+
+        .strength-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .strength-bar-label {
+            font-size: 0.75em;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .strength-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .strength-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--warning));
+            transition: width 0.6s ease;
+        }
+
+        .strength-value {
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .strength-value-main {
+            font-size: 1.8em;
+            font-weight: 500;
+            line-height: 1;
+            color: var(--text-primary);
+        }
+
+        .strength-value-main::after {
+            content: '/100';
+            font-size: 0.6em;
+            color: var(--text-tertiary);
+            font-weight: 400;
+            margin-left: 2px;
+        }
+
+        .strength-value-sub {
+            font-size: 0.75em;
+            color: var(--text-tertiary);
+            margin-top: 3px;
+        }
+
+        /* Key metrics grid below signal */
+        .key-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .metric-box {
+            padding: 12px 14px;
+            background: var(--light-bg);
+            border: none;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .metric-label {
+            font-size: 0.7em;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 1.3em;
+            font-weight: 500;
+            line-height: 1;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .metric-detail {
+            font-size: 0.75em;
+            color: var(--text-tertiary);
+            margin-top: 2px;
+        }
+
+        /* AI Insight box */
+        .ai-insight-box {
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-left: 3px solid var(--primary-blue);
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .ai-insight-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 0.9em;
+            font-weight: 700;
+            color: var(--primary-blue);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .ai-insight-title::before {
+            content: 'ℹ';
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            background: var(--primary-blue);
+            color: white;
+            border-radius: 50%;
+            font-size: 0.75em;
+            font-weight: bold;
+        }
+
+        .ai-insight-text {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        /* Recommendations box */
+        .recommendation-box {
+            padding: 16px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-left: 3px solid var(--success);
+            border-radius: 8px;
+            margin-bottom: 24px;
+        }
+
+        .recommendation-label {
+            font-size: 0.75em;
+            font-weight: 700;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .recommendation-text {
+            font-size: 0.95em;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        /* Old verdict icon/label - keeping for backward compat but will be hidden */
+        .verdict-icon {
+            display: none;
+        }
+
+        .verdict-label {
+            display: none;
+        }
+
+        .verdict-text {
+            display: none;
+        }
+
+        .beginner-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .beginner-emoji {
+            font-size: 1.2em;
+            margin-right: 8px;
+            min-width: 24px;
+        }
+        .beginner-text {
+            color: #555;
+        }
+
+        /* Tab Navigation */
+        .tabs-container {
+            display: flex;
+            gap: 0;
+            border-bottom: 0.5px solid var(--border-color);
+            margin-bottom: 18px;
+            padding-bottom: 0;
+            overflow-x: auto;
+        }
+
+        .tab-button {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            font-weight: 400;
+            cursor: pointer;
+            padding: 8px 16px;
+            position: relative;
+            transition: color 0.15s;
+            white-space: nowrap;
+            border-bottom: 2px solid transparent;
+        }
+
+        .tab-button:hover {
+            color: var(--text-primary);
+        }
+
+        .tab-button.active {
+            color: #4F7EF7;
+            border-bottom-color: #4F7EF7;
+            font-weight: 500;
+        }
+
+        .tab-button.active::after {
+            content: '';
+            display: none;
+        }
+
+        /* Tab Content */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Analysis panels grid */
+        .panels-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+            margin-bottom: 20px;
+        }
+        
+        /* Make Macro + Sentiment panels side-by-side */
+        .panels-grid .panel:nth-child(2),
+        .panels-grid .panel:nth-child(3) {
+            display: inline-block;
+            width: calc(50% - 16px);
+            vertical-align: top;
+        }
+        .panels-grid .panel:nth-child(2) {
+            margin-right: 16px;
+        }
+        
+        @media (max-width: 768px) {
+            .panels-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .panels-grid .panel:nth-child(2),
+            .panels-grid .panel:nth-child(3) {
+                display: block;
+                width: 100%;
+                margin-right: 0;
+            }
+        }
+
+        /* Panel styling */
+        .panel {
+            background: var(--card-bg);
+            padding: 16px 18px;
+            border-radius: 8px;
+            border: 0.5px solid var(--border-color);
+            box-shadow: none;
+        }
+        .panel-title {
+            font-size: 0.7em;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+            border-bottom: 0.5px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        .panel-content {
+            line-height: 1.6;
+            font-size: 0.9em;
+        }
+
+        /* Factor score display */
+        .score-display {
+            display: block;
+            margin-bottom: 20px;
+        }
+        .score-circle {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+            display: inline-block;
+        }
+        .score-circle.strong { color: #27ae60; }
+        .score-circle.moderate { color: #f39c12; }
+        .score-circle.weak { color: #e67e22; }
+        .score-circle.negative { color: #e74c3c; }
+        .score-info h3 {
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            font-size: 1em;
+            font-weight: 600;
+        }
+        .score-info p {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        /* Macro context */
+        .macro-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .macro-row:last-child {
+            border-bottom: none;
+        }
+        .macro-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.95em;
+        }
+        .macro-value {
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 1em;
+        }
+        .macro-summary {
+            background: transparent;
+            padding: 16px 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 16px;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        /* Sentiment display */
+        .sentiment-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            margin-right: 8px;
+            margin-bottom: 8px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            border: none;
+        }
+        .sentiment-positive {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10B981;
+        }
+        .sentiment-negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: #EF4444;
+        }
+        .sentiment-neutral {
+            background: rgba(107, 114, 128, 0.1);
+            color: #6B7280;
+        }
+        .sentiment-summary {
+            background: transparent;
+            padding: 16px 0;
+            border-top: 1px solid var(--border-color);
+            margin-top: 16px;
+            font-size: 0.9em;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+        .headlines {
+            margin-top: 16px;
+            font-size: 0.9em;
+        }
+        .headline {
+            padding: 12px 0;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border-color);
+            line-height: 1.5;
+        }
+        .headline:last-child {
+            border-bottom: none;
+        }
+
+        /* Cache indicator */
+        .cache-indicator {
+            font-size: 0.95em;
+            color: #2a5298;
+            text-align: center;
+            margin-top: 12px;
+            padding: 16px 12px;
+            border-radius: 6px;
+            background: #f0f8ff;
+            border: 1px solid #2a5298;
+            font-weight: 500;
+            line-height: 1.6;
+        }
+        .cache-indicator div {
+            margin: 4px 0;
+        }
+
+        /* Factor Delay */
+        .factor-delay-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .factor-delay-row:last-child {
+            margin-bottom: 0;
+        }
+        .factor-delay-label {
+            font-weight: 600;
+            color: #2a5298;
+            min-width: 80px;
+        }
+        .factor-delay-return {
+            font-weight: 700;
+            font-size: 1.1em;
+            padding: 6px 12px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .factor-delay-return.positive {
+            background: #d4edda;
+            color: #155724;
+        }
+        .factor-delay-return.negative {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .factor-delay-return.neutral {
+            background: #e7e7e7;
+            color: #666;
+        }
+        .factor-delay-interpretation {
+            font-size: 0.85em;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        /* Company info */
+        .company-info {
+            background: #f0f4f8;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+        .company-info h2 {
+            font-size: 1.3em;
+            margin-bottom: 4px;
+            color: #2a5298;
+        }
+        .company-info p {
+            font-size: 0.9em;
+        }
+
+        /* Watchlist and tabs */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        .tab-btn.active {
+            background: #2a5298;
+            color: white;
+        }
+
+        /* Timeframe buttons */
+        .timeframe-btn {
+            padding: 6px 12px;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9em;
+            transition: all 0.2s;
+        }
+        .timeframe-btn:hover {
+            background: #e0e0e0;
+        }
+        .timeframe-btn.active {
+            background: #2a5298;
+            color: white;
+            border-color: #2a5298;
+        }
+
+        /* Chart container */
+        .chart-container {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .chart-container canvas {
+            max-height: 300px;
+        }
+
+        /* Watchlist panel */
+        .watchlist-panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .watchlist-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s;
+        }
+        .watchlist-item:hover {
+            background: #f9f9f9;
+        }
+        .watchlist-item:last-child {
+            border-bottom: none;
+        }
+        .watchlist-ticker {
+            cursor: pointer;
+            font-weight: 600;
+            color: #2a5298;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+        .watchlist-ticker:hover {
+            color: #1e3c72;
+            text-decoration: underline;
+        }
+        .watchlist-btn {
+            padding: 6px 12px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .watchlist-btn:hover {
+            background: #c0392b;
+        }
+        .add-watchlist-btn {
+            padding: 8px 16px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-top: 10px;
+        }
+        .add-watchlist-btn:hover {
+            background: #229954;
+        }
+
+        /* Watchlist Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 12px;
+        }
+        .modal-header h2 {
+            color: #2a5298;
+            margin: 0;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+        .modal-close:hover {
+            color: #333;
+        }
+
+        /* Auth section */
+        .auth-section {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+        .auth-btn {
+            padding: 10px 20px;
+            background: var(--card-bg);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            transition: all 0.2s;
+        }
+        .auth-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .auth-btn.logout {
+            background: #e74c3c;
+            color: white;
+        }
+        .auth-btn.login {
+            background: #2a5298;
+            color: white;
+        }
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--card-bg);
+            padding: 10px 16px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: #2a5298;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9em;
+        }
+        .user-email {
+            font-size: 0.9em;
+            color: #333;
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* Auth modals */
+        .auth-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .auth-modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-modal-content {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 12px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .auth-modal-content h2 {
+            color: #2a5298;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .auth-form-group {
+            margin-bottom: 16px;
+        }
+        .auth-form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        .auth-form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+        .auth-form-group input:focus {
+            outline: none;
+            border-color: #2a5298;
+        }
+        .auth-modal-btn {
+            width: 100%;
+            padding: 12px;
+            background: #2a5298;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: background 0.2s;
+        }
+        .auth-modal-btn:hover {
+            background: #1e3c72;
+        }
+        .auth-modal-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .auth-toggle {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        .auth-toggle a {
+            color: #2a5298;
+            cursor: pointer;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .auth-toggle a:hover {
+            text-decoration: underline;
+        }
+        .auth-error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 0.9em;
+            border-left: 4px solid #c33;
+        }
+
+    </style>
+</head>
+<body>
+    <!-- Auth Section -->
+    <div class="auth-section">
+        <div id="auth-container">
+            <button id="login-btn" class="auth-btn login" style="display:none;">Sign In</button>
+            <button id="signup-btn" class="auth-btn login" style="display:none;">Sign Up</button>
+        </div>
+        <div id="user-container" style="display:none;">
+            <div class="user-profile">
+                <div class="user-avatar" id="user-avatar"></div>
+                <span class="user-email" id="user-email"></span>
+            </div>
+            <button id="logout-btn" class="auth-btn logout">Logout</button>
+        </div>
+    </div>
+
+    <!-- Auth Modals -->
+    <div id="login-modal" class="auth-modal">
+        <div class="auth-modal-content">
+            <h2>Sign In</h2>
+            <div id="login-error" class="auth-error" style="display:none;"></div>
+            <div class="auth-form-group">
+                <label>Email</label>
+                <input type="email" id="login-email" placeholder="you@example.com">
+            </div>
+            <div class="auth-form-group">
+                <label>Password</label>
+                <input type="password" id="login-password" placeholder="••••••••">
+            </div>
+            <button id="login-submit" class="auth-modal-btn">Sign In</button>
+            <div class="auth-toggle">
+                Don't have an account? <a onclick="showSignupModal()">Sign Up</a>
+            </div>
+            <button onclick="closeAuthModal('login-modal')" style="width: 100%; margin-top: 8px; padding: 8px; background: #f0f0f0; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="signup-modal" class="auth-modal">
+        <div class="auth-modal-content">
+            <h2>Sign Up</h2>
+            <div id="signup-error" class="auth-error" style="display:none;"></div>
+            <div class="auth-form-group">
+                <label>Email</label>
+                <input type="email" id="signup-email" placeholder="you@example.com">
+            </div>
+            <div class="auth-form-group">
+                <label>Password</label>
+                <input type="password" id="signup-password" placeholder="••••••••" minlength="6">
+            </div>
+            <div class="auth-form-group">
+                <label>Confirm Password</label>
+                <input type="password" id="signup-password-confirm" placeholder="••••••••" minlength="6">
+            </div>
+            <button id="signup-submit" class="auth-modal-btn">Sign Up</button>
+            <div class="auth-toggle">
+                Already have an account? <a onclick="showLoginModal()">Sign In</a>
+            </div>
+            <button onclick="closeAuthModal('signup-modal')" style="width: 100%; margin-top: 8px; padding: 8px; background: #f0f0f0; border: none; border-radius: 6px; cursor: pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">α</div>
+                <h1>Factor Analysis</h1>
+            </div>
+            <div class="header-buttons">
+                <div class="theme-toggle" id="theme-toggle" style="margin-right: 12px;">
+                    <button class="active" id="light-mode-btn" title="Light Mode">☀️</button>
+                    <button id="dark-mode-btn" title="Dark Mode">🌙</button>
+                </div>
+                <button id="home-btn" class="btn btn-home">Back to Home</button>
+                <button id="view-watchlist-btn" class="btn btn-watchlist">View Watchlist</button>
+                <button id="logout-btn-header" class="btn btn-logout">Logout</button>
+            </div>
+        </div>
+
+        <!-- Search box -->
+        <div class="search-box">
+            <input 
+                type="text" 
+                id="ticker-input" 
+                placeholder="Search ticker (e.g., NVDA, AAPL, TSLA)" 
+                autocomplete="off"
+                style="text-transform: uppercase;"
+            >
+            <button id="analyze-btn">Analyze</button>
+        </div>
+
+        <!-- Dashboard Widgets -->
+        <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
+            <!-- Option A: Portfolio Dashboard -->
+            <div class="dashboard-card">
+                <h3>📈 Portfolio</h3>
+                <div class="stat-row">
+                    <span class="stat-label">Total Value</span>
+                    <span class="stat-value" id="portfolio-value">$0.00</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Daily Change</span>
+                    <span class="stat-value" id="portfolio-change">+$0.00</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">% Change</span>
+                    <span class="stat-value" id="portfolio-change-pct">+0.00%</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Holdings</span>
+                    <span class="stat-value" id="portfolio-count">0</span>
+                </div>
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e0e0e0;">
+                    <div style="font-size: 0.85em; color: #666; margin-bottom: 8px; font-weight: 500;">Top Performers</div>
+                    <div id="top-performers" style="font-size: 0.85em;"></div>
+                </div>
+            </div>
+
+            <!-- Option B: Watchlist Summary -->
+            <div class="dashboard-card">
+                <h3>Watchlist</h3>
+                <div id="watchlist-summary" style="max-height: 250px; overflow-y: auto;">
+                    <p style="color: #999; text-align: center; padding: 20px;">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Option C: Market Summary -->
+            <div class="dashboard-card">
+                <h3>Market conditions</h3>
+                <div class="market-stat">
+                    <div class="market-stat-label">S&P 500</div>
+                    <div class="market-stat-value" id="sp500-price">-</div>
+                    <div style="font-size: 0.9em; color: #666;" id="sp500-change">-</div>
+                </div>
+                <hr style="margin: 12px 0; border: none; border-top: 1px solid #e0e0e0;">
+                <div class="market-stat">
+                    <div class="market-stat-label">VIX (Fear Index)</div>
+                    <div class="market-stat-value" id="vix-price">-</div>
+                    <div id="vix-sentiment" style="margin-top: 8px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error display -->
+        <div id="error-container"></div>
+
+        <!-- Loading state -->
+        <div id="loading" class="loading" style="display:none;">
+            <div class="spinner"></div>
+            <p style="margin-top: 16px;">Analyzing...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="results">
+            <!-- Verdict-first UI -->
+            <div class="verdict-card" style="margin-bottom: 24px; box-shadow: 0 4px 24px rgba(59,130,246,0.10);">
+                <!-- Signal badge -->
+                <div id="signal-badge" class="signal-badge green">
+                    Buy signal
+                </div>
+                <!-- Signal description -->
+                <div class="signal-description" id="signal-description">
+                    Based on momentum, macro conditions, and sentiment, this stock is showing a buy signal.
+                </div>
+                <!-- Signal strength metric -->
+                <div class="signal-strength">
+                    <div class="strength-bar">
+                        <div class="strength-bar-label">Signal strength</div>
+                        <div class="strength-bar-container">
+                            <div id="strength-bar-fill" class="strength-bar-fill" style="width: 52%;"></div>
+                        </div>
+                    </div>
+                    <div class="strength-value">
+                        <div class="strength-value-main" id="signal-score">52</div>
+                        <div class="strength-value-sub">/100</div>
+                    </div>
+                </div>
+                <!-- Hidden legacy fields for backward compat -->
+                <div class="verdict-icon" id="verdict-icon"></div>
+                <div class="verdict-label" id="verdict-label"></div>
+                <div class="verdict-text" id="verdict-text"></div>
+                <div id="verdict-score" style="display:none;"></div>
+                <div id="verdict-metrics-grid" class="verdict-metrics" style="display: none;"></div>
+            </div>
+            <div style="text-align:center; margin-bottom: 18px;">
+                <button id="track-btn" style="padding: 10px 28px; background: #1E40AF; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer; margin-right: 12px;">Track</button>
+                <button id="why-btn" style="padding: 10px 28px; background: #1E40AF; color: white; border: none; border-radius: 8px; font-size: 1.1em; cursor: pointer;">Why?</button>
+            </div>
+            <div id="analysis-details" style="display:none;">
+                <!-- Run Backtest Button -->
+                <div style="margin-bottom: 18px;">
+                    <button id="run-backtest-btn" style="padding: 10px 22px; background: #3B82F6; color: white; border: none; border-radius: 6px; font-size: 1em; cursor: pointer; display: none;">Run Backtest on this Stock</button>
+                    <span id="backtest-status" style="margin-left: 16px; color: #3B82F6; font-weight: 500;"></span>
+                </div>
+                <!-- Company info -->
+                <div class="company-info">
+                    <h2 id="company-name"></h2>
+                    <p id="company-ticker"></p>
+                </div>
+                <!-- Key metrics grid -->
+                <div id="key-metrics-container" class="key-metrics-grid" style="display: none;"></div>
+                <!-- AI insight -->
+                <div id="ai-insight-section" class="ai-insight-box" style="display: none;">
+                    <div class="ai-insight-title">AI analysis summary</div>
+                    <div class="ai-insight-text" id="ai-insight-text-content"></div>
+                </div>
+                <!-- Recommendation -->
+                <div id="recommendation-section" class="recommendation-box" style="display: none;">
+                    <div class="recommendation-label">Recommendation</div>
+                    <div class="recommendation-text" id="recommendation-text"></div>
+                </div>
+                <!-- AI Stock Summary Card - HIDDEN, content moved to Overview tab -->
+                <div id="ai-summary-card" style="display: none !important;"></div>
+                <!-- Tab Navigation and all tabs -->
+                <div class="tabs-container">
+                    <button class="tab-button active" onclick="switchAnalysisTab(event, 'overview')">Overview</button>
+                    <button class="tab-button" onclick="switchAnalysisTab(event, 'chart')">Chart</button>
+                    <button class="tab-button" onclick="switchAnalysisTab(event, 'deep-dive')">Deep dive</button>
+                    <button class="tab-button" onclick="switchAnalysisTab(event, 'levels')">Levels</button>
+                    <button class="tab-button" onclick="switchAnalysisTab(event, 'watchlist')">Watchlist</button>
+                    <button class="tab-button" onclick="switchAnalysisTab(event, 'compare')">Compare</button>
+                </div>
+                <!-- ...existing tab content... -->
+                <div id="tab-overview" class="tab-content active">
+                    <!-- Analysis summary heading -->
+                    <h3 style="margin: 0 0 16px 0; font-size: 1em; color: var(--text-primary); font-weight: 600;">Analysis summary</h3>
+                    <!-- AI insight -->
+                    <div id="ai-insight-section-overview" class="ai-insight-box" style="display: none; margin-bottom: 16px;">
+                        <div class="ai-insight-title">Summary</div>
+                        <div class="ai-insight-text" id="ai-insight-text-overview"></div>
+                    </div>
+                    <!-- Bullish/Bearish Signals in 2-column layout -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                        <div class="panel">
+                            <div class="panel-title">Bullish signals</div>
+                            <div class="panel-content" id="bullish-signals-overview">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-title">Bearish signals</div>
+                            <div class="panel-content" id="bearish-signals-overview">
+                                <!-- Populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Recommendation -->
+                    <div id="recommendation-section-overview" class="recommendation-box" style="display: none;">
+                        <div class="recommendation-label">Recommendation</div>
+                        <div class="recommendation-text" id="recommendation-text-overview"></div>
+                    </div>
+                </div>
+                <!-- ...other tab content remains unchanged... -->
+                <div id="tab-chart" class="tab-content" style="display: none;">
+                    <div class="chart-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                            <h3 style="margin: 0; color: #2a5298;">Price Chart</h3>
+                            <div id="timeframe-buttons" style="display: flex; gap: 8px;">
+                                <button class="timeframe-btn active" onclick="changeTimeframe(event, '1M')">1M</button>
+                                <button class="timeframe-btn" onclick="changeTimeframe(event, '3M')">3M</button>
+                                <button class="timeframe-btn" onclick="changeTimeframe(event, '6M')">6M</button>
+                                <button class="timeframe-btn" onclick="changeTimeframe(event, '1Y')">1Y</button>
+                                <button class="timeframe-btn" onclick="changeTimeframe(event, 'ALL')">ALL</button>
+                            </div>
+                        </div>
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+                <div id="tab-deep-dive" class="tab-content" style="display: none;">
+                    <div class="panels-grid">
+                        <!-- Factor Score Panel -->
+                        <div class="panel">
+                            <div class="panel-title">Factor score</div>
+                            <div class="panel-content">
+                                <div class="score-display">
+                                    <div class="score-circle" id="score-circle"></div>
+                                    <div class="score-info">
+                                        <h3 id="score-label"></h3>
+                                        <p id="score-momentum"></p>
+                                        <p id="score-explanation" style="font-size: 0.85rem; color: #666; margin-top: 8px; font-style: italic;"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Macro + Sentiment side-by-side -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
+                            <!-- Macro Context Panel -->
+                            <div class="panel">
+                                <div class="panel-title">Macro context</div>
+                                <div class="panel-content">
+                                    <div class="macro-row">
+                                        <span class="macro-label">VIX (Fear Index):</span>
+                                        <span class="macro-value" id="vix-value"></span>
+                                    </div>
+                                    <div class="macro-row">
+                                        <span class="macro-label">10Y Yield:</span>
+                                        <span class="macro-value" id="yield-value"></span>
+                                    </div>
+                                    <div class="macro-row">
+                                        <span class="macro-label">Sector:</span>
+                                        <span class="macro-value" id="sector-value"></span>
+                                    </div>
+                                    <div class="macro-summary" id="macro-summary"></div>
+                                </div>
+                            </div>
+                            <!-- Sentiment Panel -->
+                            <div class="panel">
+                                <div class="panel-title">News sentiment</div>
+                                <div class="panel-content">
+                                    <div id="sentiment-badges"></div>
+                                    <div class="sentiment-summary" id="sentiment-summary"></div>
+                                    <div class="headlines" id="headlines"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Factor Delay Panel - full width -->
+                        <div class="panel">
+                            <div class="panel-title">Signal timing</div>
+                            <div class="panel-content">
+                                <div id="factor-delay-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-levels" class="tab-content" style="display: none;">
+                    <div class="panels-grid">
+                        <!-- Entry/Exit Price Recommendations - full width -->
+                        <div class="panel">
+                            <div class="panel-title">Technical watch zones</div>
+                            <div class="panel-content">
+                                <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">Support and resistance ranges built from moving averages, recent volatility, and prior price structure</p>
+                                <div id="entry-exit-content"></div>
+                            </div>
+                        </div>
+                        <!-- Stock Correlation Analysis - full width -->
+                        <div class="panel">
+                            <div class="panel-title">Market correlation</div>
+                            <div class="panel-content">
+                                <p style="font-size: 0.9em; color: #666; margin-bottom: 16px;">How this stock moves with market indices</p>
+                                <div id="correlation-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="tab-watchlist" class="tab-content" style="display: none;">
+                    <div class="panel">
+                        <h3 style="margin-bottom: 16px; color: var(--text-primary);">My watchlist</h3>
+                        <!-- Watchlist selector and controls -->
+                        <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+                            <select id="watchlist-selector" style="padding: 8px 12px; border: 1px solid var(--border-color); border-radius: 6px; flex: 1; min-width: 200px; background: var(--card-bg); color: var(--text-primary);">
+                                <option value="">Select a watchlist...</option>
+                            </select>
+                            <button id="new-watchlist-btn" style="padding: 8px 16px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer;">+ New</button>
+                            <button id="delete-watchlist-btn" style="padding: 8px 16px; background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; display: none;">Delete</button>
+                        </div>
+                        <!-- Add ticker to watchlist -->
+                        <button class="add-watchlist-btn" id="add-to-watchlist" style="display: none; margin-bottom: 16px;">+ Add to watchlist</button>
+                        <!-- Watchlist items -->
+                        <div id="watchlist-items" style="margin-top: 16px;"></div>
+                    </div>
+                </div>
+                <div id="tab-compare" class="tab-content" style="display: none;">
+                    <h3 style="margin-bottom: 18px;">Compare Stocks</h3>
+                    <form id="compare-form" style="display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap;">
+                        <input type="text" id="compare-ticker-1" placeholder="Ticker 1 (e.g. NVDA)" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); width: 120px; text-transform: uppercase;">
+                        <span style="align-self: center; font-weight: 600; color: #888;">vs</span>
+                        <input type="text" id="compare-ticker-2" placeholder="Ticker 2 (e.g. AMD)" style="padding: 8px; border-radius: 6px; border: 1px solid var(--border-color); width: 120px; text-transform: uppercase;">
+                        <button type="submit" style="padding: 8px 18px; background: #3B82F6; color: white; border: none; border-radius: 6px; font-size: 1em; cursor: pointer;">Compare</button>
+                    </form>
+                    <div id="compare-results" style="display: flex; gap: 24px; flex-wrap: wrap;"></div>
+                </div>
+            </div>
+        </div>
+
+    <!-- Watchlist Modal -->
+    <div id="watchlist-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⭐ My Watchlist</h2>
+                <button class="modal-close" onclick="closeWatchlistModal()">✕</button>
+            </div>
+            <div id="modal-watchlist-items"></div>
+        </div>
+    </div>
+
+        <script>
+        // --- Backtest Integration ---
+        let currentTicker = null;
+        const runBacktestBtn = document.getElementById("run-backtest-btn");
+        const backtestStatus = document.getElementById("backtest-status");
+        let backtestInProgress = false;
+
+        function showBacktestButton(ticker) {
+            currentTicker = ticker;
+            runBacktestBtn.style.display = ticker ? "inline-block" : "none";
+            backtestStatus.textContent = "";
+        }
+
+        runBacktestBtn.addEventListener("click", async () => {
+            if (!currentTicker || backtestInProgress) return;
+            backtestInProgress = true;
+            runBacktestBtn.disabled = true;
+            backtestStatus.textContent = "Running backtest...";
+
+            try {
+                // Use EventSource for streaming logs (can be improved to show progress)
+                const evtSource = new EventSource(`/api/backtest/stream?ticker=${currentTicker}`);
+                let summary = "";
+                let foundSummary = false;
+                evtSource.onmessage = function(event) {
+                    const msg = event.data;
+                    // Look for summary line (customize this as needed)
+                    if (msg.startsWith("SUMMARY:")) {
+                        summary = msg.replace("SUMMARY:", "").trim();
+                        foundSummary = true;
+                    }
+                };
+                evtSource.onerror = function() {
+                    evtSource.close();
+                    backtestInProgress = false;
+                    runBacktestBtn.disabled = false;
+                    if (foundSummary && summary) {
+                        backtestStatus.textContent = summary;
+                    } else {
+                        backtestStatus.textContent = "Backtest complete (see details in transparency tab).";
+                    }
+                };
+                // Timeout fallback
+                setTimeout(() => {
+                    if (backtestInProgress) {
+                        evtSource.close();
+                        backtestInProgress = false;
+                        runBacktestBtn.disabled = false;
+                        backtestStatus.textContent = foundSummary && summary ? summary : "Backtest complete.";
+                    }
+                }, 60000);
+            } catch (err) {
+                backtestInProgress = false;
+                runBacktestBtn.disabled = false;
+                backtestStatus.textContent = "Backtest failed.";
+            }
+        });
+        const tickerInput = document.getElementById("ticker-input");
+        const analyzeBtn = document.getElementById("analyze-btn");
+        const loadingEl = document.getElementById("loading");
+        const resultsEl = document.getElementById("results");
+        const errorContainer = document.getElementById("error-container");
+        
+        // View Watchlist button in header
+        document.getElementById("view-watchlist-btn")?.addEventListener("click", () => {
+            loadWatchlistModal();
+        });
+
+        // Back to Home button
+        const homeBtn = document.getElementById("home-btn");
+        if (homeBtn) {
+            homeBtn.addEventListener("click", () => {
+                window.location.href = "/home";
+            });
+        }
+
+        // Enter key to search
+        tickerInput.addEventListener("keypress", (e) => {
+            if (e.key === "Enter") analyzeBtn.click();
+        });
+
+        // Auto-capitalize ticker input
+        tickerInput.addEventListener("input", (e) => {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        analyzeBtn.addEventListener("click", async () => {
+            const ticker = tickerInput.value.trim().toUpperCase();
+            if (!ticker) {
+                showError("Please enter a ticker symbol");
+                return;
+            }
+
+            await analyze(ticker);
+        });
+
+        // Auto-load ticker from URL parameter
+        window.addEventListener("load", () => {
+            const params = new URLSearchParams(window.location.search);
+            const urlTicker = params.get("ticker");
+            if (urlTicker) {
+                tickerInput.value = urlTicker.toUpperCase();
+                analyzeBtn.click();
+            }
+        });
+
+        // Logout button on header
+        const logoutBtnHeader = document.getElementById("logout-btn-header");
+        if (logoutBtnHeader) {
+            logoutBtnHeader.addEventListener("click", async () => {
+                try {
+                    const response = await fetch("/logout", {
+                        method: "GET",
+                        headers: { "Content-Type": "application/json" }
+                    });
+                    
+                    if (response.ok) {
+                        window.location.href = "/login";
+                    } else {
+                        alert("❌ Logout failed");
+                    }
+                } catch (error) {
+                    console.error("Logout error:", error);
+                    alert("❌ Logout error: " + error.message);
+                }
+            });
+        }
+
+        async function fetchAndDisplayBeginnerGuide(ticker) {
+            try {
+                const response = await fetch(`/api/beginner-guide/${ticker}`);
+                const data = await response.json();
+
+                if (!response.ok) {
+                    console.warn("Beginner guide error:", data.error);
+                    document.getElementById("beginner-explanation").style.display = "none";
+                    return;
+                }
+
+            } catch (err) {
+                console.warn("Could not fetch beginner guide:", err);
+            }
+        }
+
+    async function analyze(ticker) {
+            errorContainer.innerHTML = "";
+            loadingEl.style.display = "block";
+            resultsEl.classList.remove("show");
+            showBacktestButton(ticker);
+
+            try {
+                const response = await fetch(`/api/analyze?ticker=${ticker}`);
+                
+                const text = await response.text();
+                const data = JSON.parse(text);
+
+                if (!response.ok) {
+                    showError(data.error || "Analysis failed");
+                    return;
+                }
+
+                displayResults(data);
+            } catch (err) {
+                showError("Network error. Check console.");
+                console.error("[analyze] Error:", err);
+            } finally {
+                loadingEl.style.display = "none";
+            }
+        }
+
+        /**
+         * Generate AI-powered stock summary based on analysis data
+         */
+        function generateAISummary(data) {
+            const ticker = data.ticker;
+            const company = data.company;
+            const factor = data.factor || {};
+            const sentiment = data.sentiment || {};
+            const macro = data.macro || {};
+            const verdict = data.verdict;
+
+            // Generate bullish signals
+            const bullishSignals = [];
+            
+            if (factor.score >= 75) {
+                bullishSignals.push("📈 Strong momentum signal");
+            }
+            if (factor.momentum > 0.05) {
+                bullishSignals.push(`🚀 Positive 12-month momentum (${(factor.momentum * 100).toFixed(1)}%)`);
+            }
+            if (factor.rsi && factor.rsi.score >= 65) {
+                bullishSignals.push("💪 Strong RSI momentum");
+            }
+            if (sentiment.positive > sentiment.negative && sentiment.positive > 0) {
+                bullishSignals.push(`📰 Positive news sentiment (${sentiment.positive} bullish articles)`);
+            }
+            if (macro.vix && macro.vix < 20) {
+                bullishSignals.push("😌 Low market fear (VIX < 20)");
+            }
+            
+            // Generate bearish signals
+            const bearishSignals = [];
+            
+            if (factor.score < 40) {
+                bearishSignals.push("📉 Weak momentum signal");
+            }
+            if (factor.momentum < -0.05) {
+                bearishSignals.push(`🔻 Negative 12-month momentum (${(factor.momentum * 100).toFixed(1)}%)`);
+            }
+            if (factor.rsi && factor.rsi.score <= 35) {
+                bearishSignals.push("😴 Weak RSI momentum");
+            }
+            if (sentiment.negative > sentiment.positive && sentiment.negative > 0) {
+                bearishSignals.push(`📰 Negative news sentiment (${sentiment.negative} bearish articles)`);
+            }
+            if (macro.vix && macro.vix > 25) {
+                bearishSignals.push("😰 High market fear (VIX > 25)");
+            }
+
+            // Generate main insight
+            let mainInsight = "";
+            if (verdict === "green") {
+                mainInsight = `${company} (${ticker}) is showing strong bullish signals. `;
+                mainInsight += factor.score >= 75 ? "The momentum score is excellent, suggesting potential upside. " : "";
+                mainInsight += sentiment.positive > 0 ? `Recent news sentiment is positive, with ${sentiment.positive} bullish articles. ` : "";
+                mainInsight += "Consider this stock as a potential buying opportunity.";
+            } else if (verdict === "yellow") {
+                mainInsight = `${company} (${ticker}) is in a neutral zone with mixed signals. `;
+                mainInsight += "Monitor the technical indicators closely before making a decision. ";
+                mainInsight += "The stock could move either direction depending on upcoming catalysts.";
+            } else {
+                mainInsight = `${company} (${ticker}) is showing bearish signals at this time. `;
+                mainInsight += factor.score < 40 ? "The momentum score is weak, suggesting potential downside. " : "";
+                mainInsight += sentiment.negative > 0 ? `Recent news sentiment is negative. ` : "";
+                mainInsight += "Consider waiting for better technical setup before entering.";
+            }
+
+            // Generate recommendation
+            let recommendation = "";
+            if (verdict === "green") {
+                recommendation = `✅ Strong Buy Signal: With a factor score of ${factor.score}/100, positive momentum, and ${sentiment.positive || 'some'} bullish articles, this stock is positioned for potential gains. `;
+                recommendation += "Consider taking a position, but always maintain proper position sizing and stop losses.";
+            } else if (verdict === "yellow") {
+                recommendation = `⏸️ Hold/Wait Signal: At a factor score of ${factor.score}/100, this stock presents a mixed picture. `;
+                recommendation += "Wait for either stronger bullish confirmation or consider smaller positions to test support levels.";
+            } else {
+                recommendation = `⚠️ Sell/Avoid Signal: With a factor score of ${factor.score}/100 and mixed to negative signals, `;
+                recommendation += "this stock appears unfavorable at current levels. Wait for a reversal in technical indicators before reconsidering.";
+            }
+
+            // Key metrics
+            const keyMetrics = [
+                {
+                    label: "Factor Score",
+                    value: `${factor.score}/100`,
+                    color: factor.score >= 75 ? "green" : factor.score >= 40 ? "yellow" : "red"
+                },
+                {
+                    label: "Momentum",
+                    value: `${(factor.momentum * 100).toFixed(1)}%`,
+                    color: factor.momentum > 0 ? "green" : "red"
+                },
+                {
+                    label: "RSI",
+                    value: factor.rsi?.rsi_value ? `${factor.rsi.rsi_value.toFixed(0)}` : "N/A",
+                    color: factor.rsi?.rsi_value > 70 ? "red" : factor.rsi?.rsi_value < 30 ? "green" : "yellow"
+                },
+                {
+                    label: "Sentiment",
+                    value: sentiment.positive > sentiment.negative ? "Positive" : sentiment.negative > sentiment.positive ? "Negative" : "Neutral",
+                    color: sentiment.positive > sentiment.negative ? "green" : sentiment.negative > sentiment.positive ? "red" : "yellow"
+                }
+            ];
+
+            return {
+                mainInsight,
+                bullishSignals: bullishSignals.length > 0 ? bullishSignals : ["No strong bullish signals at this time"],
+                bearishSignals: bearishSignals.length > 0 ? bearishSignals : ["No strong bearish signals at this time"],
+                keyMetrics,
+                recommendation
+            };
+        }
+
+        /**
+         * Display AI summary in the UI
+         */
+        function displayAISummary(data) {
+            // This function is now deprecated. All AI summary content is populated
+            // directly in the Overview tab via displayResults().
+            // Keeping this stub for backward compatibility.
+            return;
+        }
+
+        function displayResults(data) {
+            // Safety check: ensure we have the required data
+            if (!data || !data.verdict || !data.factor || !data.macro) {
+                showError("Incomplete analysis data received. Please try again.");
+                return;
+            }
+            
+            // Company info
+            document.getElementById("company-name").textContent = data.company;
+            document.getElementById("company-ticker").textContent = `${data.ticker}`;
+
+            // Verdict - Update new professional layout
+            const verdictLabel = {"green": "Buy signal", "yellow": "Hold", "red": "Sell signal"}[data.verdict];
+            const signalBadge = document.getElementById("signal-badge");
+            signalBadge.textContent = verdictLabel;
+            signalBadge.className = `signal-badge ${data.verdict}`;
+            signalBadge.innerHTML = `<span style="margin-right: 4px;">●</span>${verdictLabel}`;
+            
+            // Update signal description
+            const descriptionText = `Based on momentum, macro conditions, and sentiment, this stock is showing a ${verdictLabel.toLowerCase()}.`;
+            document.getElementById("signal-description").textContent = descriptionText;
+            
+            // Update signal strength score
+            if (data.factor && data.factor.score !== undefined) {
+                const score = data.factor.score;
+                document.getElementById("signal-score").textContent = score;
+                const fillPercent = Math.min(score, 100);
+                document.getElementById("strength-bar-fill").style.width = fillPercent + "%";
+                
+                // Populate key metrics grid
+                const metricsContainer = document.getElementById("key-metrics-container");
+                let metricsHtml = '';
+                
+                // Factor Score
+                metricsHtml += `
+                    <div class="metric-box">
+                        <div class="metric-label">Factor score</div>
+                        <div class="metric-value">${score}/100</div>
+                        <div class="metric-detail">${data.factor.label || 'Momentum'}</div>
+                    </div>
+                `;
+                
+                // Momentum
+                if (data.factor.momentum !== undefined) {
+                    metricsHtml += `
+                        <div class="metric-box">
+                            <div class="metric-label">Momentum</div>
+                            <div class="metric-value" style="color: ${data.factor.momentum > 0 ? 'var(--success)' : 'var(--danger)'};">
+                                ${data.factor.momentum > 0 ? '+' : ''}${data.factor.momentum}%
+                            </div>
+                            <div class="metric-detail">12-month return</div>
+                        </div>
+                    `;
+                }
+                
+                // RSI
+                if (data.technical && data.technical.rsi !== undefined) {
+                    const rsiValue = data.technical.rsi;
+                    const rsiLabel = rsiValue > 70 ? 'Overbought' : rsiValue < 30 ? 'Oversold' : 'Neutral';
+                    metricsHtml += `
+                        <div class="metric-box">
+                            <div class="metric-label">RSI</div>
+                            <div class="metric-value">${rsiValue}</div>
+                            <div class="metric-detail">${rsiLabel}</div>
+                        </div>
+                    `;
+                }
+                
+                // Sentiment
+                if (data.sentiment && data.sentiment.overall !== undefined) {
+                    const sentiment = data.sentiment.overall;
+                    const sentimentLabel = sentiment > 0.5 ? 'Positive' : sentiment < -0.5 ? 'Negative' : 'Mixed';
+                    const bullishCount = data.sentiment.positive_articles || 0;
+                    metricsHtml += `
+                        <div class="metric-box">
+                            <div class="metric-label">Sentiment</div>
+                            <div class="metric-value" style="color: ${sentiment > 0 ? 'var(--success)' : 'var(--danger)'};">${sentimentLabel}</div>
+                                                                                                             <div class="metric-detail">${bullishCount} bullish articles</div>
+                        </div>
+                    `;
+                }
+                
+                metricsContainer.innerHTML = metricsHtml;
+                metricsContainer.style.display = 'grid';
+                
+                // Show AI insight
+                if (data.explanation && data.explanation.summary) {
+                    document.getElementById("ai-insight-text-content").textContent = data.explanation.summary;
+                    document.getElementById("ai-insight-section").style.display = 'block';
+                }
+                
+                // Show recommendation if available
+                if (data.explanation && data.explanation.recommendation) {
+                    document.getElementById("recommendation-text").textContent = data.explanation.recommendation;
+                    document.getElementById("recommendation-section").style.display = 'block';
+                }
+            }
+            
+            // Keep legacy fields for backward compatibility (hidden)
+            document.getElementById("verdict-label").textContent = verdictLabel;
+            document.getElementById("verdict-label").className = `verdict-label ${data.verdict}`;
+            
+            // Add score and confidence to verdict card
+            if (data.factor && data.factor.score !== undefined) {
+                let confidenceHtml = '';
+                if (data.explanation && data.explanation.confidence) {
+                    const conf = data.explanation.confidence;
+                    confidenceHtml = `
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1.5px solid var(--border-color);">
+                            <strong>Confidence:</strong> ${conf.confidence}% (${conf.factors_aligned}/${conf.factors_total} signals aligned)<br>
+                            <small style="color: var(--text-secondary);">${conf.explanation}</small>
+                        </div>
+                    `;
+                }
+                document.getElementById("verdict-score").innerHTML = 
+                    `<strong>Signal Strength:</strong> ${data.factor.score}/100<br><small>Use this score to compare different stocks</small>${confidenceHtml}`;
+            }
+            
+            // Add warnings if present
+            if (data.explanation && data.explanation.warnings && data.explanation.warnings.length > 0) {
+                const warningsHtml = data.explanation.warnings.map(w => `<div style="padding: 8px 0; border-bottom: 1px solid #FFE2E2;">• ${w}</div>`).join('');
+                const warningsSection = document.createElement('div');
+                warningsSection.innerHTML = `
+                    <div style="margin-top: 16px; padding: 16px; background: #FEE2E2; border: 1.5px solid #FECACA; border-radius: 8px;">
+                        <div style="color: #991B1B; font-weight: 700; margin-bottom: 8px;">⚠️ Important Warnings:</div>
+                        ${warningsHtml}
+                    </div>
+                `;
+                const resultsPanel = document.getElementById("results-panel");
+                if (resultsPanel && warningsHtml.trim()) {
+                    resultsPanel.parentElement.insertBefore(warningsSection, resultsPanel.nextSibling);
+                }
+            }
+
+            // Fetch and display beginner guide
+            fetchAndDisplayBeginnerGuide(data.ticker);
+
+            // Factor Score
+            const factor = data.factor;
+            const scoreClass = factor.score >= 75 ? "strong" : factor.score >= 60 ? "moderate" : factor.score >= 40 ? "weak" : "negative";
+            document.getElementById("score-circle").textContent = factor.score;
+            document.getElementById("score-circle").className = `score-circle ${scoreClass}`;
+            document.getElementById("score-label").textContent = factor.label;
+            document.getElementById("score-momentum").textContent = `Momentum: ${factor.momentum > 0 ? "+" : ""}${factor.momentum}`;
+            if (factor.explanation) {
+                document.getElementById("score-explanation").textContent = factor.explanation;
+            }
+
+            // Macro
+            // VIX (Fear Index)
+            const vixValue = data.macro && data.macro.vix;
+            if (vixValue !== null && vixValue !== undefined && vixValue !== false) {
+                document.getElementById("vix-value").textContent = `${vixValue} — ${data.macro.vix_label || 'N/A'}`;
+            } else {
+                document.getElementById("vix-value").textContent = "N/A";
+            }
+            
+            // 10Y Yield - handle null/undefined/0 values
+            const yield10y = data.macro && data.macro.yield_10y;
+            if (yield10y !== null && yield10y !== undefined && yield10y !== false) {
+                document.getElementById("yield-value").textContent = `${yield10y}% — ${data.macro.yield_label || 'N/A'}`;
+            } else {
+                document.getElementById("yield-value").textContent = "N/A";
+            }
+            
+            // Sector
+            document.getElementById("sector-value").textContent = (data.macro && data.macro.sector) || "Unknown";
+            
+            // Macro Summary
+            document.getElementById("macro-summary").textContent = (data.macro && data.macro.summary) || "Data unavailable";
+
+            // Sentiment
+            const sentimentHtml = `
+                <span class="sentiment-badge sentiment-positive">${data.sentiment.positive} Positive</span>
+                <span class="sentiment-badge sentiment-negative">${data.sentiment.negative} Negative</span>
+                <span class="sentiment-badge sentiment-neutral">${data.sentiment.neutral} Neutral</span>
+            `;
+            document.getElementById("sentiment-badges").innerHTML = sentimentHtml;
+            
+            // Enhanced summary with note about news availability
+            let summaryText = data.sentiment.summary;
+            if (data.sentiment.headlines.length === 0) {
+                summaryText += " (News API rate limit reached — try again in a few hours)";
+            }
+            document.getElementById("sentiment-summary").textContent = summaryText;
+
+            const headlinesHtml = data.sentiment.headlines.length > 0
+                ? data.sentiment.headlines.map(h => `<div class="headline">• ${h}</div>`).join("")
+                : "<div class='headline' style='color: #999;'>No recent headlines available</div>";
+            document.getElementById("headlines").innerHTML = headlinesHtml;
+
+            // Factor Delay - Signal Timing
+            if (data.factor_delay && !data.factor_delay.error) {
+                const delays = data.factor_delay.delays || {};
+                let delayHtml = '';
+                const sortedDelays = Object.values(delays).sort((a, b) => (a.days_ago || 0) - (b.days_ago || 0));
+                
+                for (const delayData of sortedDelays) {
+                    const returnClass = delayData.return_pct > 0 ? 'positive' : delayData.return_pct < 0 ? 'negative' : 'neutral';
+                    const label = delayData.label || `${delayData.days_ago} days`;
+                    delayHtml += `
+                        <div class="factor-delay-row">
+                            <div>
+                                <div class="factor-delay-label">${label} ago</div>
+                                <div class="factor-delay-interpretation">$${delayData.price_then} → $${delayData.price_now}</div>
+                            </div>
+                            <div class="factor-delay-return ${returnClass}">
+                                ${delayData.return_pct > 0 ? '+' : ''}${delayData.return_pct}%
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                if (delayHtml) {
+                    document.getElementById("factor-delay-content").innerHTML = delayHtml;
+                } else {
+                    document.getElementById("factor-delay-content").innerHTML = '<p style="color: #999;">Insufficient data for delay analysis</p>';
+                }
+            } else {
+                if (data.factor_delay && data.factor_delay.error) {
+                    console.warn("⚠️ Factor delay error:", data.factor_delay.error);
+                    document.getElementById("factor-delay-content").innerHTML = `<p style="color: #999;"><small>${data.factor_delay.error}</small></p>`;
+                } else {
+                    console.warn("⚠️ No factor_delay data in response:", data);
+                    document.getElementById("factor-delay-content").innerHTML = '<p style="color: #999;">Signal timing data unavailable</p>';
+                }
+            }
+
+            // Display technical watch zones
+            if (data.entry_exit && !data.entry_exit.error) {
+                const ee = data.entry_exit;
+                const renderZoneBlock = (zone, color) => `
+                    <div style="padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                        <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">${zone.label}</small>
+                        <div style="font-size: 1.15em; font-weight: 700; color: ${color}; margin-bottom: 4px;">${zone.range_label}</div>
+                        <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.5;">
+                            ${zone.basis}<br>
+                            Anchor: $${zone.anchor}
+                        </div>
+                    </div>
+                `;
+
+                const entryExitHtml = `
+                    <div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 16px;">
+                            <div>
+                                <h4 style="color: var(--success); margin-bottom: 12px; font-size: 0.9em; font-weight: 600;">Entry watch zones</h4>
+                                ${renderZoneBlock(ee.entry_watch_zones.conservative, 'var(--success)')}
+                                ${renderZoneBlock(ee.entry_watch_zones.moderate, 'var(--success)')}
+                                <div style="padding-top: 12px;">
+                                    <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">${ee.entry_watch_zones.aggressive.label}</small>
+                                    <div style="font-size: 1.15em; font-weight: 700; color: var(--success); margin-bottom: 4px;">${ee.entry_watch_zones.aggressive.range_label}</div>
+                                    <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.5;">
+                                        ${ee.entry_watch_zones.aggressive.basis}<br>
+                                        Anchor: $${ee.entry_watch_zones.aggressive.anchor}
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 style="color: var(--danger); margin-bottom: 12px; font-size: 0.9em; font-weight: 600;">Exit watch zones</h4>
+                                ${renderZoneBlock(ee.exit_watch_zones.conservative, 'var(--danger)')}
+                                ${renderZoneBlock(ee.exit_watch_zones.moderate, 'var(--danger)')}
+                                <div style="padding-top: 12px;">
+                                    <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">${ee.exit_watch_zones.ambitious.label}</small>
+                                    <div style="font-size: 1.15em; font-weight: 700; color: var(--danger); margin-bottom: 4px;">${ee.exit_watch_zones.ambitious.range_label}</div>
+                                    <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.5;">
+                                        ${ee.exit_watch_zones.ambitious.basis}<br>
+                                        Anchor: $${ee.exit_watch_zones.ambitious.anchor}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Current price</small>
+                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 700;">$${ee.current}</div>
+                            </div>
+                            <div>
+                                <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Trend context</small>
+                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 700; text-transform: capitalize;">${ee.trend_context}</div>
+                            </div>
+                            <div>
+                                <small style="color: var(--text-secondary); display: block; margin-bottom: 4px;">Volatility buffer</small>
+                                <div style="color: var(--text-primary); font-size: 1.1em; font-weight: 700;">${ee.zone_width_pct}%</div>
+                            </div>
+                        </div>
+                        <div style="padding-top: 12px; border-top: 1px solid var(--border-color);">
+                            <div style="font-size: 0.85em; color: var(--text-secondary); line-height: 1.6; margin-bottom: 8px;">${ee.summary}</div>
+                            <div style="font-size: 0.82em; color: var(--text-secondary); line-height: 1.6;">${ee.disclaimer}</div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById("entry-exit-content").innerHTML = entryExitHtml;
+            }
+
+            // Display Stock Correlation Analysis
+            if (data.correlation && !data.correlation.error) {
+                const corr = data.correlation;
+                const correlationHtml = `
+                    <div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px;">
+                            ${Object.entries(corr.correlations).map(([ticker, value]) => {
+                                const color = value > 0.75 ? '#EF4444' : value > 0.5 ? '#F59E0B' : value > 0.25 ? '#3B82F6' : '#10B981';
+                                return `
+                                    <div style="padding: 12px; text-align: center; border-left: 3px solid ${color};">
+                                        <div style="font-size: 0.85em; color: var(--text-secondary); margin-bottom: 6px; font-weight: 600;">${ticker}</div>
+                                        <div style="font-size: 1.3em; font-weight: 700; color: ${color};">${value}</div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        <div style="padding-top: 16px; border-top: 1px solid var(--border-color);">
+                            <small style="color: var(--text-secondary); line-height: 1.6;">${corr.overall_interpretation}</small>
+                        </div>
+                    </div>
+                `;
+                document.getElementById("correlation-content").innerHTML = correlationHtml;
+            }
+
+            // Save to history and load watchlist
+            saveAnalysisToHistory(data);
+            loadWatchlist();
+            currentTimeframe = "6M";  // Reset to default
+            loadPriceChart(data.ticker, currentTimeframe);
+            
+            // Reset timeframe buttons
+            document.querySelectorAll(".timeframe-btn").forEach(btn => {
+                btn.classList.toggle("active", btn.textContent === "6M");
+            });
+            
+            // Enable watchlist button
+            document.getElementById("add-to-watchlist").onclick = () => addToWatchlist(data.ticker);
+            
+            resultsEl.classList.add("show");
+
+            // Display AI summary
+            displayAISummary(data);
+            
+            // Populate Overview tab with bullish/bearish signals
+            const summary = generateAISummary(data);
+            
+            // Show AI insight in Overview tab
+            if (summary.mainInsight) {
+                document.getElementById("ai-insight-text-overview").textContent = summary.mainInsight;
+                document.getElementById("ai-insight-section-overview").style.display = 'block';
+            }
+            
+            // Bullish signals (remove emoji for cleaner display)
+            const bullishHtml = summary.bullishSignals
+                .map(signal => {
+                    // Remove emoji, keep just the text
+                    const text = signal.replace(/^[^\w]+ /, '');
+                    return `<div style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+                        <span style="position: absolute; left: 0; color: var(--success); font-weight: 700;">●</span>
+                        ${text}
+                    </div>`;
+                })
+                .join("");
+            document.getElementById("bullish-signals-overview").innerHTML = bullishHtml || "<div>No strong bullish signals at this time</div>";
+            
+            // Bearish signals (remove emoji for cleaner display)
+            const bearishHtml = summary.bearishSignals
+                .map(signal => {
+                    // Remove emoji, keep just the text
+                    const text = signal.replace(/^[^\w]+ /, '');
+                    return `<div style="margin-bottom: 12px; padding-left: 20px; position: relative;">
+                        <span style="position: absolute; left: 0; color: var(--danger); font-weight: 700;">●</span>
+                        ${text}
+                    </div>`;
+                })
+                .join("");
+            document.getElementById("bearish-signals-overview").innerHTML = bearishHtml || "<div>No strong bearish signals at this time</div>";
+            
+            // Show recommendation in Overview tab
+            if (summary.recommendation) {
+                document.getElementById("recommendation-text-overview").textContent = summary.recommendation;
+                document.getElementById("recommendation-section-overview").style.display = 'block';
+            }
+        }
+
+        function showError(msg) {
+            errorContainer.innerHTML = `<div class="error">${msg}</div>`;
+        }
+
+        // ===== NEW FEATURES: Charts, Watchlist, History =====
+        let priceChart = null;
+        let currentTimeframe = "6M";  // Default timeframe
+        const sessionId = `session_${Date.now()}`;
+        
+        // DEVELOPMENT: Clear old localStorage data on page load
+        // This ensures we're testing with Supabase, not stale localStorage
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            localStorage.removeItem('watchlist');
+            console.log("✅ Cleared old localStorage watchlist data (development mode)");
+        }
+        
+        // Local watchlist storage (fallback when Supabase not available)
+        const getLocalWatchlist = () => JSON.parse(localStorage.getItem('watchlist') || '[]');
+        const setLocalWatchlist = (items) => localStorage.setItem('watchlist', JSON.stringify(items));
+
+        // New tab switching for analysis tabs (Overview, Deep Dive, Levels, Watchlist)
+        function switchAnalysisTab(evt, tab) {
+            // Hide all tabs
+            document.getElementById("tab-overview").style.display = "none";
+            document.getElementById("tab-chart").style.display = "none";
+            document.getElementById("tab-deep-dive").style.display = "none";
+            document.getElementById("tab-levels").style.display = "none";
+            document.getElementById("tab-watchlist").style.display = "none";
+            document.getElementById("tab-compare").style.display = "none";
+
+            // Show selected tab
+            if (tab === "overview") {
+                document.getElementById("tab-overview").style.display = "block";
+            } else if (tab === "chart") {
+                document.getElementById("tab-chart").style.display = "block";
+                // Load chart with current ticker
+                const ticker = document.getElementById("company-ticker")?.textContent || "";
+                if (ticker) {
+                    loadPriceChart(ticker, typeof currentTimeframe !== 'undefined' ? currentTimeframe : "6M");
+                }
+            } else if (tab === "deep-dive") {
+                document.getElementById("tab-deep-dive").style.display = "block";
+            } else if (tab === "levels") {
+                document.getElementById("tab-levels").style.display = "block";
+            } else if (tab === "watchlist") {
+                document.getElementById("tab-watchlist").style.display = "block";
+                loadWatchlist(); // Load watchlist when tab is clicked
+            } else if (tab === "compare") {
+                document.getElementById("tab-compare").style.display = "block";
+                // Load comparison data if needed
+                loadComparisonData();
+            }
+
+            // Update button states
+            document.querySelectorAll(".tab-button").forEach(btn => btn.classList.remove("active"));
+            evt.target.classList.add("active");
+        }
+
+        function switchTab(evt, tab) {
+            // Hide all tabs
+            document.getElementById("chart-tab").style.display = "none";
+            document.getElementById("watchlist-tab").style.display = "none";
+            
+            // Show selected tab
+            if (tab === "chart") {
+                document.getElementById("chart-tab").style.display = "block";
+            } else if (tab === "watchlist") {
+                document.getElementById("watchlist-tab").style.display = "block";
+                loadWatchlist(); // Load watchlist when tab is clicked
+            }
+
+            // Update button states
+            document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+            evt.target.classList.add("active");
+        }
+
+        async function loadPriceChart(ticker, timeframe = "6M") {
+            try {
+                // Fetch price data
+                const priceResponse = await fetch(`/api/price-chart?ticker=${ticker}&timeframe=${timeframe}`);
+                const priceData = await priceResponse.json();
+                if (!priceResponse.ok) return;
+
+                // Fetch signal history
+                const signalResponse = await fetch(`/api/signal-history?ticker=${ticker}&timeframe=${timeframe}`);
+                const signalData = await signalResponse.json();
+                if (!signalResponse.ok) {
+                    console.warn("⚠️ Signal history not available:", signalData.error);
+                }
+
+                const ctx = document.getElementById("priceChart");
+                if (!ctx) return;
+
+                // Destroy old chart if exists
+                if (priceChart) priceChart.destroy();
+
+                // Build datasets
+                const datasets = [{
+                    label: `${ticker} Price`,
+                    data: priceData.prices.map(p => p[1]),
+                    borderColor: "#2a5298",
+                    backgroundColor: "rgba(42, 82, 152, 0.1)",
+                    tension: 0.1,
+                    fill: true,
+                    yAxisID: 'y'
+                }];
+
+                // Add momentum overlay if available
+                let hasSignalData = false;
+                if (signalData && signalData.history && Array.isArray(signalData.history)) {
+                    hasSignalData = true;
+                    const momentumData = signalData.history.map(point => point.momentum);
+                    datasets.push({
+                        label: "Momentum Score",
+                        data: momentumData,
+                        borderColor: "#ff6b6b",
+                        backgroundColor: "rgba(255, 107, 107, 0.1)",
+                        tension: 0.1,
+                        fill: false,
+                        borderDash: [5, 5],
+                        yAxisID: 'y1'
+                    });
+                }
+
+                priceChart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: priceData.prices.map(p => new Date(p[0]).toLocaleDateString()),
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: { 
+                                display: true,
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 15
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(0,0,0,0.8)',
+                                padding: 12,
+                                titleFont: { size: 14 },
+                                bodyFont: { size: 13 }
+                            }
+                        },
+                        scales: {
+                            y: { 
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                beginAtZero: false,
+                                title: {
+                                    display: true,
+                                    text: 'Price ($)'
+                                }
+                            },
+                            ...(hasSignalData && {
+                                y1: {
+                                    type: 'linear',
+                                    display: true,
+                                    position: 'right',
+                                    beginAtZero: true,
+                                    title: {
+                                        display: true,
+                                        text: 'Momentum (%)'
+                                    },
+                                    grid: {
+                                        drawOnChartArea: false,
+                                    }
+                                }
+                            })
+                        }
+                    }
+                });
+
+                // Display signal statistics below chart
+                if (hasSignalData) {
+                    const stats = signalData.statistics || {};
+                    const statsHtml = `
+                        <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 8px; font-size: 0.9em;">
+                            <strong style="color: #2a5298;">📊 Momentum Statistics (${timeframe}):</strong>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px;">
+                                <div>Current: <span style="font-weight: 600; color: ${stats.current_momentum > 0 ? '#28a745' : '#dc3545'}">${stats.current_momentum?.toFixed(2)}%</span></div>
+                                <div>Best: <span style="font-weight: 600; color: #28a745">${stats.best_momentum?.toFixed(2)}%</span></div>
+                                <div>Worst: <span style="font-weight: 600; color: #dc3545">${stats.worst_momentum?.toFixed(2)}%</span></div>
+                                <div>Average: <span style="font-weight: 600; color: #6c757d">${stats.avg_momentum?.toFixed(2)}%</span></div>
+                            </div>
+                        </div>
+                    `;
+                    const container = ctx.parentElement;
+                    let statsDiv = container.querySelector('.momentum-stats');
+                    if (!statsDiv) {
+                        statsDiv = document.createElement('div');
+                        statsDiv.className = 'momentum-stats';
+                        container.appendChild(statsDiv);
+                    }
+                    statsDiv.innerHTML = statsHtml;
+                }
+            } catch (e) {
+                console.error("Failed to load price chart:", e);
+            }
+        }
+
+        function changeTimeframe(evt, timeframe) {
+            // Get current ticker from analysis
+            const ticker = document.getElementById("company-ticker")?.textContent || "";
+            
+            if (!ticker) {
+                console.log("⚠️ No ticker selected, cannot change timeframe");
+                return;
+            }
+            
+            // Update current timeframe
+            currentTimeframe = timeframe;
+            
+            // Update button states
+            document.querySelectorAll(".timeframe-btn").forEach(btn => {
+                btn.classList.toggle("active", btn.textContent === timeframe);
+            });
+            
+            // Reload chart with new timeframe
+            loadPriceChart(ticker, timeframe);
+        }
+
+        async function addToWatchlist(ticker) {
+            try {
+                // Try Supabase first
+                const response = await fetch("/api/watchlist", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ session_id: sessionId, ticker })
+                });
+
+                if (response.ok) {
+                    alert(`✅ ${ticker} added to watchlist!`);
+                    loadWatchlist();
+                    return;
+                }
+            } catch (e) {
+                console.log("Supabase unavailable, using local storage");
+            }
+            
+            // Fallback to localStorage
+            const items = getLocalWatchlist();
+            if (!items.includes(ticker)) {
+                items.push(ticker);
+                setLocalWatchlist(items);
+                alert(`✅ ${ticker} added to watchlist (local)!`);
+                loadWatchlist();
+            } else {
+                alert(`❌ ${ticker} already in watchlist!`);
+            }
+        }
+
+        async function loadWatchlist() {
+            // Try Supabase first
+            try {
+                const response = await fetch(`/api/watchlist?session_id=${sessionId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const container = document.getElementById("watchlist-items");
+                    
+                    if (!data.watchlist || data.watchlist.length === 0) {
+                        container.innerHTML = "<p style='color: #999;'>No items in watchlist yet.</p>";
+                        return;
+                    }
+
+                    // API returns flat array of tickers: ["AAPL", "NVDA"]
+                    container.innerHTML = data.watchlist.map(ticker => `
+                        <div class="watchlist-item">
+                            <div>
+                                <span class="watchlist-ticker" onclick="analyzeFromWatchlist('${ticker}')">${ticker}</span>
+                            </div>
+                            <button class="watchlist-btn" onclick="removeFromWatchlist('${ticker}')">Remove</button>
+                        </div>
+                    `).join("");
+                    return;
+                }
+            } catch (e) {
+                console.log("Supabase unavailable, using local storage");
+            }
+            
+            // Fallback to localStorage
+            const items = getLocalWatchlist();
+            const container = document.getElementById("watchlist-items");
+            
+            if (!items || items.length === 0) {
+                container.innerHTML = "<p style='color: #999;'>No items in watchlist yet.</p>";
+                return;
+            }
+
+            container.innerHTML = items.map(ticker => `
+                <div class="watchlist-item">
+                    <span class="watchlist-ticker" onclick="analyzeFromWatchlist('${ticker}')">${ticker}</span>
+                    <button class="watchlist-btn" onclick="removeFromWatchlist('${ticker}')">Remove</button>
+                </div>
+            `).join("");
+        }
+
+        function analyzeFromWatchlist(ticker) {
+            // Set the ticker input and scroll to top
+            tickerInput.value = ticker;
+            tickerInput.focus();
+            
+            // Close modal if open
+            const modal = document.getElementById("watchlist-modal");
+            if (modal.classList.contains("show")) {
+                closeWatchlistModal();
+            }
+            
+            // Scroll to search box and analyze
+            document.querySelector(".search-box").scrollIntoView({ behavior: "smooth" });
+            setTimeout(() => analyze(ticker), 300);
+        }
+
+        async function removeFromWatchlist(ticker) {
+            try {
+                // Try Supabase first
+                const response = await fetch(`/api/watchlist?session_id=${sessionId}&ticker=${ticker}`, {
+                    method: "DELETE"
+                });
+
+                if (response.ok) {
+                    alert(`✅ ${ticker} removed from watchlist!`);
+                    loadWatchlist();
+                    return;
+                }
+            } catch (e) {
+                console.log("Supabase unavailable, using local storage");
+            }
+            
+            // Fallback to localStorage
+            const items = getLocalWatchlist();
+            const updated = items.filter(t => t !== ticker);
+            setLocalWatchlist(updated);
+            alert(`✅ ${ticker} removed from watchlist!`);
+            loadWatchlist();
+        }
+
+        // ===== NEW: MULTIPLE WATCHLISTS FUNCTIONS =====
+
+        let currentWatchlistId = null;
+
+        async function loadWatchlists() {
+            // Load all watchlists and populate selector
+            try {
+                const response = await fetch("/api/watchlists");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const selector = document.getElementById("watchlist-selector");
+                const addBtn = document.getElementById("add-to-watchlist");
+                const deleteBtn = document.getElementById("delete-watchlist-btn");
+
+                if (!data.watchlists || data.watchlists.length === 0) {
+                    selector.innerHTML = '<option value="">No watchlists yet - create one!</option>';
+                    addBtn.style.display = "none";
+                    deleteBtn.style.display = "none";
+                    return;
+                }
+
+                selector.innerHTML = '<option value="">Select a watchlist...</option>' +
+                    data.watchlists.map(wl => `<option value="${wl.id}">${wl.name} (${wl.tickers.length})</option>`).join("");
+
+                addBtn.style.display = "block";
+            } catch (e) {
+                console.error("Error loading watchlists:", e);
+            }
+        }
+
+        document.getElementById("watchlist-selector").addEventListener("change", async function() {
+            currentWatchlistId = this.value;
+            if (currentWatchlistId) {
+                document.getElementById("add-to-watchlist").style.display = "block";
+                document.getElementById("delete-watchlist-btn").style.display = "block";
+                loadWatchlistItems();
+            }
+        });
+
+        document.getElementById("new-watchlist-btn").addEventListener("click", async function() {
+            const name = prompt("📋 Enter watchlist name (e.g., 'Tech Stocks'):");
+            if (!name) return;
+
+            try {
+                const response = await fetch("/api/watchlists", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name })
+                });
+
+                if (response.ok) {
+                    alert(`✅ Watchlist '${name}' created!`);
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error creating watchlist:", e);
+                alert("❌ Failed to create watchlist");
+            }
+        });
+
+        document.getElementById("delete-watchlist-btn").addEventListener("click", async function() {
+            if (!currentWatchlistId) return;
+            if (!confirm("⚠️ Are you sure? This will delete the entire watchlist!")) return;
+
+            try {
+                const response = await fetch(`/api/watchlists/${currentWatchlistId}`, { method: "DELETE" });
+                if (response.ok) {
+                    alert("✅ Watchlist deleted!");
+                    currentWatchlistId = null;
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error deleting watchlist:", e);
+            }
+        });
+
+        async function loadWatchlistItems() {
+            // Load items for currently selected watchlist
+            if (!currentWatchlistId) return;
+
+            try {
+                const response = await fetch(`/api/watchlists`);
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const watchlist = data.watchlists.find(wl => wl.id === currentWatchlistId);
+                
+                if (!watchlist) return;
+
+                const container = document.getElementById("watchlist-items");
+                if (!watchlist.tickers || watchlist.tickers.length === 0) {
+                    container.innerHTML = "<p style='color: #999;'>No items in this watchlist yet.</p>";
+                    return;
+                }
+
+                container.innerHTML = watchlist.tickers.map(ticker => `
+                    <div class="watchlist-item">
+                        <span class="watchlist-ticker" onclick="analyzeFromWatchlist('${ticker}')">${ticker}</span>
+                        <button class="watchlist-btn" onclick="removeTickerFromWatchlist('${ticker}')">Remove</button>
+                    </div>
+                `).join("");
+            } catch (e) {
+                console.error("Error loading watchlist items:", e);
+            }
+        }
+
+        async function removeTickerFromWatchlist(ticker) {
+            if (!currentWatchlistId) return;
+
+            try {
+                const response = await fetch(`/api/watchlists/${currentWatchlistId}/ticker`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ticker })
+                });
+
+                if (response.ok) {
+                    alert(`✅ ${ticker} removed!`);
+                    loadWatchlistItems();
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error removing ticker:", e);
+            }
+        }
+
+        async function addCurrentTickerToWatchlist() {
+            if (!currentWatchlistId) {
+                alert("⚠️ Please select a watchlist first!");
+                return;
+            }
+
+            const ticker = (document.getElementById("company-ticker").textContent || "").trim();
+            if (!ticker) {
+                alert("⚠️ No ticker to add!");
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/watchlists/${currentWatchlistId}/ticker`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ticker })
+                });
+
+                if (response.ok) {
+                    alert(`✅ ${ticker} added to watchlist!`);
+                    loadWatchlistItems();
+                    loadWatchlists();
+                }
+            } catch (e) {
+                console.error("Error adding ticker:", e);
+            }
+        }
+
+        // Update the add-to-watchlist button
+        document.getElementById("add-to-watchlist").addEventListener("click", addCurrentTickerToWatchlist);
+
+        // Load watchlists on page load
+        window.addEventListener("load", function() {
+            setTimeout(() => {
+                loadWatchlists();
+            }, 1000);
+        });
+
+        async function saveAnalysisToHistory(data) {
+            try {
+                await fetch("/api/save-analysis", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        session_id: sessionId,
+                        ticker: data.ticker,
+                        verdict: data.verdict,
+                        factor_score: data.factor.score,
+                        macro_context: data.macro,
+                        sentiment: data.sentiment
+                    })
+                });
+            } catch (e) {
+                console.error("Failed to save analysis:", e);
+            }
+        }
+
+        // Modal functions for watchlist
+        async function loadWatchlistModal() {
+            const modal = document.getElementById("watchlist-modal");
+            const container = document.getElementById("modal-watchlist-items");
+            
+            // Try Supabase first
+            try {
+                const response = await fetch(`/api/watchlist?session_id=${sessionId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (!data.watchlist || data.watchlist.length === 0) {
+                        container.innerHTML = "<p style='color: #999; text-align: center; padding: 20px;'>No items in watchlist yet.</p>";
+                        modal.classList.add("show");
+                        return;
+                    }
+
+                    // API returns flat array of tickers: ["AAPL", "NVDA"]
+                    container.innerHTML = data.watchlist.map(ticker => `
+                        <div class="watchlist-item">
+                            <div>
+                                <span class="watchlist-ticker" onclick="analyzeFromWatchlistModal('${ticker}')">${ticker}</span>
+                            </div>
+                            <button class="watchlist-btn" onclick="removeFromWatchlist('${ticker}')">Remove</button>
+                        </div>
+                    `).join("");
+                    modal.classList.add("show");
+                    return;
+                }
+            } catch (e) {
+                console.log("Supabase unavailable, using local storage");
+            }
+            
+            // Fallback to localStorage
+            const items = getLocalWatchlist();
+            
+            if (!items || items.length === 0) {
+                container.innerHTML = "<p style='color: #999; text-align: center; padding: 20px;'>No items in watchlist yet.</p>";
+            } else {
+                container.innerHTML = items.map(ticker => `
+                    <div class="watchlist-item">
+                        <span class="watchlist-ticker" onclick="analyzeFromWatchlistModal('${ticker}')">${ticker}</span>
+                        <button class="watchlist-btn" onclick="removeFromWatchlist('${ticker}')">Remove</button>
+                    </div>
+                `).join("");
+            }
+            
+            modal.classList.add("show");
+        }
+
+        function closeWatchlistModal() {
+            const modal = document.getElementById("watchlist-modal");
+            modal.classList.remove("show");
+        }
+
+        function analyzeFromWatchlistModal(ticker) {
+            // Close modal first
+            closeWatchlistModal();
+            
+            // Set the ticker and analyze
+            tickerInput.value = ticker;
+            setTimeout(() => analyze(ticker), 300);
+        }
+
+        // Close modal when clicking outside
+        window.addEventListener("click", (event) => {
+            const modal = document.getElementById("watchlist-modal");
+            if (event.target === modal) {
+                modal.classList.remove("show");
+            }
+        });
+
+        // ===== AUTHENTICATION HANDLED BY FLASK =====
+        // Auth is managed server-side via Flask sessions + Firebase REST API
+        // No client-side Firebase code needed here
+
+        // ===== DASHBOARD FUNCTIONS (Option A, B, C) =====
+
+        // Load all dashboards on page load
+        window.addEventListener("load", () => {
+            loadDashboards();
+            // Refresh every 5 minutes
+            setInterval(loadDashboards, 5 * 60 * 1000);
+        });
+
+        async function loadDashboards() {
+            await loadPortfolioDashboard();    // Option A
+            await loadWatchlistSummary();      // Option B
+            await loadMarketSummary();         // Option C
+        }
+
+        // OPTION A: PORTFOLIO DASHBOARD
+        async function loadPortfolioDashboard() {
+            try {
+                const response = await fetch("/api/dashboard/portfolio");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // Show dashboard if there are holdings
+                const dashboardGrid = document.getElementById("dashboard-grid");
+                if (data.holdings_count > 0) {
+                    dashboardGrid.style.display = "grid";
+                    
+                    // Update Portfolio Card
+                    document.getElementById("portfolio-value").textContent = `$${data.total_value.toFixed(2)}`;
+                    
+                    const changeSign = data.daily_change >= 0 ? "+" : "";
+                    document.getElementById("portfolio-change").textContent = `${changeSign}$${data.daily_change.toFixed(2)}`;
+                    document.getElementById("portfolio-change").className = `stat-value ${data.daily_change >= 0 ? 'positive' : 'negative'}`;
+                    
+                    const pctSign = data.daily_change_pct >= 0 ? "+" : "";
+                    document.getElementById("portfolio-change-pct").textContent = `${pctSign}${data.daily_change_pct.toFixed(2)}%`;
+                    document.getElementById("portfolio-change-pct").className = `stat-value ${data.daily_change_pct >= 0 ? 'positive' : 'negative'}`;
+                    
+                    document.getElementById("portfolio-count").textContent = data.holdings_count;
+                    
+                    // Top performers
+                    const topHtml = data.top_performers.slice(0, 3).map(stock => {
+                        const sign = stock.change_pct >= 0 ? '+' : '';
+                        const color = stock.change_pct >= 0 ? '#27ae60' : '#e74c3c';
+                        return `
+                        <div style="display: flex; justify-content: space-between; padding: 4px 0; font-size: 0.8em;">
+                            <span>${stock.ticker}</span>
+                            <span style="color: ${color}; font-weight: 600;">${sign}${stock.change_pct.toFixed(2)}%</span>
+                        </div>
+                    `;
+                    }).join("");
+                    document.getElementById("top-performers").innerHTML = topHtml || "<p style='color: #999; font-size: 0.85em;'>No data</p>";
+                } else {
+                    dashboardGrid.style.display = "none";
+                }
+            } catch (e) {
+                console.error("Portfolio dashboard error:", e);
+            }
+        }
+
+        // OPTION B: WATCHLIST SUMMARY
+        async function loadWatchlistSummary() {
+            try {
+                const response = await fetch("/api/dashboard/watchlist-summary");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                if (data.total_stocks > 0) {
+                    const watchlistHtml = data.stocks.map(stock => `
+                        <div class="stock-item">
+                            <div>
+                                <div class="stock-ticker">${stock.ticker}</div>
+                                <div class="stock-price">$${stock.price.toFixed(2)}</div>
+                            </div>
+                            <div class="stock-change ${stock.direction === 'up' ? 'positive' : 'negative'}">
+                                ${stock.direction === 'up' ? '▲' : '▼'} ${stock.change_pct.toFixed(2)}%
+                            </div>
+                        </div>
+                    `).join("");
+                    document.getElementById("watchlist-summary").innerHTML = watchlistHtml;
+                } else {
+                    document.getElementById("watchlist-summary").innerHTML = "<p style='color: #999; text-align: center; padding: 20px;'>No holdings yet</p>";
+                }
+            } catch (e) {
+                console.error("Watchlist summary error:", e);
+            }
+        }
+
+        // OPTION C: MARKET SUMMARY
+        async function loadMarketSummary() {
+            try {
+                const response = await fetch("/api/dashboard/market-summary");
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // S&P 500
+                document.getElementById("sp500-price").textContent = `$${data.sp500_price.toFixed(2)}`;
+                const sp500Sign = data.sp500_change >= 0 ? "+" : "";
+                document.getElementById("sp500-change").textContent = `${sp500Sign}${data.sp500_change_pct.toFixed(2)}%`;
+                document.getElementById("sp500-change").style.color = data.sp500_change >= 0 ? '#27ae60' : '#e74c3c';
+                
+                // VIX
+                document.getElementById("vix-price").textContent = data.vix_value.toFixed(2);
+                
+                const vixIndicator = document.getElementById("vix-sentiment");
+                let vixClass = "vix-normal";
+                if (data.trend === "bullish") vixClass = "vix-calm";
+                else if (data.trend === "bearish") vixClass = "vix-nervous";
+                else if (data.trend === "very_bearish") vixClass = "vix-fearful";
+                
+                vixIndicator.innerHTML = `<span class="vix-indicator ${vixClass}">${data.market_sentiment}</span>`;
+            } catch (e) {
+                console.error("Market summary error:", e);
+            }
+        }
+
+        // ===== SERVICE WORKER REGISTRATION =====
+        // Register service worker for background updates and offline support
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/service-worker.js')
+                .then(registration => {
+                    console.log('✅ Service Worker registered successfully');
+                    
+                    // Request periodic background sync (every 10 minutes)
+                    if ('periodicSync' in registration) {
+                        registration.periodicSync.register('refresh-analysis', {
+                            minInterval: 10 * 60 * 1000 // 10 minutes
+                        })
+                        .then(() => {
+                            console.log('✅ Periodic sync registered - data will refresh every 10 minutes');
+                        })
+                        .catch(err => {
+                            console.warn('Periodic sync not supported:', err);
+                            // Fallback: manual refresh still available
+                        });
+                    }
+                    
+                    // Listen for messages from service worker
+                    navigator.serviceWorker.addEventListener('message', (event) => {
+                        if (event.data.type === 'WATCHLIST_REFRESHED') {
+                            console.log('✅ Background: Watchlist data updated');
+                            // Could show subtle notification here if desired
+                        }
+                        if (event.data.type === 'ANALYSIS_REFRESHED') {
+                            console.log('✅ Background: Analysis data updated');
+                            // Could show subtle notification here if desired
+                        }
+                    });
+                })
+                .catch(err => {
+                    console.warn('Service Worker registration failed:', err);
+                    // App still works without service worker
+                });
+        } else {
+            console.log('Service Workers not supported - offline features unavailable');
+        }
+
+        // Verdict-first UI: Why button toggles details
+        const whyBtn = document.getElementById("why-btn");
+        const analysisDetails = document.getElementById("analysis-details");
+        if (whyBtn && analysisDetails) {
+            whyBtn.addEventListener("click", function() {
+                if (analysisDetails.style.display === "none" || !analysisDetails.style.display) {
+                    analysisDetails.style.display = "block";
+                    whyBtn.textContent = "Hide Details";
+                } else {
+                    analysisDetails.style.display = "none";
+                    whyBtn.textContent = "Why?";
+                }
+            });
+        }
+
+        // Compare tab logic
+        const compareForm = document.getElementById('compare-form');
+        if (compareForm) {
+            compareForm.onsubmit = async function(e) {
+                e.preventDefault();
+                const t1 = document.getElementById('compare-ticker-1').value.trim().toUpperCase();
+                const t2 = document.getElementById('compare-ticker-2').value.trim().toUpperCase();
+                if (!t1 || !t2) {
+                    document.getElementById('compare-results').innerHTML = '<div style="color: #EF4444;">Please enter two tickers.</div>';
+                    return;
+                }
+                document.getElementById('compare-results').innerHTML = 'Loading...';
+                try {
+                    const [r1, r2] = await Promise.all([
+                        fetch(`/api/analyze?ticker=${t1}`),
+                        fetch(`/api/analyze?ticker=${t2}`)
+                    ]);
+                    const [d1, d2] = await Promise.all([r1.json(), r2.json()]);
+                    if (d1.error || d2.error) {
+                        document.getElementById('compare-results').innerHTML = `<div style=\"color:#EF4444;\">${d1.error || ''} ${d2.error || ''}</div>`;
+                        return;
+                    }
+                    document.getElementById('compare-results').innerHTML = `
+                        <div style=\"flex:1;min-width:220px;background:#F8FAFC;padding:18px 14px;border-radius:10px;box-shadow:0 2px 8px rgba(59,130,246,0.07);\">
+                            <div style=\"font-size:1.1em;font-weight:700;color:#3B82F6;\">${d1.ticker}</div>
+                            <div style=\"font-size:0.95em;color:#1F2937;margin-bottom:6px;\">${d1.company || ''}</div>
+                            <div style=\"font-size:1.2em;font-weight:700;\">${d1.verdict || ''}</div>
+                            <div style=\"margin:8px 0;\">Score: <b>${d1.signal_score ?? '-'}</b></div>
+                            <div style=\"font-size:0.95em;\">${d1.signal_description || ''}</div>
+                        </div>
+                        <div style=\"align-self:center;font-size:1.5em;font-weight:700;color:#888;\">vs</div>
+                        <div style=\"flex:1;min-width:220px;background:#F8FAFC;padding:18px 14px;border-radius:10px;box-shadow:0 2px 8px rgba(59,130,246,0.07);\">
+                            <div style=\"font-size:1.1em;font-weight:700;color:#3B82F6;\">${d2.ticker}</div>
+                            <div style=\"font-size:0.95em;color:#1F2937;margin-bottom:6px;\">${d2.company || ''}</div>
+                            <div style=\"font-size:1.2em;font-weight:700;\">${d2.verdict || ''}</div>
+                            <div style=\"margin:8px 0;\">Score: <b>${d2.signal_score ?? '-'}</b></div>
+                            <div style=\"font-size:0.95em;\">${d2.signal_description || ''}</div>
+                        </div>
+                    `;
+                } catch (err) {
+                    document.getElementById('compare-results').innerHTML = '<div style="color: #EF4444;">Error loading comparison.</div>';
+                }
+            }
+        }
+
+        // Track button logic
+        const trackBtn = document.getElementById('track-btn');
+        if (trackBtn) {
+            trackBtn.addEventListener('click', async function() {
+                if (!currentTicker) return;
+                trackBtn.disabled = true;
+                trackBtn.textContent = 'Adding...';
+                try {
+                    const res = await fetch('/api/dashboard/watchlist-add', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticker: currentTicker })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        trackBtn.textContent = 'Tracked!';
+                        setTimeout(() => { trackBtn.textContent = 'Track'; trackBtn.disabled = false; }, 2000);
+                    } else {
+                        trackBtn.textContent = 'Error';
+                        setTimeout(() => { trackBtn.textContent = 'Track'; trackBtn.disabled = false; }, 2000);
+                    }
+                } catch (e) {
+                    trackBtn.textContent = 'Error';
+                    setTimeout(() => { trackBtn.textContent = 'Track'; trackBtn.disabled = false; }, 2000);
+                }
+            });
+        }
+    </script>
+    
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+</body>
+</html>

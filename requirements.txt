@@ -1,0 +1,104 @@
+# =================================================================
+# AlphaLab - Stock Analysis & Momentum Trading Platform
+# =================================================================
+# Install with: pip install -r requirements.txt
+# 
+# Core dependencies for Flask app, data analysis, and technical indicators
+# =================================================================
+
+# ========== WEB FRAMEWORK ==========
+Flask==3.1.3
+Werkzeug==3.1.6
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+blinker==1.9.0
+itsdangerous==2.2.0
+
+# ========== DATA PROCESSING & ANALYSIS ==========
+pandas==2.3.3
+numpy==2.3.4
+scipy==1.17.0
+scikit-learn>=1.3.0  # For ML features (if needed)
+xgboost==3.1.3
+
+# ========== FINANCIAL DATA & TECHNICAL INDICATORS ==========
+yfinance==1.2.0  # Yahoo Finance data
+requests==2.33.0  # HTTP requests
+python-dateutil==2.9.0.post0  # Date utilities
+
+# ========== DATABASE & ORM ==========
+# Supabase is used as primary database (PostgreSQL)
+# No additional DB driver needed - uses HTTP API via python-dotenv
+
+# ========== VISUALIZATION ==========
+matplotlib==3.10.7
+seaborn==0.13.2
+pillow==12.0.0
+contourpy==1.3.3
+fonttools==4.60.1
+kiwisolver==1.4.9
+
+# ========== AUTHENTICATION & SECURITY ==========
+python-dotenv==1.2.1  # Environment variables
+requests==2.33.0  # For Firebase auth API calls
+
+# ========== SENTIMENT ANALYSIS ==========
+beautifulsoup4==4.14.3  # HTML parsing (for news scraping)
+
+# Optional: FinBERT for advanced sentiment analysis (requires ~1.5GB)
+# Uncomment below to enable
+# transformers==4.35.0
+# torch>=2.0.0
+
+# ========== TESTING ==========
+pytest==9.0.2
+pytest-cov>=4.0.0  # Coverage reports
+
+# ========== CODE QUALITY ==========
+ruff==0.15.7  # Fast Python linter
+pylint>=2.17.0  # Code analysis
+
+# ========== UTILITIES ==========
+pytz==2025.2  # Timezone handling
+tzdata==2025.2  # Timezone database
+typing_extensions==4.15.0  # Type hints
+setuptools==82.0.1
+wheel==0.46.3
+packaging==25.0
+
+# ========== OPTIONAL DEPENDENCIES ==========
+# Uncomment as needed
+
+# For enhanced HTTP requests with retries
+# requests-retry>=1.5.0
+
+# For caching (Redis support)
+# redis>=5.0.0
+
+# For task scheduling
+# celery>=5.3.0
+# redis>=5.0.0
+
+# For API documentation generation
+# flasgger>=0.9.5
+
+# For database migrations (if using SQLAlchemy)
+# alembic>=1.12.0
+# sqlalchemy>=2.0.0
+
+# For advanced testing
+# pytest-mock>=3.12.0
+# pytest-benchmark>=4.0.0
+
+# For documentation
+# sphinx>=7.0.0
+# sphinx-rtd-theme>=1.3.0
+
+# For development/debugging
+# ipython>=8.17.0
+# jupyter>=1.0.0
+# ipdb>=0.13.0
+
+
+#gunicorn for render
+gunicorn

@@ -1,0 +1,1858 @@
+{% if show_onboarding %}
+    <div class="onboarding-modal-bg" id="onboarding-modal-bg">
+        <div class="onboarding-modal">
+            <h2>Welcome! Let's personalize your dashboard</h2>
+            <form id="onboarding-form">
+                <label for="risk">Risk Level</label>
+                <select id="risk" name="risk" required>
+                    <option value="">Select...</option>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                </select>
+                <label for="sectors">Sectors of Interest</label>
+                <select id="sectors" name="sectors" multiple required style="height: 80px;">
+                    <option value="tech">Tech</option>
+                    <option value="healthcare">Healthcare</option>
+                    <option value="finance">Finance</option>
+                    <option value="energy">Energy</option>
+                    <option value="consumer">Consumer</option>
+                    <option value="industrial">Industrial</option>
+                </select>
+                <label for="horizon">Time Horizon</label>
+                <select id="horizon" name="horizon" required>
+                    <option value="">Select...</option>
+                    <option value="short">Short-term (weeks)</option>
+                    <option value="medium">Medium-term (months)</option>
+                    <option value="long">Long-term (years)</option>
+                </select>
+                <button type="submit" class="onboarding-btn">Finish</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+    <script>
+    // Onboarding Modal Logic
+    {% if show_onboarding %}
+    document.getElementById("onboarding-form").onsubmit = async function(e) {
+        e.preventDefault();
+        const risk = document.getElementById("risk").value;
+        const sectors = Array.from(document.getElementById("sectors").selectedOptions).map(o => o.value);
+        const horizon = document.getElementById("horizon").value;
+        // Save onboarding complete in session via API
+        await fetch("/api/onboarding", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({risk, sectors, horizon})
+        });
+        // Hide modal and reload
+        document.getElementById("onboarding-modal-bg").style.display = "none";
+        window.location.reload();
+    }
+    {% endif %}
+    </script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio Analyzer — alphalab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='theme.css') }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            /* Light mode colors */
+            --primary-blue: #3B82F6;
+            --dark-blue: #1E40AF;
+            --light-bg: #F8FAFC;
+            --card-bg: #FFFFFF;
+            --border-color: #E2E8F0;
+            --text-primary: #1F2937;
+            --text-secondary: #6B7280;
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --glow-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        /* Dark mode */
+        :root.dark-mode {
+            --light-bg: #0F172A;
+            --card-bg: #1E293B;
+            --border-color: #334155;
+            --text-primary: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --glow-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Roboto, sans-serif;
+            background: var(--light-bg);
+            min-height: 100vh;
+            padding: 32px 20px;
+            color: var(--text-primary);
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Header Navigation */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 56px;
+            padding-bottom: 32px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .logo {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, var(--primary-blue) 0%, var(--dark-blue) 100%);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1.6em;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
+        .header-left h1 {
+            font-size: 1.875em;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.5px;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        
+        /* Page-specific styles (home.html only) */
+        .user-info {
+            background: var(--card-bg);
+            padding: 12px 18px;
+            border-radius: 10px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+            border: 1.5px solid var(--border-color);
+            font-weight: 500;
+        }
+        
+        .btn {
+            padding: 11px 24px;
+            background: var(--primary-blue);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 0.95em;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+        }
+        
+        .btn:hover {
+            background: var(--dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3);
+        }
+        
+        .btn-logout {
+            background: var(--danger);
+            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+        }
+        
+        .btn-logout:hover {
+            background: #DC2626;
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+        }
+        
+        .btn-analyze {
+            background: var(--success);
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+        }
+        
+        .btn-analyze:hover {
+            background: #059669;
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+        }
+        
+        /* Main Content Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+        }
+        
+        /* Content Wrapper - Main content + Sidebar */
+        .content-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 32px;
+            align-items: start;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 32px;
+        }
+        
+        /* Stat Cards Section */
+        .stat-cards-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card {
+            background: var(--card-bg);
+            padding: 36px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            transform: translateY(-4px);
+            border-color: var(--primary-blue);
+        }
+        
+        .stat-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card-title {
+            color: var(--text-secondary);
+            font-size: 0.75em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.8;
+        }
+        
+        .stat-card-icon {
+            font-size: 1.8em;
+            opacity: 0.7;
+        }
+        
+        .stat-card-value {
+            font-size: 2.4em;
+            font-weight: 900;
+            color: var(--text-primary);
+            margin-bottom: 4px;
+            letter-spacing: -1.5px;
+        }
+        
+        .stat-card-detail {
+            display: flex;
+            gap: 24px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1.5px solid var(--border-color);
+            font-size: 0.85em;
+        }
+        
+        .stat-detail-item {
+            flex: 1;
+        }
+        
+        .stat-detail-label {
+            color: var(--text-secondary);
+            font-size: 0.7em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: 0.8px;
+            opacity: 0.75;
+        }
+        
+        .stat-detail-value {
+            font-weight: 800;
+            color: var(--text-primary);
+            font-size: 1.2em;
+        }
+        
+        .stat-detail-value.positive {
+            color: var(--success);
+        }
+        
+        .stat-detail-value.negative {
+            color: var(--danger);
+        }
+        
+        /* Dashboard Cards Grid - 2 column layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+        
+        .dashboard-grid .dashboard-card:first-child {
+            grid-column: 1 / -1;
+        }
+        
+        .dashboard-card {
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .dashboard-card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .dashboard-card h3 {
+            color: var(--text-primary);
+            font-size: 1.15em;
+            font-weight: 700;
+            margin-bottom: 28px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 2.5px solid var(--border-color);
+            padding-bottom: 20px;
+            letter-spacing: -0.3px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            font-size: 1.35em;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        
+        .stat-value.positive {
+            color: var(--success);
+        }
+        
+        .stat-value.negative {
+            color: var(--danger);
+        }
+        
+        /* Stock Items */
+        .stock-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.95em;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .stock-item:hover {
+            background: var(--light-bg);
+            transform: translateX(6px);
+        }
+        
+        .stock-item:last-child {
+            border-bottom: none;
+        }
+        
+        .stock-info {
+            flex: 1;
+        }
+        
+        .stock-ticker {
+            font-weight: 700;
+            color: var(--primary-blue);
+            font-size: 1em;
+            margin-bottom: 4px;
+        }
+        
+        .stock-price {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+        
+        .stock-change {
+            font-weight: 800;
+            min-width: 100px;
+            text-align: right;
+            padding-left: 16px;
+            font-size: 1.1em;
+        }
+        
+        .stock-change.positive {
+            color: var(--success);
+        }
+        
+        .stock-change.negative {
+            color: var(--danger);
+        }
+        
+        /* Market Stats */
+        .market-stat {
+            margin-bottom: 16px;
+            padding: 24px;
+            background: linear-gradient(135deg, var(--light-bg) 0%, transparent 100%);
+            border-radius: 10px;
+            border: 1.5px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+        
+        .market-stat:hover {
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+            transform: translateX(4px);
+        }
+        
+        .market-stat:last-child {
+            margin-bottom: 0;
+        }
+        
+        .market-stat-label {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: none;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+            opacity: 0.8;
+        }
+        
+        .market-stat-value {
+            font-size: 1.75em;
+            font-weight: 800;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            letter-spacing: -0.5px;
+        }
+        
+        .market-stat-change {
+            font-size: 0.9em;
+            margin-top: 8px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        
+        .market-stat-change.positive {
+            color: var(--success);
+        }
+        
+        .market-stat-change.negative {
+            color: var(--danger);
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 24px;
+            height: fit-content;
+            position: sticky;
+            top: 32px;
+        }
+        
+        .card {
+            background: var(--card-bg);
+            padding: 36px;
+            border-radius: 14px;
+            border: 1.5px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        }
+        
+        .card h3 {
+            color: var(--text-primary);
+            font-size: 1.05em;
+            font-weight: 800;
+            margin-bottom: 24px;
+            border-bottom: 2.5px solid var(--border-color);
+            padding-bottom: 16px;
+            letter-spacing: -0.3px;
+        }
+        
+        .quick-action {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px;
+            background: transparent;
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 600;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-size: 0.9em;
+            box-shadow: none;
+        }
+        
+        .quick-action:first-child {
+            background: var(--primary-blue);
+            color: white;
+            border-color: var(--primary-blue);
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        
+        .quick-action:first-child:hover {
+            background: var(--dark-blue);
+            border-color: var(--dark-blue);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.35);
+            transform: translateY(-3px);
+        }
+        
+        .quick-action:not(:first-child) {
+            color: var(--text-secondary);
+        }
+        
+        .quick-action:not(:first-child):hover {
+            background: var(--light-bg);
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+        }
+        
+        .quick-action:last-child {
+            margin-bottom: 0;
+        }
+        
+        .stats-mini {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .stat-mini {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--light-bg) 0%, #F3F4F6 100%);
+            border-radius: 10px;
+            font-size: 0.85em;
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+        
+        .stat-mini:hover {
+            background: linear-gradient(135deg, #F3F4F6 0%, var(--light-bg) 100%);
+            transform: translateX(4px);
+        }
+        
+        .stat-mini-label {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.85em;
+        }
+        
+        .stat-mini-value {
+            font-weight: 800;
+            color: var(--text-primary);
+            font-size: 1em;
+        }
+        
+        /* Loading */
+        .loading {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border: 3.5px solid rgba(0, 0, 0, 0.1);
+            border-top: 3.5px solid var(--primary-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 16px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Empty State */
+        #empty-state {
+            text-align: center;
+            padding: 80px 40px;
+            background: var(--card-bg);
+            border: 2.5px dashed var(--border-color);
+            border-radius: 14px;
+            margin: 40px 0;
+        }
+        
+        #empty-state p:first-child {
+            font-size: 3em;
+            margin-bottom: 16px;
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        #empty-state p:nth-child(2) {
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-size: 1.3em;
+            font-weight: 700;
+        }
+        
+        #empty-state p:nth-child(3) {
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            font-size: 0.95em;
+        }
+        
+        /* Sentiment Badge */
+        .sentiment-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 24px;
+            font-size: 0.85em;
+            font-weight: 700;
+            margin-top: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.7px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+        }
+        
+        .sentiment-bullish {
+            background: linear-gradient(135deg, #DBEAFE 0%, #BAE6FD 100%);
+            color: #1E40AF;
+        }
+        
+        .sentiment-neutral {
+            background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+            color: #92400E;
+        }
+        
+        .sentiment-bearish {
+            background: linear-gradient(135deg, #FEE2E2 0%, #FECACA 100%);
+            color: #991B1B;
+        }
+        
+        /* Modal Styles */
+        #add-holding-modal {
+            backdrop-filter: blur(4px);
+            animation: fadeInBackdrop 0.25s ease;
+        }
+        
+        @keyframes fadeInBackdrop {
+            from { backdrop-filter: blur(0px); }
+            to { backdrop-filter: blur(4px); }
+        }
+        
+        #add-holding-modal > div {
+            animation: slideInModal 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1.5px solid var(--border-color);
+            background: var(--card-bg);
+        }
+        
+        @keyframes slideInModal {
+            from {
+                transform: translateY(-60px) scale(0.95);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0) scale(1);
+                opacity: 1;
+            }
+        }
+        
+        #add-holding-modal h2 {
+            font-size: 1.6em;
+            font-weight: 800;
+            margin-bottom: 32px;
+            padding-bottom: 24px;
+            border-bottom: 2.5px solid var(--border-color);
+            letter-spacing: -0.5px;
+        }
+        
+        #add-holding-modal input {
+            width: 100%;
+            padding: 14px 16px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 1em;
+            color: var(--text-primary);
+            background: var(--card-bg);
+            font-family: inherit;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+        }
+        
+        #add-holding-modal input::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+        
+        #add-holding-modal input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1), 0 2px 8px rgba(59, 130, 246, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        #add-holding-modal input[type="text"] {
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+        }
+        
+        #add-holding-modal div:has(> label) {
+            margin-bottom: 24px;
+        }
+        
+        #add-holding-modal label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.95em;
+            text-transform: capitalize;
+        }
+        
+        #add-holding-modal form > div:last-of-type {
+            display: flex;
+            gap: 16px;
+            margin-top: 32px;
+        }
+        
+        #add-holding-modal button {
+            flex: 1;
+            padding: 16px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        #add-holding-modal button[type="submit"] {
+            background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+        
+        #add-holding-modal button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.3);
+        }
+        
+        #add-holding-modal button[type="submit"]:active {
+            transform: translateY(0);
+        }
+        
+        #add-holding-modal button[type="button"] {
+            background: var(--light-bg);
+            color: var(--text-primary);
+            border: 1.5px solid var(--border-color);
+            font-weight: 600;
+        }
+        
+        #add-holding-modal button[type="button"]:hover {
+            background: var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            transform: translateY(-2px);
+        }
+        
+        /* Chart Container Styling */
+        #portfolio-chart-container {
+            padding: 12px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%);
+            transition: all 0.3s ease;
+        }
+        
+        :root.dark-mode #portfolio-chart-container {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+        }
+
+        /* ML Metrics Widget - Ensure it inherits theme colors */
+        #ml-metrics-widget {
+            background: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        #ml-metrics-widget * {
+            background-color: inherit;
+            color: var(--text-primary);
+        }
+
+        :root.dark-mode #ml-metrics-widget,
+        :root.dark-mode #ml-metrics-widget * {
+            background-color: var(--card-bg) !important;
+            color: var(--text-primary) !important;
+        }
+        
+        /* Responsive */
+        @media (max-width: 1400px) {
+            .stat-cards-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .dashboard-grid .dashboard-card:first-child {
+                grid-column: 1;
+            }
+        }
+        
+        @media (max-width: 1024px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                position: static;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 16px;
+            }
+            
+            .stat-cards-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: left;
+                align-items: flex-start;
+                margin-bottom: 36px;
+                padding-bottom: 24px;
+            }
+            
+            .header-left h1 {
+                font-size: 1.5em;
+            }
+            
+            .header-right {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+            
+            .header-right .btn {
+                flex: 1;
+                min-width: 120px;
+            }
+            
+            .stat-card {
+                padding: 20px;
+            }
+            
+            .stat-card-value {
+                font-size: 1.8em;
+            }
+            
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .dashboard-card {
+                padding: 24px;
+            }
+            
+            .dashboard-card h3 {
+                font-size: 1.1em;
+                margin-bottom: 16px;
+                padding-bottom: 12px;
+            }
+            
+            .sidebar {
+                grid-template-columns: 1fr;
+                position: static;
+            }
+            
+            #add-holding-modal > div {
+                width: 92%;
+                margin: 40px auto;
+                padding: 28px 24px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+        <!-- Onboarding modal removed: now handled by dedicated onboarding page -->
+    <div class="container">
+        <!-- Header Navigation -->
+        <div class="header">
+            <div class="header-left">
+                <div class="logo">α</div>
+                <h1>Portfolio Analyzer</h1>
+            </div>
+            <div class="header-right">
+                <div class="user-info" id="user-info" style="display:none;">
+                    <span id="user-email-display"></span>
+                </div>
+                <div class="theme-toggle" id="theme-toggle">
+                    <button class="active" id="light-mode-btn" title="Light Mode">☀️</button>
+                    <button id="dark-mode-btn" title="Dark Mode">🌙</button>
+                </div>
+                <a href="/analyze" class="btn btn-analyze">Factor Analysis</a>
+                <button class="btn btn-logout" id="logout-btn">Logout</button>
+            </div>
+        </div>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Top Stats Cards -->
+            <div class="stat-cards-grid" id="stat-cards-grid" style="display:none;">
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">Total Portfolio Value</span>
+                        <span class="stat-card-icon">💵</span>
+                    </div>
+                    <div class="stat-card-value" id="portfolio-value">$0.00</div>
+                    <div class="stat-card-detail">
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Daily Change</div>
+                            <div class="stat-detail-value" id="portfolio-change">+$0.00</div>
+                        </div>
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">% Change</div>
+                            <div class="stat-detail-value" id="portfolio-change-pct">+0.00%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">Total Gain/Loss</span>
+                        <span class="stat-card-icon">📈</span>
+                    </div>
+                    <div class="stat-card-value" id="total-gain">$0.00</div>
+                    <div class="stat-card-detail">
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Holdings</div>
+                            <div class="stat-detail-value" id="portfolio-count">0</div>
+                        </div>
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Avg Return</div>
+                            <div class="stat-detail-value" id="avg-return">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-card-header">
+                        <span class="stat-card-title">Portfolio Momentum</span>
+                        <span class="stat-card-icon">📊</span>
+                    </div>
+                    <div class="stat-card-value" id="portfolio-momentum">-</div>
+                    <div class="stat-card-detail">
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Best Stock</div>
+                            <div class="stat-detail-value" id="best-stock">-</div>
+                        </div>
+                        <div class="stat-detail-item">
+                            <div class="stat-detail-label">Worst Stock</div>
+                            <div class="stat-detail-value" id="worst-stock">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Wrapper: Main content + Sidebar -->
+            <div class="content-wrapper">
+                <!-- Main Content -->
+                <div class="main-content">
+                    <!-- Dashboard Grid -->
+                    <div class="dashboard-grid" id="dashboard-grid" style="display:none;">
+                        <!-- Portfolio Performance -->
+                        <div class="dashboard-card">
+                            <h3>Portfolio Performance</h3>
+                            <div id="portfolio-chart-container" style="height: 300px; position: relative;">
+                                <canvas id="portfolioChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Your Stocks -->
+                        <div class="dashboard-card">
+                            <h3>Your Stocks</h3>
+                            <div id="watchlist-summary" style="max-height: 400px; overflow-y: auto;">
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Portfolio Holdings -->
+                        <div class="dashboard-card">
+                            <h3>Portfolio Holdings</h3>
+                            <div style="margin-bottom: 16px;">
+                                <button id="add-holding-btn" class="btn" style="width: 100%; margin-bottom: 12px;">+ Add Holding</button>
+                                <div style="font-size: 0.75em; color: var(--text-secondary); text-align: center;">
+                                    📅 Last updated: <span id="holdings-timestamp">just now</span>
+                                </div>
+                            </div>
+                            <div id="portfolio-holdings" style="max-height: 400px; overflow-y: auto;">
+                                <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                                    No holdings yet
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Market Summary -->
+                        <div class="dashboard-card">
+                            <h3>Market Summary</h3>
+                            <div class="market-stat">
+                                <div class="market-stat-label">S&P 500</div>
+                                <div class="market-stat-value" id="sp500-price">-</div>
+                                <div class="market-stat-change" id="sp500-change">-</div>
+                            </div>
+                            <div class="market-stat">
+                                <div class="market-stat-label">VIX (Fear Index)</div>
+                                <div class="market-stat-value" id="vix-price">-</div>
+                                <div id="vix-sentiment" style="margin-top: 12px;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Portfolio Health Card -->
+                        <div class="dashboard-card">
+                            <h3>Portfolio Health</h3>
+                            <div id="portfolio-health-summary" style="font-size: 1.1em; margin-bottom: 10px; color: var(--text-primary);">Loading...</div>
+                            <div id="portfolio-health-details" style="font-size: 0.95em; color: var(--text-secondary);">
+                                <div><b>Diversification:</b> <span id="health-diversification">-</span></div>
+                                <div><b>Correlation:</b> <span id="health-correlation">-</span></div>
+                                <div><b>Health Score:</b> <span id="health-score">-</span></div>
+                            </div>
+                        </div>
+
+                        <!-- ML Metrics Widget -->
+                        <div id="ml-metrics-widget"></div>
+
+                        <!-- Top Picks Today Card -->
+                        <div class="dashboard-card">
+                            <h3>Top Picks Today</h3>
+                            <div id="top-picks-list" style="display: flex; flex-wrap: wrap; gap: 16px; min-height: 48px; color: var(--text-secondary);">
+                                Coming soon: Our best signals will appear here.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <!-- Quick Actions -->
+                    <div class="card">
+                        <h3>Quick Actions</h3>
+                        <a href="/analyze" class="quick-action">🔍 Search Stock</a>
+                        <a href="/analyze" class="quick-action">➕ Add to Watchlist</a>
+                        <a href="/transparency" class="quick-action">📖 How We Score</a>
+                    </div>
+
+                    <!-- Portfolio Stats -->
+                    <div class="card">
+                        <h3>Portfolio Stats</h3>
+                        <div class="stats-mini">
+                            <div class="stat-mini">
+                                <span class="stat-mini-label">Best Stock</span>
+                                <span class="stat-mini-value" id="sidebar-best">-</span>
+                            </div>
+                            <div class="stat-mini">
+                                <span class="stat-mini-label">Worst Stock</span>
+                                <span class="stat-mini-value" id="sidebar-worst">-</span>
+                            </div>
+                            <div class="stat-mini">
+                                <span class="stat-mini-label">Top Mover</span>
+                                <span class="stat-mini-value" id="top-mover">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Market Sentiment -->
+                    <div class="card">
+                        <h3>Market Sentiment</h3>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3.5em; margin: 16px 0;" id="market-emoji">😐</div>
+                            <div style="color: var(--text-secondary); font-size: 0.95em; margin-bottom: 12px;" id="market-text">Analyzing...</div>
+                            <div class="sentiment-badge" id="sentiment-badge">Loading</div>
+                        </div>
+                    </div>
+
+                    <!-- Top ML Picks Leaderboard -->
+                    <div class="card" id="top-ml-picks-card" style="display:none;">
+                        <h3 style="margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">Top picks</h3>
+                        <div id="top-ml-picks-list" style="margin-top: 12px; max-height: 300px; overflow-y: auto;">
+                            <div style="text-align: center; color: var(--text-secondary); padding: 20px;">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="empty-state" style="display:none;">
+                <p>👋</p>
+                <p>Welcome to Portfolio Analyzer!</p>
+                <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 24px;">Add stocks to your watchlist to see your portfolio dashboard</p>
+                <a href="/analyze" class="btn btn-analyze">Start Analyzing</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Check authentication
+        function checkAuth() {
+            const userEmail = localStorage.getItem('userEmail');
+            if (userEmail) {
+                document.getElementById('user-info').style.display = 'block';
+                document.getElementById('user-email-display').textContent = userEmail;
+            }
+        }
+
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                if (response.ok) {
+                    localStorage.clear();
+                    window.location.href = '/';
+                }
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        });
+
+        // Load all dashboards
+        // Load all dashboards
+        window.addEventListener('load', () => {
+            initThemeToggle();
+            checkAuth();
+            loadAllDashboards();
+            setInterval(loadAllDashboards, 5 * 60 * 1000);
+        });
+
+        async function loadAllDashboards() {
+            await loadPortfolioDashboard();
+            await loadWatchlistSummary();
+            await loadMarketSummary();
+            await loadPortfolioHoldings();
+            await renderPortfolioChart();
+            await loadTopMLPicks();
+        }
+
+        // OPTION A: PORTFOLIO DASHBOARD
+        async function loadPortfolioDashboard() {
+            try {
+                const response = await fetch('/api/dashboard/portfolio');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                const statCardsGrid = document.getElementById('stat-cards-grid');
+                const dashboardGrid = document.getElementById('dashboard-grid');
+                const emptyState = document.getElementById('empty-state');
+                
+                if (data.holdings_count > 0) {
+                    statCardsGrid.style.display = 'grid';
+                    dashboardGrid.style.display = 'grid';
+                    emptyState.style.display = 'none';
+                    
+                    // Update stat cards
+                    document.getElementById('portfolio-value').textContent = `$${data.total_value.toFixed(2)}`;
+                    
+                    const changeSign = data.daily_change >= 0 ? '+' : '';
+                    document.getElementById('portfolio-change').textContent = `${changeSign}$${data.daily_change.toFixed(2)}`;
+                    document.getElementById('portfolio-change').className = `stat-detail-value ${data.daily_change >= 0 ? 'positive' : 'negative'}`;
+                    
+                    const pctSign = data.daily_change_pct >= 0 ? '+' : '';
+                    document.getElementById('portfolio-change-pct').textContent = `${pctSign}${data.daily_change_pct.toFixed(2)}%`;
+                    document.getElementById('portfolio-change-pct').className = `stat-detail-value ${data.daily_change_pct >= 0 ? 'positive' : 'negative'}`;
+                    
+                    document.getElementById('portfolio-count').textContent = data.holdings_count;
+                    
+                    // Calculate and update gain/loss stats
+                    const avgReturn = data.holdings_count > 0 
+                        ? (data.top_performers.reduce((sum, p) => sum + p.change_pct, 0) / data.top_performers.length).toFixed(2) 
+                        : 0;
+                    document.getElementById('avg-return').textContent = `${avgReturn}%`;
+                    
+                    const totalGainLoss = data.daily_change >= 0 ? '+' : '';
+                    document.getElementById('total-gain').textContent = `${totalGainLoss}$${Math.abs(data.daily_change).toFixed(2)}`;
+                    document.getElementById('total-gain').style.color = data.daily_change >= 0 ? 'var(--success)' : 'var(--danger)';
+                    
+                    // Update sidebar stats
+                    if (data.top_performers && data.top_performers.length > 0) {
+                        const bestPerformer = data.top_performers[0];
+                        document.getElementById('best-stock').textContent = `${bestPerformer.ticker} +${bestPerformer.change_pct.toFixed(2)}%`;
+                        document.getElementById('sidebar-best').textContent = `${bestPerformer.ticker} +${bestPerformer.change_pct.toFixed(2)}%`;
+                    }
+                    if (data.bottom_performers && data.bottom_performers.length > 0) {
+                        const worstPerformer = data.bottom_performers[0];
+                        document.getElementById('worst-stock').textContent = `${worstPerformer.ticker} ${worstPerformer.change_pct.toFixed(2)}%`;
+                        document.getElementById('sidebar-worst').textContent = `${worstPerformer.ticker} ${worstPerformer.change_pct.toFixed(2)}%`;
+                    }
+                    
+                    // Momentum
+                    const totalMomentum = (avgReturn * data.holdings_count / 100).toFixed(2);
+                    document.getElementById('portfolio-momentum').textContent = `${avgReturn}%`;
+                    
+                } else {
+                    statCardsGrid.style.display = 'none';
+                    dashboardGrid.style.display = 'none';
+                    emptyState.style.display = 'block';
+                }
+            } catch (e) {
+                console.error('Portfolio dashboard error:', e);
+            }
+        }
+
+        // OPTION B: WATCHLIST SUMMARY
+        async function loadWatchlistSummary() {
+            try {
+                const response = await fetch('/api/dashboard/watchlist-summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                if (data.total_stocks > 0) {
+                    const watchlistHtml = data.stocks.map(stock => `
+                        <div class="stock-item" style="cursor: pointer;" onclick="window.location.href='/analyze?ticker=${stock.ticker}'">
+                            <div class="stock-info">
+                                <div class="stock-ticker">${stock.ticker}</div>
+                                <div class="stock-price">$${stock.price.toFixed(2)}</div>
+                            </div>
+                            <div class="stock-change ${stock.direction === 'up' ? 'positive' : 'negative'}">
+                                ${stock.direction === 'up' ? '▲' : '▼'} ${stock.change_pct.toFixed(2)}%
+                            </div>
+                        </div>
+                    `).join('');
+                    document.getElementById('watchlist-summary').innerHTML = watchlistHtml;
+                    
+                    // Update top mover
+                    const topMover = data.stocks.reduce((max, stock) => 
+                        Math.abs(stock.change_pct) > Math.abs(max.change_pct) ? stock : max
+                    );
+                    document.getElementById('top-mover').textContent = `${topMover.ticker} ${topMover.direction === 'up' ? '+' : ''}${topMover.change_pct.toFixed(2)}%`;
+                }
+            } catch (e) {
+                console.error('Watchlist summary error:', e);
+            }
+        }
+
+        // OPTION C: MARKET SUMMARY
+        async function loadMarketSummary() {
+            try {
+                const response = await fetch('/api/dashboard/market-summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // S&P 500
+                document.getElementById('sp500-price').textContent = `$${data.sp500_price.toFixed(2)}`;
+                const sp500Sign = data.sp500_change >= 0 ? '+' : '';
+                const sp500Change = document.getElementById('sp500-change');
+                sp500Change.textContent = `${sp500Sign}${data.sp500_change_pct.toFixed(2)}%`;
+                sp500Change.className = `market-stat-change ${data.sp500_change >= 0 ? 'positive' : 'negative'}`;
+                
+                // VIX
+                document.getElementById('vix-price').textContent = data.vix_value.toFixed(2);
+                
+                // Market sentiment
+                const vix = data.vix_value;
+                let emoji, sentiment, badgeClass;
+                
+                if (vix < 15) {
+                    emoji = '😊';
+                    sentiment = 'Calm - Bullish';
+                    badgeClass = 'sentiment-bullish';
+                } else if (vix < 20) {
+                    emoji = '😐';
+                    sentiment = 'Normal';
+                    badgeClass = 'sentiment-neutral';
+                } else if (vix < 30) {
+                    emoji = '😟';
+                    sentiment = 'Nervous - Bearish';
+                    badgeClass = 'sentiment-bearish';
+                } else {
+                    emoji = '😨';
+                    sentiment = 'Fearful';
+                    badgeClass = 'sentiment-bearish';
+                }
+                
+                document.getElementById('market-emoji').textContent = emoji;
+                document.getElementById('market-text').textContent = sentiment;
+                const badge = document.getElementById('sentiment-badge');
+                badge.textContent = sentiment;
+                badge.className = `sentiment-badge ${badgeClass}`;
+            } catch (e) {
+                console.error('Market summary error:', e);
+            }
+        }
+
+        // Portfolio Health Card: Fetch and display health info
+async function loadPortfolioHealth() {
+    try {
+        const res = await fetch('/api/dashboard/portfolio-health');
+        const data = await res.json();
+        if (data.error) {
+            document.getElementById('portfolio-health-summary').textContent = data.error;
+            document.getElementById('health-diversification').textContent = '-';
+            document.getElementById('health-correlation').textContent = '-';
+            document.getElementById('health-score').textContent = '-';
+            return;
+        }
+        document.getElementById('portfolio-health-summary').textContent = data.summary || '-';
+        document.getElementById('health-diversification').textContent = data.diversification || '-';
+        document.getElementById('health-correlation').textContent = data.correlation || '-';
+        document.getElementById('health-score').textContent = data.score || '-';
+    } catch (e) {
+        document.getElementById('portfolio-health-summary').textContent = 'Error loading portfolio health.';
+        document.getElementById('health-diversification').textContent = '-';
+        document.getElementById('health-correlation').textContent = '-';
+        document.getElementById('health-score').textContent = '-';
+    }
+}
+window.addEventListener('DOMContentLoaded', loadPortfolioHealth);
+
+        // Utility: Format timestamp in a user-friendly way
+        function formatTimestamp(isoString) {
+            if (!isoString) return "just now";
+            const date = new Date(isoString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            
+            if (diffMins < 1) return "just now";
+            if (diffMins < 60) return `${diffMins}m ago`;
+            const diffHours = Math.floor(diffMins / 60);
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return date.toLocaleTimeString();
+        }
+
+        // TOP ML PICKS LEADERBOARD
+        async function loadTopMLPicks() {
+            try {
+                const response = await fetch('/api/top-ml-picks?limit=10');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                const card = document.getElementById('top-ml-picks-card');
+                const list = document.getElementById('top-ml-picks-list');
+
+                if (!data.top_picks || data.top_picks.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No analyzed stocks yet. Analyze some stocks to see top picks!</div>';
+                    return;
+                }
+
+                card.style.display = 'block';
+
+                // Find max score for progress bar calculation
+                const maxScore = Math.max(...data.top_picks.map(p => p.score));
+
+                const leaderboardHtml = data.top_picks.map((pick, index) => {
+                    const rank = index + 1;
+                    const progressPercent = (pick.score / maxScore) * 100;
+                    
+                    // Determine color based on score and verdict
+                    let barColor = '#10B981'; // green
+                    let verdictLabel = 'Buy';
+                    let verdictClass = 'positive';
+                    
+                    if (pick.verdict === 'yellow') {
+                        barColor = '#F59E0B';
+                        verdictLabel = 'Hold';
+                        verdictClass = 'neutral';
+                    } else if (pick.verdict === 'red') {
+                        barColor = '#EF4444';
+                        verdictLabel = 'Sell';
+                        verdictClass = 'negative';
+                    }
+
+                    const rankLabel = rank === 1 ? '#1' : rank === 2 ? '#2' : rank === 3 ? '#3' : `#${rank}`;
+
+                    return `
+                        <div class="leaderboard-item" style="margin-bottom: 12px; padding: 12px; background: linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, transparent 100%); border-left: 3px solid ${barColor}; border-radius: 8px;">
+                            <div style="display: grid; grid-template-columns: 35px 1fr 60px auto; gap: 12px; align-items: center;">
+                                <!-- Rank -->
+                                <div style="font-size: 0.9em; font-weight: 700; color: var(--text-secondary); text-align: center;">${rankLabel}</div>
+                                
+                                <!-- Ticker & Company -->
+                                <div style="min-width: 0;">
+                                    <div style="font-weight: 700; color: var(--text-primary); font-size: 0.95em;">${pick.ticker}</div>
+                                    <div style="font-size: 0.75em; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${pick.company}</div>
+                                </div>
+                                
+                                <!-- Score -->
+                                <div style="text-align: right;">
+                                    <div style="font-weight: 700; color: var(--text-primary); font-size: 0.9em;">${pick.score}/100</div>
+                                </div>
+                                
+                                <!-- Verdict -->
+                                <div style="text-align: right;">
+                                    <div style="font-size: 0.75em; font-weight: 700; color: ${barColor}; letter-spacing: 0.3px;">${verdictLabel}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                list.innerHTML = leaderboardHtml;
+            } catch (e) {
+                console.error('Top ML picks error:', e);
+                document.getElementById('top-ml-picks-list').innerHTML = '<div style="color: var(--text-secondary); font-size: 0.9em;">Error loading top picks</div>';
+            }
+        }
+
+        // PORTFOLIO HOLDINGS
+        async function loadPortfolioHoldings() {
+            try {
+                const response = await fetch('/api/portfolio/summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // Update timestamp
+                if (data.data_timestamp) {
+                    const timestampEl = document.getElementById('holdings-timestamp');
+                    if (timestampEl) {
+                        timestampEl.textContent = formatTimestamp(data.data_timestamp);
+                    }
+                }
+                
+                if (data.holdings_count > 0) {
+                    const holdingsHtml = data.holdings.map(holding => {
+                        // Determine color based on position
+                        const gainColor = holding.gain_loss >= 0 ? 'var(--success)' : 'var(--danger)';
+                        
+                        return `
+                            <div class="stock-item">
+                                <div class="stock-info">
+                                    <div class="stock-ticker">${holding.ticker}</div>
+                                    <div class="stock-price">${holding.quantity} shares @ $${holding.entry_price.toFixed(2)}</div>
+                                    <div style="font-size: 0.75em; color: var(--text-secondary); margin-top: 4px;">
+                                        Current: $${holding.current_price.toFixed(2)}
+                                    </div>
+                                </div>
+                                <div style="text-align: right;">
+                                    <div class="stock-change ${holding.gain_loss >= 0 ? 'positive' : 'negative'}" style="color: ${gainColor}; font-weight: 700; font-size: 1.1em;">
+                                        $${holding.gain_loss.toFixed(2)}<br>
+                                        <span style="font-size: 0.8em; opacity: 0.8;">${holding.gain_loss_pct > 0 ? '+' : ''}${holding.gain_loss_pct.toFixed(2)}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                    document.getElementById('portfolio-holdings').innerHTML = holdingsHtml;
+                } else {
+                    document.getElementById('portfolio-holdings').innerHTML = `
+                        <div style="text-align: center; color: var(--text-secondary); padding: 20px;">
+                            No holdings yet. Add your first stock to track it!
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.error('Portfolio holdings error:', e);
+            }
+        }
+
+        // Modal handling
+        function showAddHoldingModal() {
+            const modal = document.getElementById('add-holding-modal');
+            modal.style.display = 'flex';
+        }
+
+        function closeAddHoldingModal() {
+            const modal = document.getElementById('add-holding-modal');
+            modal.style.display = 'none';
+            document.getElementById('holding-form').reset();
+        }
+
+        // PORTFOLIO CHART
+        let portfolioChartInstance = null;
+        
+        async function renderPortfolioChart() {
+            try {
+                const response = await fetch('/api/portfolio/summary');
+                if (!response.ok) return;
+
+                const data = await response.json();
+                
+                // If no holdings, show placeholder
+                if (data.holdings_count === 0) {
+                    const ctx = document.getElementById('portfolioChart');
+                    if (ctx) {
+                        ctx.parentElement.innerHTML = '<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999;">No holdings to display</div>';
+                    }
+                    return;
+                }
+
+                // Prepare chart data - show each holding's current value and gain/loss
+                const holdings = data.holdings;
+                const labels = holdings.map(h => h.ticker);
+                const currentValues = holdings.map(h => h.current_value);
+                const investedValues = holdings.map(h => h.invested);
+                const gainLoss = holdings.map(h => h.gain_loss);
+
+                const ctx = document.getElementById('portfolioChart');
+                if (!ctx) return;
+
+                // Destroy existing chart if it exists
+                if (portfolioChartInstance) {
+                    portfolioChartInstance.destroy();
+                }
+
+                // Determine if dark mode is active
+                const isDarkMode = document.documentElement.classList.contains('dark-mode');
+                
+                // Chart colors with glassmorphism
+                const investedColor = isDarkMode 
+                    ? 'rgba(59, 130, 246, 0.8)' 
+                    : 'rgba(59, 130, 246, 0.6)';
+                const currentColor = isDarkMode 
+                    ? 'rgba(16, 185, 129, 0.8)' 
+                    : 'rgba(16, 185, 129, 0.6)';
+                const textColor = isDarkMode ? '#F1F5F9' : '#1F2937';
+                const secondaryTextColor = isDarkMode ? '#94A3B8' : '#6B7280';
+                const gridColor = isDarkMode ? 'rgba(71, 85, 105, 0.2)' : 'rgba(0, 0, 0, 0.05)';
+
+                portfolioChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Invested Value',
+                                data: investedValues,
+                                backgroundColor: investedColor,
+                                borderColor: isDarkMode ? 'rgba(59, 130, 246, 1)' : 'rgba(59, 130, 246, 0.8)',
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                borderSkipped: false,
+                                hoverBackgroundColor: 'rgba(59, 130, 246, 1)',
+                                hoverBorderWidth: 3,
+                            },
+                            {
+                                label: 'Current Value',
+                                data: currentValues,
+                                backgroundColor: currentColor,
+                                borderColor: isDarkMode ? 'rgba(16, 185, 129, 1)' : 'rgba(16, 185, 129, 0.8)',
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                borderSkipped: false,
+                                hoverBackgroundColor: 'rgba(16, 185, 129, 1)',
+                                hoverBorderWidth: 3,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: {
+                            duration: 750,
+                            easing: 'easeInOutQuart',
+                            delay: (ctx) => {
+                                let delay = 0;
+                                if (ctx.type === 'data') {
+                                    if (ctx.mode === 'default' && !ctx.dropped) {
+                                        delay = ctx.dataIndex * 50 + ctx.datasetIndex * 100;
+                                    }
+                                }
+                                return delay;
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: textColor,
+                                    padding: 16,
+                                    font: {
+                                        family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                                        size: 13,
+                                        weight: '600'
+                                    },
+                                    usePointStyle: true,
+                                    pointStyle: 'circle'
+                                }
+                            },
+                            tooltip: {
+                                enabled: true,
+                                backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.9)' : 'rgba(0, 0, 0, 0.8)',
+                                titleColor: textColor,
+                                bodyColor: textColor,
+                                borderColor: isDarkMode ? 'rgba(59, 130, 246, 0.5)' : 'rgba(59, 130, 246, 0.3)',
+                                borderWidth: 1,
+                                padding: 12,
+                                displayColors: true,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) {
+                                            label += ': ';
+                                        }
+                                        if (context.parsed.y !== null) {
+                                            label += '$' + context.parsed.y.toFixed(2);
+                                        }
+                                        return label;
+                                    },
+                                    afterLabel: function(context) {
+                                        if (context.datasetIndex === 1) {
+                                            const gain = gainLoss[context.dataIndex];
+                                            const gainSign = gain >= 0 ? '+' : '';
+                                            return `Gain/Loss: ${gainSign}$${gain.toFixed(2)}`;
+                                        }
+                                        return '';
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    color: secondaryTextColor,
+                                    callback: function(value) {
+                                        return '$' + value.toFixed(0);
+                                    },
+                                    font: {
+                                        size: 11,
+                                        weight: '500'
+                                    }
+                                },
+                                grid: {
+                                    color: gridColor,
+                                    drawBorder: false
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    color: secondaryTextColor,
+                                    font: {
+                                        size: 12,
+                                        weight: '600'
+                                    }
+                                },
+                                grid: {
+                                    display: false,
+                                    drawBorder: false
+                                }
+                            }
+                        }
+                    }
+                });
+
+                console.log('✅ Enhanced portfolio chart rendered with animations');
+            } catch (e) {
+                console.error('Portfolio chart error:', e);
+            }
+        }
+
+
+        function setupPortfolioForm() {
+            const holdingForm = document.getElementById('holding-form');
+            const addHoldingBtn = document.getElementById('add-holding-btn');
+            
+            if (!holdingForm) {
+                console.warn('❌ holding-form element not found');
+                return;
+            }
+            
+            if (!addHoldingBtn) {
+                console.warn('❌ add-holding-btn element not found');
+                return;
+            }
+            
+            console.log('✅ Portfolio form elements found, attaching listeners');
+            
+            // Attach click handler to "Add Holding" button
+            addHoldingBtn.addEventListener('click', showAddHoldingModal);
+            
+            // Attach submit handler to form
+            holdingForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const ticker = document.getElementById('holding-ticker').value.toUpperCase().trim();
+                const quantity = parseFloat(document.getElementById('holding-quantity').value);
+                const entryPrice = parseFloat(document.getElementById('holding-price').value);
+                
+                if (!ticker || quantity <= 0 || entryPrice <= 0) {
+                    alert('❌ Please fill in all fields with valid values');
+                    return;
+                }
+                
+                try {
+                    console.log('📤 Submitting holding:', { ticker, quantity, entry_price: entryPrice });
+                    const response = await fetch('/api/portfolio/holdings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ticker, quantity, entry_price: entryPrice })
+                    });
+                    
+                    const data = await response.json();
+                    console.log('📥 Response:', response.status, data);
+                    
+                    if (response.ok) {
+                        closeAddHoldingModal();
+                        document.getElementById('holding-form').reset();
+                        setTimeout(() => {
+                            loadPortfolioHoldings();
+                            renderPortfolioChart();
+                        }, 500);
+                        alert('✅ Holding added successfully!');
+                    } else {
+                        alert(`❌ Error: ${data.error || 'Unknown error'}`);
+                    }
+                } catch (e) {
+                    console.error('❌ Fetch error:', e);
+                    alert(`❌ Error: ${e.message}`);
+                }
+            });
+        }
+        
+        // Call setupPortfolioForm when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupPortfolioForm);
+        } else {
+            setupPortfolioForm();
+        }
+        
+        // Also setup on window load as backup
+        window.addEventListener('load', setupPortfolioForm);
+
+        // Load holdings on page load
+        window.addEventListener('load', () => {
+            initThemeToggle();
+            checkAuth();
+            loadAllDashboards();
+            loadPortfolioHoldings();
+            setInterval(() => {
+                loadAllDashboards();
+                loadPortfolioHoldings();
+            }, 5 * 60 * 1000);
+        });
+
+        // Top Picks Today: Fetch and display top ML picks
+async function loadTopPicks() {
+    try {
+        const res = await fetch('/api/top-ml-picks?limit=5');
+        const data = await res.json();
+        const list = document.getElementById('top-picks-list');
+        if (!data || !data.picks || data.picks.length === 0) {
+            list.innerHTML = '<div style="color: var(--text-secondary);">No top picks available.</div>';
+            return;
+        }
+        list.innerHTML = '';
+        data.picks.forEach(pick => {
+            const card = document.createElement('div');
+            card.className = 'top-pick-card';
+            card.style = 'background: #F8FAFC; border-radius: 10px; padding: 16px 18px; min-width: 120px; box-shadow: 0 2px 8px rgba(59,130,246,0.07); cursor: pointer; text-align: center; flex: 1;';
+            card.innerHTML = `<div style=\"font-size:1.2em;font-weight:700;color:#3B82F6;\">${pick.ticker}</div><div style=\"font-size:0.95em;color:#1F2937;margin-bottom:6px;\">${pick.company || ''}</div><div style=\"font-size:0.9em;color:#10B981;font-weight:600;\">${pick.signal || ''}</div>`;
+            card.onclick = () => window.location.href = `/analyze?ticker=${pick.ticker}`;
+            list.appendChild(card);
+        });
+    } catch (e) {
+        document.getElementById('top-picks-list').innerHTML = '<div style="color: var(--text-secondary);">Error loading top picks.</div>';
+    }
+}
+window.addEventListener('DOMContentLoaded', loadTopPicks);
+    </script>
+
+    <!-- Modal for adding holdings -->
+    <div id="add-holding-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div style="background: white; padding: 32px; border-radius: 12px; max-width: 400px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <h2 style="color: var(--text-primary); margin-bottom: 24px; font-size: 1.5em;">Add Portfolio Holding</h2>
+            
+            <form id="holding-form">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Ticker Symbol</label>
+                    <input type="text" id="holding-ticker" required maxlength="5" placeholder="e.g. NVDA" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1em; text-transform: uppercase;">
+                </div>
+                
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Quantity (Shares)</label>
+                    <input type="number" id="holding-quantity" required min="0.01" step="0.01" placeholder="e.g. 10" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 1em;">
+                </div>
+                
+                <div style="margin-bottom: 24px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: var(--text-primary);">Entry Price ($)</label>
+                    <input type="number" id="holding-price" required min="0.01" step="0.01" placeholder="e.g. 500" style="width: 100%; padding: 12px; border: 1.5px solid var(--border-color); border-radius: 8px; font-size: 1em;">
+                </div>
+                
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" style="flex: 1; padding: 12px; background: var(--primary-blue); color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Add</button>
+                    <button type="button" onclick="closeAddHoldingModal()" style="flex: 1; padding: 12px; background: var(--border-color); color: var(--text-primary); border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ML Metrics Widget -->
+    <script src="/static/ml_metrics_widget.js"></script>
+    <script src="{{ url_for('static', filename='theme.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', initMLMetricsWidget);
+    </script>
+</body>
+</html>
