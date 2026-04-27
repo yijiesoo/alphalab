@@ -3,10 +3,10 @@ Beginner-friendly explanations and portfolio recommendations.
 Converts technical analysis into plain English for beginners.
 """
 
-import yfinance as yf
-import pandas as pd
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
+import pandas as pd
+import yfinance as yf
 
 # ========== SIMPLIFIED TERMINOLOGY MAPPINGS ==========
 
@@ -34,12 +34,12 @@ SIGNAL_EMOJI = {
 def get_verdict_with_emoji(score: float) -> Dict[str, str]:
     """
     Convert numerical score to beginner-friendly verdict with emoji.
-    
+
     Parameters
     ----------
     score : float
         Score from 0-100
-        
+
     Returns
     -------
     dict with 'verdict', 'emoji', and 'explanation'
@@ -75,34 +75,34 @@ def get_verdict_with_emoji(score: float) -> Dict[str, str]:
 def calculate_confidence(analysis_data: Dict) -> Dict:
     """
     Calculate how confident we are in the signal (0-100%).
-    
+
     Factors:
     1. Score extremeness (how far from 50)
     2. Signal agreement (do momentum, sentiment, macro all agree?)
     3. Data quality (is there enough data?)
-    
+
     Parameters
     ----------
     analysis_data : dict
         Output from analyze_ticker or API
-        
+
     Returns
     -------
     dict with confidence score, reasoning, and warnings
     """
     factor = analysis_data.get("factor", {})
     score = factor.get("score", 50) if isinstance(factor, dict) else 50
-    
+
     # Count how many signals align
     signal_agreement = 0
     signals_count = 0
-    
+
     # 1. Momentum signal
     momentum = factor.get("momentum", 0) if isinstance(factor, dict) else 0
     signals_count += 1
     if (score > 60 and momentum > 0) or (score < 40 and momentum < 0):
         signal_agreement += 1
-    
+
     # 2. Sentiment signal
     sentiment = analysis_data.get("sentiment", {})
     signals_count += 1
@@ -110,7 +110,7 @@ def calculate_confidence(analysis_data: Dict) -> Dict:
         sentiment_score = sentiment.get("score", 0)
         if (score > 60 and sentiment_score > 0) or (score < 40 and sentiment_score < 0):
             signal_agreement += 1
-    
+
     # 3. Macro signal
     macro = analysis_data.get("macro", {})
     signals_count += 1
@@ -121,17 +121,17 @@ def calculate_confidence(analysis_data: Dict) -> Dict:
             signal_agreement += 1
         elif score < 40 and vix > 20:
             signal_agreement += 1
-    
+
     # Calculate confidence
     extremeness = abs(score - 50) / 50  # 0-1: how extreme is the score?
     agreement = signal_agreement / signals_count if signals_count > 0 else 0.5  # 0-1: alignment
-    
+
     # Final confidence: 60% from extremeness, 40% from agreement
     base_confidence = (extremeness * 0.6 + agreement * 0.4) * 100
-    
+
     # Cap at 95% to show appropriate humility
     confidence = min(base_confidence, 95)
-    
+
     # Generate explanation
     if confidence < 50:
         confidence_label = "Low - Mixed signals"
@@ -139,7 +139,7 @@ def calculate_confidence(analysis_data: Dict) -> Dict:
         confidence_label = "Medium - Some agreement"
     else:
         confidence_label = "High - Strong signals"
-    
+
     return {
         "confidence": round(confidence, 0),
         "confidence_label": confidence_label,
@@ -154,25 +154,25 @@ def calculate_confidence(analysis_data: Dict) -> Dict:
 def generate_warnings(analysis_data: Dict) -> List[str]:
     """
     Generate beginner-friendly warnings for the user.
-    
+
     Parameters
     ----------
     analysis_data : dict
         Output from analyze_ticker or API
-        
+
     Returns
     -------
     list of warning strings
     """
     warnings = []
-    
+
     # 1. Low confidence warning
     confidence = calculate_confidence(analysis_data)
     if confidence["confidence"] < 50:
         warnings.append(
             "⚠️ Low confidence signal - Signals are mixed. Be extra careful with this trade."
         )
-    
+
     # 2. High volatility warning
     macro = analysis_data.get("macro", {})
     if isinstance(macro, dict):
@@ -185,7 +185,7 @@ def generate_warnings(analysis_data: Dict) -> List[str]:
             warnings.append(
                 "🚨 Market is very fearful (VIX > 30). Extra risky time to trade. Consider waiting."
             )
-    
+
     # 3. Weak signal warning
     factor = analysis_data.get("factor", {})
     score = factor.get("score", 50) if isinstance(factor, dict) else 50
@@ -193,7 +193,7 @@ def generate_warnings(analysis_data: Dict) -> List[str]:
         warnings.append(
             "💭 Signal is neutral (around 50/100). Not a strong reason to buy or sell yet."
         )
-    
+
     # 4. Sentiment disagreement
     sentiment = analysis_data.get("sentiment", {})
     if isinstance(sentiment, dict):
@@ -202,7 +202,7 @@ def generate_warnings(analysis_data: Dict) -> List[str]:
             warnings.append(
                 "⚡ Sentiment disagrees with the score. News sentiment is not aligned with technical signals."
             )
-    
+
     return warnings
 
 
@@ -211,12 +211,12 @@ def generate_warnings(analysis_data: Dict) -> List[str]:
 def explain_signal(analysis_data: Dict) -> Dict:
     """
     Explain in plain English why the app recommends buy/sell.
-    
+
     Parameters
     ----------
     analysis_data : dict
         Output from /api/analyze endpoint
-        
+
     Returns
     -------
     dict with detailed explanation including confidence, warnings, and tips
@@ -224,13 +224,13 @@ def explain_signal(analysis_data: Dict) -> Dict:
     # Get score from factor dict (contains 'score' key)
     factor = analysis_data.get("factor", {})
     score = factor.get("score", 50) if isinstance(factor, dict) else 50
-    
+
     # Calculate confidence
     confidence = calculate_confidence(analysis_data)
-    
+
     # Generate warnings
     warnings = generate_warnings(analysis_data)
-    
+
     explanation = {
         "score": score,  # Keep numerical score for comparison
         "confidence": confidence,  # Add confidence breakdown
@@ -243,12 +243,12 @@ def explain_signal(analysis_data: Dict) -> Dict:
         "warnings": warnings,  # Use calculated warnings
         "tips": []
     }
-    
+
     # Overall explanation
     verdict = explanation["verdict"]
     confidence_text = f" ({confidence['confidence']}% confidence)" if confidence["confidence"] else ""
     explanation["overall"] = f"{verdict['emoji']} {verdict['explanation']}{confidence_text}"
-    
+
     # Add beginner-friendly tips
     if score > 70:
         explanation["tips"].append("💡 If you buy, diversify: Don't put all money in one stock")
@@ -259,11 +259,11 @@ def explain_signal(analysis_data: Dict) -> Dict:
     else:
         explanation["tips"].append("💭 Mixed signals - do your own research before buying")
         explanation["tips"].append("� Wait for a clearer signal (score above 70 or below 30)")
-    
+
     explanation["tips"].append("🎯 This is a tool to help, not a guarantee. Always invest responsibly.")
-    
+
     return explanation
-    
+
     return explanation
 
 
@@ -271,14 +271,14 @@ def _format_momentum(factor: Dict) -> Dict:
     """Format momentum explanation as dict with strength and text."""
     if not factor:
         return {"strength": "WEAK", "text": "⏳ Price trend: Not enough data yet"}
-    
+
     # New: Include both momentum and RSI
     momentum_score = factor.get("momentum_score", 0)
-    
+
     # Get RSI information
     rsi_dict = factor.get("rsi", {})
     rsi_value = rsi_dict.get("rsi_value", 50)
-    
+
     if momentum_score >= 70:
         return {
             "strength": "STRONG",
@@ -308,23 +308,23 @@ def _format_sentiment(sentiment: Dict) -> Dict:
             "sentiment_type": "neutral",
             "text": "🤐 News Sentiment: Not enough news data"
         }
-    
+
     positive = sentiment.get("positive", 0)
     negative = sentiment.get("negative", 0)
     neutral = sentiment.get("neutral", 0)
     total = positive + negative + neutral
-    
+
     # If no headlines, return neutral
     if total == 0:
         return {
             "sentiment_type": "neutral",
             "text": "🤐 News Sentiment: Not enough news data"
         }
-    
+
     # Calculate sentiment percentage
     pos_pct = positive / total if total > 0 else 0
     neg_pct = negative / total if total > 0 else 0
-    
+
     if pos_pct >= 0.7:
         return {
             "sentiment_type": "positive",
@@ -354,10 +354,10 @@ def _format_rsi(factor: Dict) -> Dict:
             "strength": "NEUTRAL",
             "text": "Stream Price Momentum: Not enough data yet"
         }
-    
+
     rsi_dict = factor.get("rsi", {})
     rsi_value = rsi_dict.get("rsi_value", 50)
-    
+
     if rsi_value < 30:
         return {
             "strength": "OVERSOLD - BUY",
@@ -384,9 +384,9 @@ def _format_macro(macro: Dict) -> Dict:
     """Format macro explanation as dict."""
     if not macro:
         return {"text": "🌍 Market Conditions: Unable to get data"}
-    
+
     explanations = []
-    
+
     # VIX explanation
     vix = macro.get("vix")
     if vix:
@@ -400,7 +400,7 @@ def _format_macro(macro: Dict) -> Dict:
                 explanations.append("⚠️ VIX (Market Fear): HIGH - People are nervous (Be careful)")
         except (ValueError, TypeError):
             pass
-    
+
     # Yield explanation
     yield_10y = macro.get("yield_10y")
     if yield_10y:
@@ -414,25 +414,25 @@ def _format_macro(macro: Dict) -> Dict:
                 explanations.append(f"⚠️ Interest Rates: HIGH at {yield_val}% (Competition from bonds)")
         except (ValueError, TypeError):
             pass
-    
+
     text = " | ".join(explanations) if explanations else "🌍 Market conditions: Mixed signals"
     return {"text": text}
 
 
 # ========== PORTFOLIO RECOMMENDATIONS ==========
 
-def get_portfolio_recommendation(current_portfolio: List[str], 
+def get_portfolio_recommendation(current_portfolio: List[str],
                                   new_stock: str = None) -> Dict:
     """
     Analyze portfolio and recommend allocation + suggest negatively correlated stocks.
-    
+
     Parameters
     ----------
     current_portfolio : list
         List of tickers in user's portfolio (e.g., ["AAPL", "MSFT", "TSLA"])
     new_stock : str, optional
         New stock to add to portfolio
-        
+
     Returns
     -------
     dict with:
@@ -441,7 +441,7 @@ def get_portfolio_recommendation(current_portfolio: List[str],
         - diversification: suggestions for negatively correlated stocks
         - total_stocks_needed: ideal number of stocks
     """
-    
+
     if not current_portfolio:
         return {
             "allocation": {},
@@ -450,28 +450,28 @@ def get_portfolio_recommendation(current_portfolio: List[str],
             "total_stocks_needed": 8,
             "message": "Start by adding 8-10 different stocks for safety"
         }
-    
+
     # Add new stock if provided
     portfolio = list(current_portfolio)
     if new_stock:
         portfolio.append(new_stock)
-    
+
     # Get correlation matrix
     correlations = calculate_correlations(portfolio)
-    
+
     # Calculate allocation (equal weight is safe for beginners)
     num_stocks = len(portfolio)
     allocation_per_stock = 100 / num_stocks
-    
+
     allocation = {ticker: round(allocation_per_stock, 1) for ticker in portfolio}
-    
+
     # Assess portfolio risk
     avg_correlation = calculate_average_correlation(correlations)
     risk_level = assess_risk_level(avg_correlation)
-    
+
     # Find negatively correlated stocks to add for diversification
     negatively_correlated = find_negative_correlations(portfolio, correlations)
-    
+
     recommendation = {
         "allocation": allocation,
         "allocation_message": f"Recommended: {allocation_per_stock:.1f}% per stock",
@@ -480,7 +480,7 @@ def get_portfolio_recommendation(current_portfolio: List[str],
         "diversification": negatively_correlated,
         "total_stocks_needed": 8,
         "max_per_stock": "Never put more than 10% in one stock",
-        "minimum_stocks": f"You should have at least 8 stocks for safety",
+        "minimum_stocks": "You should have at least 8 stocks for safety",
         "tips": [
             "✅ Equal weight (each stock same %) is safest for beginners",
             "📊 Add more stocks from different sectors (tech, healthcare, energy, etc.)",
@@ -488,7 +488,7 @@ def get_portfolio_recommendation(current_portfolio: List[str],
             "⏰ Rebalance every 3-6 months"
         ]
     }
-    
+
     return recommendation
 
 
@@ -509,14 +509,14 @@ def calculate_average_correlation(corr_matrix: pd.DataFrame) -> float:
     """Calculate average correlation (excluding diagonal)."""
     if corr_matrix.empty:
         return 0
-    
+
     # Get upper triangle of correlation matrix (excluding diagonal)
     n = len(corr_matrix)
     correlations = []
     for i in range(n):
         for j in range(i + 1, n):
             correlations.append(corr_matrix.iloc[i, j])
-    
+
     return sum(correlations) / len(correlations) if correlations else 0
 
 
@@ -535,13 +535,13 @@ def assess_risk_level(avg_correlation: float) -> str:
         return "🔴 HIGH RISK - Stocks move together (Too correlated, risky)"
 
 
-def find_negative_correlations(portfolio: List[str], 
+def find_negative_correlations(portfolio: List[str],
                                 corr_matrix: pd.DataFrame,
                                 suggestion_pool: List[str] = None) -> List[Dict]:
     """
     Find stocks with negative correlation to current portfolio.
     Negative correlation = prices move opposite = good for diversification.
-    
+
     Parameters
     ----------
     portfolio : list
@@ -550,12 +550,12 @@ def find_negative_correlations(portfolio: List[str],
         Correlation matrix of portfolio
     suggestion_pool : list, optional
         Suggested tickers to check against
-        
+
     Returns
     -------
     list of dicts with suggestion, correlation, and reason
     """
-    
+
     if suggestion_pool is None:
         # Suggest different sectors/types
         suggestion_pool = [
@@ -574,20 +574,20 @@ def find_negative_correlations(portfolio: List[str],
             # Bonds/Interest (negatively correlated to stocks)
             "BND", "TLT"
         ]
-    
+
     suggestions = []
-    
+
     for candidate in suggestion_pool:
         if candidate in portfolio:
             continue
-        
+
         # Try to calculate correlation with portfolio average
         try:
             # For simplicity, get average correlation to portfolio
-            candidate_data = yf.download([candidate] + portfolio[:3], 
+            candidate_data = yf.download([candidate] + portfolio[:3],
                                         period="1y", progress=False)["Adj Close"]
             candidate_corr = candidate_data[candidate].corr(candidate_data.drop(columns=candidate).mean(axis=1))
-            
+
             if candidate_corr < -0.1:  # Negatively correlated
                 sector = get_sector(candidate)
                 suggestions.append({
@@ -599,7 +599,7 @@ def find_negative_correlations(portfolio: List[str],
                 })
         except Exception:
             continue
-    
+
     # Return top 3 suggestions sorted by most negative correlation
     return sorted(suggestions, key=lambda x: x["correlation"])[:3]
 
@@ -612,7 +612,7 @@ def get_sector(ticker: str) -> str:
     utilities = ["NEE", "DUK", "SO", "XEL"]
     consumer = ["WMT", "PG", "KO", "MCD", "AMZN"]
     financials = ["JPM", "BAC", "GS", "MS"]
-    
+
     if ticker in tech:
         return "Technology"
     elif ticker in healthcare:
@@ -631,12 +631,12 @@ def get_sector(ticker: str) -> str:
 
 # ========== RISK/REWARD EXPLANATION ==========
 
-def explain_risk_reward(current_price: float, 
+def explain_risk_reward(current_price: float,
                        target_price_high: float,
                        target_price_low: float) -> Dict[str, str]:
     """
     Explain potential gain/loss in simple terms.
-    
+
     Parameters
     ----------
     current_price : float
@@ -645,16 +645,16 @@ def explain_risk_reward(current_price: float,
         Optimistic target (upside)
     target_price_low : float
         Pessimistic target (downside)
-        
+
     Returns
     -------
     dict with gain potential and risk explanation
     """
-    
+
     potential_gain = ((target_price_high - current_price) / current_price) * 100
     potential_loss = ((target_price_low - current_price) / current_price) * 100
     risk_reward_ratio = potential_gain / abs(potential_loss) if potential_loss != 0 else 0
-    
+
     return {
         "current_price": f"${current_price:.2f}",
         "upside_target": f"${target_price_high:.2f}",
@@ -671,7 +671,7 @@ def explain_risk_reward(current_price: float,
 def compare_stocks(stock_analyses: Dict[str, Dict]) -> Dict:
     """
     Compare multiple stocks side-by-side for beginners.
-    
+
     Parameters
     ----------
     stock_analyses : dict
@@ -681,23 +681,23 @@ def compare_stocks(stock_analyses: Dict[str, Dict]) -> Dict:
             "MSFT": {...analysis...},
             "NVDA": {...analysis...}
         }
-        
+
     Returns
     -------
     dict with comparison table and recommendations
     """
-    
+
     comparison = {
         "stocks": [],
         "winner": None,
         "summary": "",
         "tips": []
     }
-    
+
     for ticker, analysis in stock_analyses.items():
         score = analysis.get("verdict", 0)
         verdict = get_verdict_with_emoji(score)
-        
+
         stock_data = {
             "ticker": ticker,
             "score": score,
@@ -708,7 +708,7 @@ def compare_stocks(stock_analyses: Dict[str, Dict]) -> Dict:
             "sentiment": analysis.get("sentiment", {}).get("overall_sentiment", 0)
         }
         comparison["stocks"].append(stock_data)
-    
+
     # Find winner (highest score)
     if comparison["stocks"]:
         winner = max(comparison["stocks"], key=lambda x: x["score"])
@@ -720,5 +720,5 @@ def compare_stocks(stock_analyses: Dict[str, Dict]) -> Dict:
             "⏰ Don't rush - wait for best entry point (Price to dip)",
             "🎯 You don't have to pick just one - can buy multiple stocks!"
         ]
-    
+
     return comparison

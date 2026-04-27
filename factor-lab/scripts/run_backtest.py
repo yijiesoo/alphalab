@@ -24,8 +24,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from src.backtest import run_backtest
 from src.metrics import (
-    compute_information_coefficient,
     compute_ic_summary,
+    compute_information_coefficient,
     full_tear_sheet,
     print_tear_sheet,
 )

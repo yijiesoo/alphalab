@@ -18,7 +18,7 @@ def get_macro_context(ticker: str) -> dict:
     - S&P 500 momentum (broad market trend)
     - Sector momentum (relative to sector ETF)
     - Bond/equity yield spread (valuation pressure)
-    
+
     Note: VIX is the fear index - shows market volatility and investor fear.
     Low VIX = calm markets, High VIX = nervous/scared markets.
     """
@@ -27,7 +27,7 @@ def get_macro_context(ticker: str) -> dict:
     sp500_momentum = _get_sp500_momentum()  # Broad market trend
     sector = _guess_sector(ticker)
     sector_signal = _sector_momentum(sector)
-    yield_risk_free = _get_latest_price("^TNX")  # 10Y as risk-free rate
+    _get_latest_price("^TNX")  # 10Y as risk-free rate
 
     return {
         "vix": vix,
@@ -170,21 +170,21 @@ def _yield_label(y) -> str:
 
 def _build_summary(vix, yield_10y, sector, sector_signal, sp500_momentum) -> str:
     parts = []
-    
+
     # Market regime (S&P 500)
     if sp500_momentum != "unavailable":
         parts.append(f"Broad market is {sp500_momentum}.")
-    
+
     # Interest rate environment
     if yield_10y is not None:
         parts.append(f"10Y yield at {yield_10y}% — {_yield_label(yield_10y)}.")
-    
+
     # Sector trend
     if sector != "unknown":
         parts.append(f"{sector.capitalize()} sector is {sector_signal} (3-mo trend).")
-    
+
     # Decision context
     if parts:
         parts.append("Use this with momentum & sentiment for decisions.")
-    
+
     return " ".join(parts) if parts else "Macro data unavailable."

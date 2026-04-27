@@ -10,22 +10,22 @@ it'll just give you unrealistically good backtest results. Tests catch
 these logical errors before they mislead you.
 """
 
+import sys
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
-import sys
-from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from src.factors import (
-    momentum_12_1,
-    low_volatility,
-    cross_sectional_zscore,
     combine_factors,
+    cross_sectional_zscore,
+    low_volatility,
+    momentum_12_1,
 )
-from src.portfolio import compute_weights, compute_turnover
-
+from src.portfolio import compute_turnover, compute_weights
 
 # ---------------------------------------------------------------------------
 # Helpers

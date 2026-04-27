@@ -3,31 +3,37 @@ Minimalist Flask app.py - main entry point
 Routes and most logic have been moved to routes/ and services/
 """
 import os
-import sys
-import uuid
 import queue
+import re
+import shutil
+import smtplib
 import subprocess
+import sys
 import threading
 import time
-import shutil
-import re
-import traceback
-from pathlib import Path
+import uuid
 from datetime import datetime, timedelta
-import smtplib
-from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from pathlib import Path
 
-from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, render_template, request, send_from_directory, stream_with_context, session
-import yfinance as yf
 import pandas as pd
+import yfinance as yf
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    request,
+    send_from_directory,
+    session,
+    stream_with_context,
+)
 
 # Load environment variables FIRST
 load_dotenv()
 
 # Add parent directory and factor-lab to Python path BEFORE imports
-from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FACTORLAB_ROOT = PROJECT_ROOT / "factor-lab"
 
@@ -37,14 +43,25 @@ if str(FACTORLAB_ROOT) not in sys.path:
     sys.path.insert(0, str(FACTORLAB_ROOT))
 
 # Import configuration
-from .config import Config, PROJECT_ROOT, FACTORLAB_ROOT, OUT_DIR, LOG_FILE, IMAGE_EXTENSIONS, SCRIPT, FACTORLAB_OUT
-
-# Initialize supabase service
-from .services import init_supabase, get_supabase
+from .config import (  # noqa: E402
+    FACTORLAB_OUT,
+    FACTORLAB_ROOT,
+    IMAGE_EXTENSIONS,
+    LOG_FILE,
+    OUT_DIR,
+    PROJECT_ROOT,
+    SCRIPT,
+    Config,
+)
 
 # Import blueprints
-from .routes import auth_bp, login_required
-from .routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
+from .routes import auth_bp, login_required  # noqa: E402
+from .routes.dashboard import dashboard_bp  # noqa: E402
+from .routes.dashboard import init_supabase as init_dashboard_supabase  # noqa: E402
+
+# Initialize supabase service
+from .services import init_supabase  # noqa: E402
+
 
 def get_latest_ml_metrics():
     return {"status": "error", "message": "alphalab_ml not found"}
@@ -213,7 +230,7 @@ def outputs(filename):
 @login_required
 def api_analyze():
     """GET /api/analyze?ticker=NVDA[&refresh=true]
-    
+
     Analyzes a stock ticker using factor-lab modules.
     Results are cached for 15 minutes.
     """
@@ -250,8 +267,8 @@ def api_analyze():
 
     # Cache miss — run analysis
     try:
-        from src.scorer import analyze_ticker
         from src.factor_delay import add_factor_delay_context
+        from src.scorer import analyze_ticker
 
         # Check sentiment cache before calling analyze_ticker (4h TTL vs 15min analysis TTL)
         cached_sentiment = None
@@ -318,7 +335,7 @@ def api_cache():
 @app.route("/api/backtest/stream")
 def api_backtest_stream():
     """GET /api/backtest/stream?ticker=NVDA
-    
+
     Server-Sent Events endpoint. Streams backtest logs.
     """
     ticker = (request.args.get("ticker") or "").upper().strip()
@@ -434,16 +451,16 @@ def api_ml_scores(ticker):
 @login_required
 def api_top_ml_picks():
     """GET /api/top-ml-picks?limit=10
-    
+
     Return top ML-scored stocks from cached analysis data.
     """
     try:
         limit = request.args.get("limit", 10, type=int)
-        
+
         # Get all cached tickers and their factor scores
         top_picks = []
         now = time.time()
-        
+
         for ticker, entry in _cache.items():
             if entry["expires_at"] > now:  # Only use valid cache entries
                 data = entry["data"]
@@ -455,11 +472,11 @@ def api_top_ml_picks():
                         "verdict": data.get("verdict", "yellow"),
                         "latest_price": data.get("latest_price", 0),
                     })
-        
+
         # Sort by score (descending) and take top N
         top_picks.sort(key=lambda x: x["score"], reverse=True)
         top_picks = top_picks[:limit]
-        
+
         return jsonify({
             "top_picks": top_picks,
             "count": len(top_picks),
@@ -477,24 +494,24 @@ def api_top_ml_picks():
 @login_required
 def api_price_chart():
     """GET /api/price-chart?ticker=AAPL&timeframe=6M
-    
+
     Return price data for chart. Timeframe: 1M, 3M, 6M, 1Y, ALL
     """
     ticker = (request.args.get("ticker") or "").upper().strip()
     timeframe = (request.args.get("timeframe") or "6M").upper()
-    
+
     if not ticker:
         return jsonify({"error": "ticker parameter is required"}), 400
     if not _valid_ticker(ticker):
         return jsonify({"error": f"invalid ticker: {ticker}"}), 400
-    
+
     timeframe_map = {"1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": 1000}
     lookback_days = timeframe_map.get(timeframe, 180)
 
     try:
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days)
-        
+
         print(f"📈 Fetching price chart for {ticker} ({timeframe}, {lookback_days} days)")
         data = _yf_download_with_retry(
             ticker,
@@ -503,10 +520,10 @@ def api_price_chart():
             progress=False,
             auto_adjust=True
         )
-        
+
         if data.empty:
             return jsonify({"error": "no price data available"}), 404
-        
+
         # Handle yfinance MultiIndex columns for single ticker
         # yfinance returns columns like ('Close', 'AAPL') for single ticker
         # or just 'Close' for multiple tickers
@@ -516,12 +533,12 @@ def api_price_chart():
         else:
             close_col = 'Close'
             volume_col = 'Volume'
-        
+
         # Format for chart.js
         dates_list = data.index.strftime("%Y-%m-%d").tolist()
         prices_list = data[close_col].round(2).tolist()
         volumes_list = data[volume_col].astype(int).tolist()
-        
+
         # Format as [date, price] pairs for chart
         chart_data = {
             "dates": dates_list,
@@ -542,27 +559,27 @@ def api_price_chart():
 @login_required
 def api_signal_history():
     """GET /api/signal-history?ticker=AAPL&timeframe=6M
-    
+
     Return momentum signal history for a ticker over timeframe.
     """
     ticker = (request.args.get("ticker") or "").upper().strip()
     timeframe = (request.args.get("timeframe") or "6M").upper()
-    
+
     if not ticker:
         return jsonify({"error": "ticker parameter is required"}), 400
     if not _valid_ticker(ticker):
         return jsonify({"error": f"invalid ticker: {ticker}"}), 400
-    
+
     try:
         from src.signal_history import calculate_momentum_history
-        
+
         print(f"📊 Fetching signal history for {ticker} ({timeframe})")
         result = calculate_momentum_history(ticker, timeframe)
-        
+
         if "error" in result:
             print(f"⚠️ Signal history warning: {result['error']}")
             return jsonify(result), 200  # Return as 200 even if partial data
-        
+
         print(f"✅ Got signal history: {len(result.get('history', []))} data points")
         return jsonify(result), 200
     except Exception as e:
@@ -577,28 +594,28 @@ def api_signal_history():
 @login_required
 def api_portfolio_performance():
     """GET /api/portfolio/performance?watchlist_id=xxx&period=3mo
-    
+
     Calculate portfolio performance metrics for a watchlist.
     """
     watchlist_id = request.args.get("watchlist_id", "")
     period = request.args.get("period", "3mo")
-    
+
     if not watchlist_id:
         return jsonify({"error": "watchlist_id parameter is required"}), 400
-    
+
     try:
-        user_email = session.get("user_email")
-        
+        session.get("user_email")
+
         # Get watchlist details
         if not supabase:
             return jsonify({"error": "Supabase not configured"}), 503
-        
+
         print(f"📊 Fetching portfolio performance for watchlist: {watchlist_id}")
         response = supabase.table("watchlist").select("tickers").eq("id", watchlist_id).execute()
-        
+
         if not response.data:
             return jsonify({"error": "Watchlist not found"}), 404
-        
+
         tickers = response.data[0].get("tickers", [])
         if not tickers:
             return jsonify({
@@ -607,14 +624,14 @@ def api_portfolio_performance():
                 "worst_performer": None,
                 "tickers_count": 0
             }), 200
-        
+
         # Calculate returns for each ticker over period
         timeframe_map = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365}
         lookback_days = timeframe_map.get(period, 90)
-        
+
         end_date = datetime.now()
         start_date = end_date - timedelta(days=lookback_days)
-        
+
         returns = []
         for ticker in tickers:
             try:
@@ -624,7 +641,7 @@ def api_portfolio_performance():
                     end=end_date.strftime("%Y-%m-%d"),
                     progress=False
                 )
-                
+
                 if len(data) > 0:
                     start_price = data['Close'].iloc[0]
                     end_price = data['Close'].iloc[-1]
@@ -632,7 +649,7 @@ def api_portfolio_performance():
                     returns.append({"ticker": ticker, "return": ret})
             except Exception:
                 continue
-        
+
         if not returns:
             return jsonify({
                 "avg_return": 0,
@@ -640,12 +657,12 @@ def api_portfolio_performance():
                 "worst_performer": None,
                 "tickers_count": len(tickers)
             }), 200
-        
+
         # Calculate metrics
         avg_return = sum(r["return"] for r in returns) / len(returns)
         best = max(returns, key=lambda x: x["return"])
         worst = min(returns, key=lambda x: x["return"])
-        
+
         result = {
             "avg_return": round(avg_return, 2),
             "best_performer": {"ticker": best["ticker"], "return": round(best["return"], 2)},
@@ -654,7 +671,7 @@ def api_portfolio_performance():
             "period": period,
             "all_returns": returns
         }
-        
+
         print(f"✅ Portfolio performance: {result['avg_return']}% avg return")
         return jsonify(result), 200
     except Exception as e:
@@ -673,7 +690,7 @@ def api_portfolio_performance():
 def api_watchlist():
     """Manage user watchlist"""
     user_email = session.get("user_email")
-    
+
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 503
 
@@ -693,14 +710,14 @@ def api_watchlist():
             ticker = request.json.get("ticker", "").upper().strip()
             if not _valid_ticker(ticker):
                 return jsonify({"error": "invalid ticker"}), 400
-            
+
             try:
                 print(f"✏️ Adding {ticker} to watchlist for {user_email}")
                 # Get existing watchlist
                 response = supabase.table("watchlist").select("tickers").eq("email", user_email).execute()
                 tickers = []
                 watchlist_id = None
-                
+
                 if response.data and len(response.data) > 0:
                     # User already has a watchlist, update it
                     watchlist_id = response.data[0].get("id")
@@ -717,7 +734,7 @@ def api_watchlist():
                         "email": user_email,
                         "tickers": tickers,
                     }).execute()
-                
+
                 return jsonify({"success": True, "message": f"{ticker} added"}), 200
             except Exception as e:
                 error_str = str(e)
@@ -730,16 +747,16 @@ def api_watchlist():
             ticker = request.json.get("ticker", "").upper().strip()
             if not _valid_ticker(ticker):
                 return jsonify({"error": "invalid ticker"}), 400
-            
+
             try:
                 print(f"🗑️ Deleting {ticker} from watchlist for {user_email}")
                 # Get existing watchlist
                 response = supabase.table("watchlist").select("tickers, id").eq("email", user_email).execute()
-                
+
                 if response.data and len(response.data) > 0:
                     watchlist_id = response.data[0].get("id")
                     tickers = response.data[0].get("tickers", [])
-                    
+
                     if ticker in tickers:
                         tickers.remove(ticker)
                         supabase.table("watchlist").update({"tickers": tickers}).eq("id", watchlist_id).execute()
@@ -768,10 +785,10 @@ def api_analysis_history():
     """GET /api/analysis-history?session_id=xxx"""
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 500
-    
+
     session_id = request.args.get("session_id", "default")
     limit = request.args.get("limit", 50, type=int)
-    
+
     try:
         response = supabase.table("analysis_history").select("*").eq("session_id", session_id).order("analyzed_at", desc=True).limit(limit).execute()
         items = response.data if response.data else []
@@ -789,14 +806,14 @@ def api_save_analysis():
     """POST /api/save-analysis — save analysis to history."""
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 500
-    
+
     data = request.json
     session_id = data.get("session_id", "default")
     ticker = (data.get("ticker") or "").upper().strip()
-    
+
     if not ticker or not _valid_ticker(ticker):
         return jsonify({"error": "Invalid ticker"}), 400
-    
+
     try:
         supabase.table("analysis_history").insert({
             "session_id": session_id,
@@ -821,17 +838,17 @@ def beginner_guide(ticker):
     ticker = (ticker or "").upper().strip()
     if not _valid_ticker(ticker):
         return jsonify({"error": f"invalid ticker: {ticker}"}), 400
-    
+
     try:
         from src.beginner_guide import explain_signal
         from src.scorer import analyze_ticker
-        
+
         # Get the analysis first
         analysis = analyze_ticker(ticker)
-        
+
         # Get beginner-friendly explanation
         explanation = explain_signal(analysis)
-        
+
         return jsonify({"explanation": explanation, "ticker": ticker, "analysis": analysis})
     except Exception as e:
         app.logger.error(f"Beginner guide error for {ticker}: {e}", exc_info=True)
@@ -847,13 +864,13 @@ def get_watchlists():
     """GET /api/watchlists — get all watchlists for user"""
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 503
-    
+
     user_email = session.get("user_email")
-    
+
     if not user_email:
-        print(f"⚠️ No user_email in session")
+        print("⚠️ No user_email in session")
         return jsonify({"error": "No user session", "watchlists": []}), 200
-    
+
     try:
         print(f"🔍 GET watchlists for user: {user_email}")
         response = supabase.table("watchlists").select("*").eq("email", user_email).execute()
@@ -875,14 +892,14 @@ def create_watchlist():
     """POST /api/watchlists — create new watchlist"""
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 503
-    
+
     user_email = session.get("user_email")
     data = request.json
     name = data.get("name", "").strip()
-    
+
     if not name:
         return jsonify({"error": "Watchlist name is required"}), 400
-    
+
     try:
         watchlist_id = str(uuid.uuid4())
         print(f"✏️ Creating watchlist '{name}' for user: {user_email}")
@@ -909,7 +926,7 @@ def delete_watchlist(watchlist_id):
     """DELETE /api/watchlists/<watchlist_id>"""
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 503
-    
+
     try:
         print(f"🗑️ Deleting watchlist: {watchlist_id}")
         supabase.table("watchlists").delete().eq("id", watchlist_id).execute()
@@ -931,7 +948,7 @@ def delete_watchlist(watchlist_id):
 def api_portfolio_holdings():
     """Manage portfolio holdings with entry prices and quantities"""
     user_email = session.get("user_email")
-    
+
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 503
 
@@ -950,17 +967,17 @@ def api_portfolio_holdings():
             ticker = data.get("ticker", "").upper().strip()
             quantity = float(data.get("quantity", 0))
             entry_price = float(data.get("entry_price", 0))
-            
+
             if not _valid_ticker(ticker):
                 return jsonify({"error": "invalid ticker"}), 400
             if quantity <= 0 or entry_price <= 0:
                 return jsonify({"error": "quantity and entry_price must be positive"}), 400
-            
+
             print(f"✏️ Adding/Updating holding: {ticker} x{quantity} @ ${entry_price} for {user_email}")
-            
+
             try:
                 # Try to insert first
-                result = supabase.table("portfolio_holdings").insert({
+                supabase.table("portfolio_holdings").insert({
                     "email": user_email,
                     "ticker": ticker,
                     "quantity": quantity,
@@ -1000,10 +1017,10 @@ def api_portfolio_holdings():
             holding_id = data.get("id")
             quantity = float(data.get("quantity", 0))
             entry_price = float(data.get("entry_price", 0))
-            
+
             if quantity <= 0 or entry_price <= 0:
                 return jsonify({"error": "quantity and entry_price must be positive"}), 400
-            
+
             print(f"✏️ Updating holding: {holding_id}")
             supabase.table("portfolio_holdings").update({
                 "quantity": quantity,
@@ -1014,7 +1031,7 @@ def api_portfolio_holdings():
         elif request.method == "DELETE":
             # Delete holding
             ticker = request.json.get("ticker", "").upper().strip()
-            
+
             print(f"🗑️ Deleting holding: {ticker}")
             supabase.table("portfolio_holdings").delete().eq("email", user_email).eq("ticker", ticker).execute()
             return jsonify({"success": True}), 200
@@ -1032,7 +1049,7 @@ def api_portfolio_holdings():
 def api_portfolio_summary():
     """Get portfolio summary with accurate P&L calculations"""
     user_email = session.get("user_email")
-    
+
     if not supabase:
         return jsonify({"error": "Supabase not configured"}), 503
 
@@ -1040,7 +1057,7 @@ def api_portfolio_summary():
         # Get all holdings
         response = supabase.table("portfolio_holdings").select("*").eq("email", user_email).execute()
         holdings = response.data or []
-        
+
         if not holdings:
             return jsonify({
                 "total_invested": 0,
@@ -1051,17 +1068,17 @@ def api_portfolio_summary():
                 "holdings": [],
                 "data_timestamp": datetime.now().isoformat()
             }), 200
-        
+
         # Calculate current values and P&L
         total_invested = 0
         total_current_value = 0
         holding_details = []
-        
+
         for holding in holdings:
             ticker = holding["ticker"]
             quantity = float(holding["quantity"])
             entry_price = float(holding["entry_price"])
-            
+
             # Get current price using auto-adjusted close (handles splits/dividends).
             # Strategy 1: yfinance .info for near-real-time price (delayed ~15 min).
             # Strategy 2: fall back to the most recent adjusted close from history.
@@ -1084,22 +1101,22 @@ def api_portfolio_summary():
                 print(f"⚠️ Price fetch error for {ticker}: {price_error}")
                 current_price = entry_price
                 price_stale = True
-            
+
             invested = quantity * entry_price
             current_value = quantity * current_price
             gain_loss = current_value - invested
             gain_loss_pct = (gain_loss / invested * 100) if invested > 0 else 0
-            
+
             total_invested += invested
             total_current_value += current_value
-            
+
             # Determine position status for beginner-friendly display
             position_status = "holding"
             if gain_loss_pct > 15:
                 position_status = "winning"
             elif gain_loss_pct < -10:
                 position_status = "losing"
-            
+
             holding_details.append({
                 "ticker": ticker,
                 "quantity": quantity,
@@ -1112,15 +1129,15 @@ def api_portfolio_summary():
                 "gain_loss_pct": round(gain_loss_pct, 2),
                 "position_status": position_status,  # "winning", "losing", or "holding"
             })
-        
+
         total_gain_loss = total_current_value - total_invested
         total_gain_loss_pct = (total_gain_loss / total_invested * 100) if total_invested > 0 else 0
-        
+
         # Sort by gain/loss (best performers first)
         holding_details.sort(key=lambda x: x["gain_loss"], reverse=True)
-        
+
         print(f"📊 Portfolio Summary - Invested: ${total_invested:.2f}, Current: ${total_current_value:.2f}, P&L: ${total_gain_loss:.2f}")
-        
+
         return jsonify({
             "total_invested": round(total_invested, 2),
             "total_current_value": round(total_current_value, 2),
@@ -1130,7 +1147,7 @@ def api_portfolio_summary():
             "holdings": holding_details,
             "data_timestamp": datetime.now().isoformat(),
         }), 200
-    
+
     except Exception as e:
         import traceback
         print(f"❌ Error calculating portfolio summary: {e}")
@@ -1153,19 +1170,19 @@ def submit_feedback():
         feedback_text = data.get("feedback", "").strip()
         page = data.get("page", "unknown")
         timestamp = data.get("timestamp", datetime.now().isoformat())
-        
+
         if not feedback_text:
             return jsonify({"error": "Feedback text is required"}), 400
-        
+
         # Get user email from session
         user_email = session.get("user_email", "anonymous")
-        
+
         # Send email to admin
         send_feedback_email(user_email, feedback_text, page, timestamp)
-        
+
         print(f"✅ Feedback email sent from {user_email}: {feedback_text[:50]}...")
         return jsonify({"message": "Feedback received successfully"}), 200
-    
+
     except Exception as e:
         import traceback
         print(f"❌ Error sending feedback: {e}")
@@ -1183,46 +1200,46 @@ def send_feedback_email(user_email, feedback_text, page, timestamp):
         sender_email = os.getenv("GMAIL_USER", "alphalab.feedback@gmail.com")
         sender_password = os.getenv("GMAIL_PASSWORD", "")
         recipient_email = "sooyijie111@gmail.com"
-        
+
         # Create message
         message = MIMEMultipart()
         message["From"] = sender_email
         message["To"] = recipient_email
         message["Subject"] = f"📬 AlphaLab Feedback from {user_email}"
-        
+
         # Email body
         body = f"""
         <html>
             <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1F2937;">
                 <h2 style="color: #3B82F6;">📬 New Feedback Received</h2>
-                
+
                 <div style="background: #F8FAFC; padding: 16px; border-radius: 8px; margin: 16px 0;">
                     <p><strong>From:</strong> {user_email}</p>
                     <p><strong>Page:</strong> {page}</p>
                     <p><strong>Time:</strong> {timestamp}</p>
                 </div>
-                
+
                 <div style="background: #FFFFFF; padding: 16px; border: 1px solid #E2E8F0; border-radius: 8px; margin: 16px 0;">
                     <h3 style="color: #1F2937; margin-top: 0;">Feedback:</h3>
                     <p style="white-space: pre-wrap; color: #4B5563; line-height: 1.6;">{feedback_text}</p>
                 </div>
-                
+
                 <p style="color: #6B7280; font-size: 0.9em; margin-top: 24px;">
                     — AlphaLab Feedback System
                 </p>
             </body>
         </html>
         """
-        
+
         message.attach(MIMEText(body, "html"))
-        
+
         # Send email
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.send_message(message)
-        
+
         print(f"✅ Email sent to {recipient_email}")
-    
+
     except Exception as e:
         print(f"❌ Error sending email: {e}")
         import traceback
@@ -1233,12 +1250,12 @@ if __name__ == "__main__":
     # Create output directories
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     FACTORLAB_OUT.mkdir(parents=True, exist_ok=True)
-    
+
     print("""
     ╔════════════════════════════════════════╗
     ║       AlphaLab Flask Server             ║
     ║  http://127.0.0.1:8000                 ║
     ╚════════════════════════════════════════╝
     """)
-    
+
     app.run(debug=True, host="127.0.0.1", port=8000)

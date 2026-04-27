@@ -22,10 +22,12 @@ First load takes ~10 seconds (model download + initialization).
 Subsequent requests are faster (~500ms per headline on CPU).
 """
 
-import yfinance as yf
+from datetime import datetime, timedelta
+
 import numpy as np
 import pandas as pd
-from datetime import datetime, timedelta
+import yfinance as yf
+
 from src.data import download_prices
 from src.factors import momentum_12_1
 from src.macro import get_macro_context
@@ -35,20 +37,20 @@ from src.sentiment import get_news_sentiment
 def _calculate_rsi(prices_series, period=14):
     """
     Calculate Relative Strength Index (RSI).
-    
+
     RSI measures momentum by comparing magnitude of recent gains to recent losses.
     Scale: 0-100
     - RSI < 30: Oversold (potentially buy signal)
     - RSI > 70: Overbought (potentially sell signal)
     - 30-70: Neutral
-    
+
     Parameters
     ----------
     prices_series : pd.Series
         Price data (typically closing prices)
     period : int
         Period for RSI calculation (default 14)
-    
+
     Returns
     -------
     float : RSI value (0-100)
@@ -57,10 +59,10 @@ def _calculate_rsi(prices_series, period=14):
         delta = prices_series.diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-        
+
         rs = gain / loss
         rsi = 100 - (100 / (1 + rs))
-        
+
         # Return the most recent RSI value
         return float(rsi.iloc[-1])
     except Exception:
@@ -70,18 +72,18 @@ def _calculate_rsi(prices_series, period=14):
 def _calculate_rsi_score(rsi_value):
     """
     Convert RSI (0-100) to a buy/sell score (0-100).
-    
+
     Scoring:
     - RSI < 30 (oversold): Good buy signal → score 70-90
     - RSI 30-50: Weak buy → score 50-70
     - RSI 50-70: Neutral to weak sell → score 30-50
     - RSI > 70 (overbought): Sell signal → score 10-30
-    
+
     Parameters
     ----------
     rsi_value : float
         RSI value (0-100)
-    
+
     Returns
     -------
     dict with score, label, and explanation
@@ -102,7 +104,7 @@ def _calculate_rsi_score(rsi_value):
         rsi_score = max(10, 30 - (rsi_value - 70) / 3)  # 10-30
         label = "Overbought - Sell Signal"
         explanation = f"RSI {rsi_value:.1f} - Stock is overbought. Consider taking profits."
-    
+
     return {
         "rsi_value": round(rsi_value, 1),
         "score": int(rsi_score),
@@ -258,13 +260,13 @@ def _calculate_entry_exit_levels(prices_series: pd.Series, current_price: float)
 def _calculate_stock_correlation(ticker: str, compare_to: list = None) -> dict:
     """
     Calculate correlation between ticker and other market baskets.
-    
+
     Correlation shows how much a stock moves together with market indices.
     - 1.0 = Moves exactly same as market
     - 0.5 = Moves somewhat with market
     - 0.0 = No relationship
     - -1.0 = Moves opposite to market (hedging asset)
-    
+
     Parameters
     ----------
     ticker : str
@@ -272,7 +274,7 @@ def _calculate_stock_correlation(ticker: str, compare_to: list = None) -> dict:
     compare_to : list
         List of market indices to compare against
         Default: VOO (S&P 500), QQQ (Tech), IWM (Small caps)
-    
+
     Returns
     -------
     dict with correlation values and beginner-friendly interpretation
@@ -282,29 +284,29 @@ def _calculate_stock_correlation(ticker: str, compare_to: list = None) -> dict:
         # QQQ = Tech companies (NASDAQ)
         # IWM = Small companies (Russell 2000)
         compare_to = ['VOO', 'QQQ', 'IWM']
-    
+
     try:
         # Fetch price data for all tickers (rolling 1-year window)
         all_tickers = [ticker] + compare_to
         start_date = (datetime.today() - timedelta(days=365)).strftime("%Y-%m-%d")
         prices = download_prices(tickers=all_tickers, start=start_date)
-        
+
         if prices.empty or ticker not in prices.columns:
             return {"error": f"Could not fetch price data for {ticker}"}
-        
+
         # Calculate daily returns
         returns = prices.pct_change().dropna()
-        
+
         # Calculate correlations with explanations
         correlations = {}
         correlation_explanations = {}
-        
+
         for other_ticker in compare_to:
             if other_ticker in returns.columns:
                 corr = returns[ticker].corr(returns[other_ticker])
                 corr_rounded = round(corr, 2)
                 correlations[other_ticker] = corr_rounded
-                
+
                 # Beginner explanation for each correlation
                 if other_ticker == 'VOO':
                     market_type = "Overall Market (Large Companies)"
@@ -312,7 +314,7 @@ def _calculate_stock_correlation(ticker: str, compare_to: list = None) -> dict:
                     market_type = "Tech Sector"
                 else:  # IWM
                     market_type = "Small Companies"
-                
+
                 if corr_rounded > 0.75:
                     explanation = f"Moves closely with {market_type}"
                 elif corr_rounded > 0.5:
@@ -323,13 +325,13 @@ def _calculate_stock_correlation(ticker: str, compare_to: list = None) -> dict:
                     explanation = f"Barely follows {market_type}"
                 else:
                     explanation = f"Moves opposite to {market_type} (Hedging asset)"
-                
+
                 correlation_explanations[other_ticker] = explanation
-        
+
         # Compute average correlation
         avg_corr = np.mean(list(correlations.values())) if correlations else 0
         avg_corr_rounded = round(avg_corr, 2)
-        
+
         # Overall beginner interpretation
         if avg_corr_rounded > 0.7:
             overall_interpretation = "📊 This stock moves with the overall market. When market goes up, this usually goes up too."
@@ -339,7 +341,7 @@ def _calculate_stock_correlation(ticker: str, compare_to: list = None) -> dict:
             overall_interpretation = "📊 This stock mostly does its own thing (good for diversification)."
         else:
             overall_interpretation = "📊 This stock often moves opposite to the market (great for hedging/protection)."
-        
+
         return {
             "ticker": ticker,
             "correlations": correlations,
@@ -347,7 +349,7 @@ def _calculate_stock_correlation(ticker: str, compare_to: list = None) -> dict:
             "average_correlation": avg_corr_rounded,
             "overall_interpretation": overall_interpretation,
         }
-    
+
     except Exception as e:
         print(f"Error calculating correlation: {e}")
         return {
@@ -463,17 +465,17 @@ def analyze_ticker(ticker: str, sentiment: dict = None) -> dict:
 def _compute_factor_score(ticker: str, prices) -> dict:
     """
     Compute momentum and RSI factor score for the ticker.
-    
+
     Returns a weighted score combining:
     1. Momentum Factor (12-month): 50% weight
        - Measures 12-month price return excluding the most recent month
        - Range: -1.0 (worst performer) to +1.0 (best performer)
-    
+
     2. RSI Factor (14-day): 50% weight
        - Relative Strength Index measuring momentum
        - RSI < 30: Oversold (buy signal)
        - RSI > 70: Overbought (sell signal)
-    
+
     Final Score: 0-100
     - 75+: Strong buy signal
     - 60-75: Good buy signal
@@ -486,17 +488,17 @@ def _compute_factor_score(ticker: str, prices) -> dict:
         momentum = momentum_12_1(prices)
         momentum_value = momentum[ticker].dropna().iloc[-1]
         momentum_score = max(0, min(100, (momentum_value + 1) * 50))
-        
+
         # 2. Compute RSI score
         price_series = prices[ticker].dropna()
         rsi_value = _calculate_rsi(price_series, period=14)
         rsi_dict = _calculate_rsi_score(rsi_value)
         rsi_score = rsi_dict["score"]
-        
+
         # 3. Combine scores: 50% momentum + 50% RSI
         final_score = (momentum_score * 0.5 + rsi_score * 0.5)
         final_score = max(0, min(100, final_score))
-        
+
         # Determine label
         if final_score >= 75:
             label = "Very Strong - Both Momentum & RSI Bullish"
@@ -510,7 +512,7 @@ def _compute_factor_score(ticker: str, prices) -> dict:
             label = "Negative - Bearish Signals"
         else:
             label = "Very Weak - Strong Sell Signal"
-        
+
         return {
             "score": int(final_score),
             "label": label,

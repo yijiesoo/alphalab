@@ -1,12 +1,13 @@
 """
 Dashboard routes: Home, Analyze, and dashboard API endpoints
 """
-from flask import Blueprint, render_template, session, jsonify, request
 from datetime import datetime
+
 import pandas as pd
 import yfinance as yf
+from flask import Blueprint, jsonify, render_template, request, session
+
 from . import login_required
-from ..config import Config
 
 # Create blueprint
 dashboard_bp = Blueprint('dashboard', __name__)

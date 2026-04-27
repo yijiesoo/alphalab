@@ -2,9 +2,9 @@
 """Quick test script for FinBERT loading."""
 
 import sys
+
 sys.path.insert(0, './factor-lab')
 
-import os
 from dotenv import load_dotenv
 
 # Load .env first
@@ -14,7 +14,7 @@ print("[TEST] FinBERT Loading Test")
 print("=" * 50)
 
 # Import after env is loaded
-from src.sentiment import _score_headline_finbert, FINBERT_AVAILABLE
+from src.sentiment import FINBERT_AVAILABLE, _score_headline_finbert  # noqa: E402
 
 print(f"[DEBUG] FINBERT_AVAILABLE: {FINBERT_AVAILABLE}")
 
@@ -25,12 +25,12 @@ if FINBERT_AVAILABLE:
         "Apple stock falls as sales miss expectations",
         "Tesla continues expansion with new factory",
     ]
-    
+
     for headline in test_headlines:
         print(f"\n  Headline: {headline}")
         result = _score_headline_finbert(headline)
         print(f"  Sentiment: {result}")
-    
+
     print("\n" + "=" * 50)
     print("[TEST] ✅ FinBERT loaded and working successfully!")
 else:

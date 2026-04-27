@@ -18,7 +18,6 @@ This teaches users about:
 from datetime import datetime, timedelta
 
 import numpy as np
-import pandas as pd
 import yfinance as yf
 
 
@@ -129,7 +128,7 @@ def calculate_factor_delay_returns(
                 label = "3 Month"
             else:
                 label = f"{delay_days}d"
-            
+
             delay_key = f"delay_{label}"
             result["delays"][delay_key] = {
                 "days_ago": delay_days,

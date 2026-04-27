@@ -3,8 +3,9 @@ Flask configuration settings
 """
 import os
 from datetime import timedelta
-from dotenv import load_dotenv
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
@@ -28,23 +29,23 @@ FACTORLAB_OUT.mkdir(parents=True, exist_ok=True)
 class Config:
     """Base Flask configuration"""
     SECRET_KEY = os.getenv("FLASK_SECRET_KEY", "dev-secret-key-change-in-production")
-    
+
     # Session configuration
     SESSION_COOKIE_SECURE = False  # Allow HTTP in development
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     PERMANENT_SESSION_LIFETIME = timedelta(days=7)
-    
+
     # Firebase
     FIREBASE_WEB_API_KEY = os.getenv("FIREBASE_WEB_API_KEY")
-    
+
     # Supabase
     SUPABASE_URL = os.getenv("SUPABASE_URL")
     SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY")
-    
+
     # Caching
     CACHE_TTL_SECONDS = 15 * 60  # 15 minutes
-    
+
     # News API
     NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 

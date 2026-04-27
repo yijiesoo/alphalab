@@ -1,56 +1,3 @@
-{% if show_onboarding %}
-    <div class="onboarding-modal-bg" id="onboarding-modal-bg">
-        <div class="onboarding-modal">
-            <h2>Welcome! Let's personalize your dashboard</h2>
-            <form id="onboarding-form">
-                <label for="risk">Risk Level</label>
-                <select id="risk" name="risk" required>
-                    <option value="">Select...</option>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                </select>
-                <label for="sectors">Sectors of Interest</label>
-                <select id="sectors" name="sectors" multiple required style="height: 80px;">
-                    <option value="tech">Tech</option>
-                    <option value="healthcare">Healthcare</option>
-                    <option value="finance">Finance</option>
-                    <option value="energy">Energy</option>
-                    <option value="consumer">Consumer</option>
-                    <option value="industrial">Industrial</option>
-                </select>
-                <label for="horizon">Time Horizon</label>
-                <select id="horizon" name="horizon" required>
-                    <option value="">Select...</option>
-                    <option value="short">Short-term (weeks)</option>
-                    <option value="medium">Medium-term (months)</option>
-                    <option value="long">Long-term (years)</option>
-                </select>
-                <button type="submit" class="onboarding-btn">Finish</button>
-            </form>
-        </div>
-    </div>
-    {% endif %}
-    <script>
-    // Onboarding Modal Logic
-    {% if show_onboarding %}
-    document.getElementById("onboarding-form").onsubmit = async function(e) {
-        e.preventDefault();
-        const risk = document.getElementById("risk").value;
-        const sectors = Array.from(document.getElementById("sectors").selectedOptions).map(o => o.value);
-        const horizon = document.getElementById("horizon").value;
-        // Save onboarding complete in session via API
-        await fetch("/api/onboarding", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({risk, sectors, horizon})
-        });
-        // Hide modal and reload
-        document.getElementById("onboarding-modal-bg").style.display = "none";
-        window.location.reload();
-    }
-    {% endif %}
-    </script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -938,7 +885,6 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-        <!-- Onboarding modal removed: now handled by dedicated onboarding page -->
     <div class="container">
         <!-- Header Navigation -->
         <div class="header">

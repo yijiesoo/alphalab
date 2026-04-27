@@ -3,9 +3,10 @@ Multiple watchlists and portfolio tracking for alphalab.
 Allows users to create multiple watchlists and track portfolio performance.
 """
 
-from typing import List, Dict, Optional
-import yfinance as yf
 from datetime import datetime
+from typing import Dict, List, Optional
+
+import yfinance as yf
 
 
 def get_user_watchlists(supabase, email: str) -> List[Dict]:
@@ -48,7 +49,7 @@ def add_ticker_to_watchlist(supabase, watchlist_id: str, ticker: str) -> bool:
         # Get current tickers
         response = supabase.table("watchlists").select("tickers").eq("id", watchlist_id).single().execute()
         tickers = response.data.get("tickers", []) if response.data else []
-        
+
         # Add if not present
         if ticker not in tickers:
             tickers.append(ticker)
@@ -56,7 +57,7 @@ def add_ticker_to_watchlist(supabase, watchlist_id: str, ticker: str) -> bool:
                 "tickers": tickers,
                 "updated_at": datetime.now().isoformat()
             }).eq("id", watchlist_id).execute()
-        
+
         return True
     except Exception as e:
         print(f"❌ Error adding ticker: {e}")
@@ -69,7 +70,7 @@ def remove_ticker_from_watchlist(supabase, watchlist_id: str, ticker: str) -> bo
         # Get current tickers
         response = supabase.table("watchlists").select("tickers").eq("id", watchlist_id).single().execute()
         tickers = response.data.get("tickers", []) if response.data else []
-        
+
         # Remove if present
         if ticker in tickers:
             tickers.remove(ticker)
@@ -77,7 +78,7 @@ def remove_ticker_from_watchlist(supabase, watchlist_id: str, ticker: str) -> bo
                 "tickers": tickers,
                 "updated_at": datetime.now().isoformat()
             }).eq("id", watchlist_id).execute()
-        
+
         return True
     except Exception as e:
         print(f"❌ Error removing ticker: {e}")
@@ -87,7 +88,7 @@ def remove_ticker_from_watchlist(supabase, watchlist_id: str, ticker: str) -> bo
 def calculate_portfolio_performance(tickers: List[str], period: str = "1y") -> Dict:
     """
     Calculate portfolio performance metrics.
-    
+
     Returns:
         - total_return: Overall return %
         - stocks: Individual stock returns
@@ -103,14 +104,14 @@ def calculate_portfolio_performance(tickers: List[str], period: str = "1y") -> D
             "worst_performer": None,
             "avg_return": 0
         }
-    
+
     try:
         # Download data with proper error handling
         data = yf.download(tickers, period=period, progress=False, threads=True)
-        
+
         if data is None or data.empty:
             raise ValueError("No data returned from yfinance")
-        
+
         # Handle single ticker vs multiple tickers
         if len(tickers) == 1:
             # Single ticker returns Series, not DataFrame
@@ -118,7 +119,7 @@ def calculate_portfolio_performance(tickers: List[str], period: str = "1y") -> D
                 adj_close = data
             else:
                 adj_close = data["Adj Close"]
-            
+
             first_price = adj_close.iloc[0]
             last_price = adj_close.iloc[-1]
             return_pct = ((last_price - first_price) / first_price) * 100
@@ -128,7 +129,7 @@ def calculate_portfolio_performance(tickers: List[str], period: str = "1y") -> D
             adj_close = data.get("Adj Close", data)
             if adj_close.empty:
                 raise ValueError("No Adj Close data available")
-            
+
             returns = {}
             for ticker in tickers:
                 if ticker in adj_close.columns:
@@ -136,13 +137,13 @@ def calculate_portfolio_performance(tickers: List[str], period: str = "1y") -> D
                     last_price = adj_close[ticker].iloc[-1]
                     return_pct = ((last_price - first_price) / first_price) * 100
                     returns[ticker] = return_pct
-        
+
         # Calculate metrics
         returns_list = list(returns.values())
         avg_return = sum(returns_list) / len(returns_list) if returns_list else 0
         best_ticker = max(returns, key=returns.get) if returns else None
         worst_ticker = min(returns, key=returns.get) if returns else None
-        
+
         return {
             "total_return": round(avg_return, 2),
             "stocks": {k: round(v, 2) for k, v in returns.items()},
@@ -172,10 +173,10 @@ def get_current_prices(tickers: List[str]) -> Dict[str, float]:
     """Get current prices for tickers."""
     try:
         data = yf.download(tickers, period="1d", progress=False, threads=True)
-        
+
         if data is None or data.empty:
             return {}
-        
+
         # Handle single ticker vs multiple
         if len(tickers) == 1:
             if "Adj Close" in data.columns:
@@ -194,45 +195,45 @@ def get_current_prices(tickers: List[str]) -> Dict[str, float]:
 def calculate_portfolio_value(watchlist: Dict, quantities: Optional[Dict] = None) -> Dict:
     """
     Calculate total portfolio value.
-    
+
     Args:
         watchlist: Watchlist dict with tickers
         quantities: Dict mapping ticker -> quantity owned (optional)
-    
+
     Returns:
         - total_value: Total portfolio value
         - stocks: Per-stock breakdown
         - average_price: Average cost per share
     """
     tickers = watchlist.get("tickers", [])
-    
+
     if not tickers:
         return {
             "total_value": 0,
             "stocks": {},
             "average_price": 0
         }
-    
+
     try:
         prices = get_current_prices(tickers)
-        
+
         stocks_breakdown = {}
         total_value = 0
-        
+
         for ticker in tickers:
             price = prices.get(ticker, 0)
             qty = quantities.get(ticker, 1) if quantities else 1
             value = price * qty
-            
+
             stocks_breakdown[ticker] = {
                 "price": price,
                 "quantity": qty,
                 "value": value
             }
             total_value += value
-        
+
         avg_price = total_value / len(tickers) if tickers else 0
-        
+
         return {
             "total_value": round(total_value, 2),
             "stocks": stocks_breakdown,

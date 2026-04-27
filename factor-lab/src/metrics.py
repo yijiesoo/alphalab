@@ -262,7 +262,7 @@ def full_tear_sheet(results: dict) -> dict:
         "avg_turnover":     float(results["turnover"].mean()),
         "n_rebalances":     len(results["turnover"]),
     }
-    
+
     # Add beta if market returns are available
     if market_returns is not None and len(market_returns) > 0:
         beta = compute_beta(returns, market_returns)
@@ -290,14 +290,14 @@ def print_tear_sheet(metrics: dict) -> None:
     print(f"  Monthly hit rate      : {metrics['monthly_hit_rate']:>8.1%}")
     print(f"  Avg monthly turnover  : {metrics['avg_turnover']:>8.1%}")
     print(f"  Number of rebalances  : {metrics['n_rebalances']:>8d}")
-    
+
     # Beta — market sensitivity
     beta = metrics.get('beta')
     if beta is not None and not np.isnan(beta):
         beta_label = "market neutral" if abs(beta) < 0.1 else "low beta" if abs(beta) < 0.3 else "moderate beta" if abs(beta) < 0.7 else "high beta"
         print(f"  Beta (vs SPY)         : {beta:>8.3f} ({beta_label})")
     else:
-        print(f"  Beta (vs SPY)         :      N/A (market data unavailable)")
-    
+        print("  Beta (vs SPY)         :      N/A (market data unavailable)")
+
     print("=" * 45)
     print("\nNote: educational research project. Not investment advice.")

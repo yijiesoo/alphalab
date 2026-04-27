@@ -10,8 +10,8 @@ Design philosophy: keep charts simple and legible. No chartjunk.
 These should look like something from an academic paper, not a trading app.
 """
 
-import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 

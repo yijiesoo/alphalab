@@ -16,10 +16,10 @@ SENTIMENT ANALYSIS OPTIONS:
    - Understands context and nuance
    - LOCAL model (no rate limits, privacy)
    - Requires: transformers + torch (~1.5GB disk on first use)
-   
+
    Install FinBERT:
    $ pip install transformers torch
-   
+
    Cost-Benefit:
    ✅ 80%+ accuracy on financial news
    ✅ No API rate limits
@@ -45,15 +45,15 @@ This gives you the best of both worlds: relevance + accuracy
 
 import os
 import time
+
 import requests
-from typing import Optional
 
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
 
 # Try to import FinBERT (optional dependency)
 try:
-    from transformers import AutoTokenizer, AutoModelForSequenceClassification
     import torch
+    from transformers import AutoModelForSequenceClassification, AutoTokenizer
     FINBERT_AVAILABLE = True
     print("[sentiment] ✅ FinBERT dependencies available (transformers + torch)")
 except ImportError as e:
@@ -97,23 +97,23 @@ def _load_finbert():
 def _score_headline_finbert(headline: str) -> str:
     """Score headline using FinBERT model."""
     model, tokenizer = _load_finbert()
-    
+
     if model is None:
         # Fallback to keyword matching
         return _score_headline_keyword(headline)
-    
+
     try:
         inputs = tokenizer(headline, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             outputs = model(**inputs)
-        
+
         logits = outputs.logits
         probabilities = torch.softmax(logits, dim=1)[0]
-        
+
         # FinBERT labels: 0=negative, 1=neutral, 2=positive
         sentiment_idx = torch.argmax(probabilities).item()
         sentiment_map = {0: "negative", 1: "neutral", 2: "positive"}
-        
+
         return sentiment_map.get(sentiment_idx, "neutral")
     except Exception as e:
         print(f"[sentiment] FinBERT error: {e}. Falling back to keyword matching.")
@@ -262,11 +262,11 @@ def get_news_sentiment(ticker: str, company_name: str = None, use_finbert: bool 
 
 def _fetch_headlines(query: str) -> list:
     if not NEWSAPI_KEY:
-        print(f"[sentiment] NEWSAPI_KEY not set, cannot fetch headlines")
+        print("[sentiment] NEWSAPI_KEY not set, cannot fetch headlines")
         return []
     try:
         url = "https://newsapi.org/v2/everything"
-        
+
         # Try multiple search queries for better results
         search_queries = [
             f'"{query}" stock',  # Exact phrase with "stock"
@@ -274,10 +274,10 @@ def _fetch_headlines(query: str) -> list:
             f"{query} trading",   # Trading news
             query,                # Just the ticker/company name
         ]
-        
+
         all_articles = []
         seen_titles = set()
-        
+
         for search_query in search_queries:
             print(f"[sentiment] Querying News API: {search_query}")
             params = {
@@ -290,7 +290,7 @@ def _fetch_headlines(query: str) -> list:
             r = requests.get(url, params=params, timeout=5)
             articles = r.json().get("articles", [])
             print(f"[sentiment] Found {len(articles)} articles for query '{search_query}'")
-            
+
             for a in articles:
                 title = a.get("title", "")
                 if title and title not in seen_titles:
@@ -298,7 +298,7 @@ def _fetch_headlines(query: str) -> list:
                     seen_titles.add(title)
                     if len(all_articles) >= 10:
                         return all_articles
-        
+
         print(f"[sentiment] Total {len(all_articles)} unique headlines fetched")
         return all_articles[:10]
     except Exception as e:

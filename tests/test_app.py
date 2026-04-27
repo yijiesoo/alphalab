@@ -6,13 +6,13 @@ Run with:
 """
 
 import time
+
 import pytest
 
 # ---------------------------------------------------------------------------
 # Import the Flask app (all external I/O is monkeypatched below)
 # ---------------------------------------------------------------------------
-from flask_app.app import app, _cache, _CACHE_TTL_SECONDS, _valid_ticker
-
+from flask_app.app import _cache, _valid_ticker, app
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -148,8 +148,8 @@ class TestApiAnalyzeCache:
     def _patch_scorer(self, monkeypatch):
         """Inject a fake scorer module and factor_delay module so the route's
         lazy imports work without network access."""
-        import types
         import sys
+        import types
 
         fake_scorer = types.ModuleType("src.scorer")
         fake_scorer.analyze_ticker = lambda ticker: {**self.FAKE_DATA, "ticker": ticker}

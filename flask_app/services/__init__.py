@@ -1,8 +1,8 @@
 """
 Supabase database service
 """
-import os
 import traceback
+
 from ..config import Config
 
 # Global supabase instance
@@ -13,7 +13,7 @@ def init_supabase():
     """Initialize Supabase client"""
     global _supabase
     try:
-        from supabase import create_client, Client
+        from supabase import create_client
         if Config.SUPABASE_URL and Config.SUPABASE_KEY:
             _supabase = create_client(Config.SUPABASE_URL, Config.SUPABASE_KEY)
             print("✅ Supabase initialized")
