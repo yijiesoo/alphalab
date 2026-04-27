@@ -46,20 +46,12 @@ from .services import init_supabase, get_supabase
 from .routes import auth_bp, login_required
 from .routes.dashboard import dashboard_bp, init_supabase as init_dashboard_supabase
 
-# Import ML metrics
-try:
-    from alphalab_ml import get_latest_ml_metrics, get_all_ml_backtests, get_ml_scores_for_ticker
-    print("✅ Successfully imported from alphalab_ml")
-except ImportError as e:
-    print(f"❌ Failed to import from alphalab_ml: {e}")
-    print(f"   sys.path: {sys.path[:3]}")
-    # Fallback stubs
-    def get_latest_ml_metrics():
-        return {"status": "error", "message": "alphalab_ml not found"}
-    def get_all_ml_backtests(limit=50):
-        return {"status": "error", "backtests": [], "limit": limit}
-    def get_ml_scores_for_ticker(ticker):
-        return {"status": "error", "ticker": ticker}
+def get_latest_ml_metrics():
+    return {"status": "error", "message": "alphalab_ml not found"}
+def get_all_ml_backtests(limit=50):
+    return {"status": "error", "backtests": [], "limit": limit}
+def get_ml_scores_for_ticker(ticker):
+    return {"status": "error", "ticker": ticker}
 
 # =====================================================================
 # Flask App Setup

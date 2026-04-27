@@ -33,10 +33,7 @@ services:
       - CACHE_TTL_SECONDS=900
     
     volumes:
-      # Mount data directory for persistent backtest results
       - ./data:/app/data
-      # Mount alphalab-ml package if available
-      - ../alphalab-ml:/app/alphalab-ml:ro
     
     depends_on:
       - redis
