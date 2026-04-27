@@ -152,7 +152,7 @@ class TestApiAnalyzeCache:
         import types
 
         fake_scorer = types.ModuleType("src.scorer")
-        fake_scorer.analyze_ticker = lambda ticker: {**self.FAKE_DATA, "ticker": ticker}
+        fake_scorer.analyze_ticker = lambda ticker, **kwargs: {**self.FAKE_DATA, "ticker": ticker}
         monkeypatch.setitem(sys.modules, "src.scorer", fake_scorer)
 
         fake_delay = types.ModuleType("src.factor_delay")
